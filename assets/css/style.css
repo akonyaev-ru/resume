@@ -78,6 +78,9 @@ body {
   font-size: var(--step-0);
   line-height: 1.62;
   -webkit-font-smoothing: antialiased;
+  /* Подстраховка: декоративный слой не должен заводить горизонтальную полосу
+     прокрутки. clip, а не hidden — иначе сломается липкая шапка. */
+  overflow-x: clip;
 }
 
 #app {
@@ -254,16 +257,19 @@ a:hover { color: var(--text); }
   padding-block: clamp(2.5rem, 7vw, 5rem) clamp(2rem, 5vw, 3.5rem);
 }
 
-/* Мягкое свечение вместо картинки: единственный «эффектный» элемент фона. */
+/* Мягкое свечение вместо картинки: единственный «эффектный» элемент фона.
+   Отступы строго нулевые — с отрицательными свечение вылезало за края экрана,
+   заводило горизонтальную полосу прокрутки и обрезалось на границе страницы.
+   Градиенты гаснут внутри блока сами, поэтому жёсткого края не видно. */
 .hero::before {
   content: '';
   position: absolute;
-  inset: -30% -10% 20%;
+  inset: 0;
   z-index: -1;
   pointer-events: none;
   background:
-    radial-gradient(45% 55% at 18% 12%, rgba(124, 124, 255, 0.16), transparent 70%),
-    radial-gradient(40% 50% at 82% 6%, rgba(61, 220, 151, 0.07), transparent 70%);
+    radial-gradient(58% 78% at 16% 0%, rgba(124, 124, 255, 0.18), transparent 70%),
+    radial-gradient(48% 68% at 84% 2%, rgba(61, 220, 151, 0.08), transparent 70%);
 }
 
 .hero__grid {
@@ -824,10 +830,10 @@ button.chip[aria-pressed='true']::after { background: #fff; }
 .contact::before {
   content: '';
   position: absolute;
-  inset: 0 0 -10%;
+  inset: 0;
   z-index: -1;
   pointer-events: none;
-  background: radial-gradient(50% 70% at 30% 100%, rgba(124, 124, 255, 0.13), transparent 70%);
+  background: radial-gradient(56% 88% at 28% 100%, rgba(124, 124, 255, 0.15), transparent 70%);
 }
 
 .contact__title {

@@ -12,6 +12,10 @@
   // знаками — обе половины профиля разом.
   var GLYPHS = '{}[]()<>/\\|;:=+-*#$%&!?^~01234567§№¶λ';
 
+  // Для заголовков алфавит короче: в наборном Unbounded нет § № ¶ λ, и на их
+  // месте подставлялся бы запасной шрифт — буквы бы прыгали по ширине.
+  var TITLE_GLYPHS = '{}[]()<>/\\|;:=+-*#$%&!?^~0123456789';
+
   var state = { filter: null, filterLabel: null };
 
   /* --- мелкие помощники -------------------------------------------------- */
@@ -37,8 +41,12 @@
   function $(sel) { return document.querySelector(sel); }
   function $$(sel) { return Array.prototype.slice.call(document.querySelectorAll(sel)); }
 
+  function randomFrom(set) {
+    return set.charAt(Math.floor(Math.random() * set.length));
+  }
+
   function randomGlyph() {
-    return GLYPHS.charAt(Math.floor(Math.random() * GLYPHS.length));
+    return randomFrom(GLYPHS);
   }
 
   function section(id, title, kids) {
@@ -409,6 +417,58 @@
     ]);
   }
 
+  /* --- расшифровка заголовков --------------------------------------------- */
+
+  /* Заголовок раздела при появлении собирается из тех же знаков, что и фоновое
+     поле: буквы встают на место слева направо, остальные пока мельтешат. */
+  function initTitleDecode() {
+    if (LESS_MOTION || !('IntersectionObserver' in window)) return;
+
+    var observer = new IntersectionObserver(function (entries) {
+      entries.forEach(function (entry) {
+        if (!entry.isIntersecting) return;
+        observer.unobserve(entry.target);
+        decodeTitle(entry.target);
+      });
+    }, { rootMargin: '0px 0px -15% 0px', threshold: 0.6 });
+
+    $$('.section__title').forEach(function (title) { observer.observe(title); });
+  }
+
+  function decodeTitle(node) {
+    var text = node.textContent;
+    var duration = Math.min(700, 320 + text.length * 12);
+    var start = null;
+
+    // Ширина заголовка на время перебора фиксируется: иначе линейка справа от
+    // него дёргалась бы на каждом кадре.
+    node.style.minWidth = node.offsetWidth + 'px';
+
+    function frame(now) {
+      if (start === null) start = now;
+
+      var progress = Math.min((now - start) / duration, 1);
+      var locked = Math.floor(progress * text.length);
+      var out = '';
+
+      for (var i = 0; i < text.length; i += 1) {
+        var char = text.charAt(i);
+        out += (i < locked || char === ' ') ? char : randomFrom(TITLE_GLYPHS);
+      }
+
+      node.textContent = out;
+
+      if (progress < 1) {
+        window.requestAnimationFrame(frame);
+      } else {
+        node.textContent = text;
+        node.style.minWidth = '';
+      }
+    }
+
+    window.requestAnimationFrame(frame);
+  }
+
   /* --- поле символов ------------------------------------------------------ */
 
   /* Фон страницы — сплошная сетка моноширинных знаков: синтаксис кода вперемешку
@@ -687,6 +747,7 @@
     app.appendChild(buildFooter());
 
     initObservers();
+    initTitleDecode();
     initField();
   }
 
