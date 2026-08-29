@@ -188,10 +188,17 @@
       ]),
     ]);
 
-    var portrait = p.photo ? el('figure', { class: 'portrait' }, [
-      // Размеры не проставляются числами: файл пересобирается скриптом и может
-      // поменяться в пикселях. Пропорция 4:5 задана в стилях — она постоянна.
-      el('img', { src: p.photo, alt: t(p.name), decoding: 'async' }),
+    // Слои бейджа снизу вверх: подложка, фольга, фотография, блик. Фольга
+    // лежит под фигурой и видна там, где у вырезанного портрета прозрачность.
+    var portrait = p.photo ? el('figure', { class: 'badge' }, [
+      el('div', { class: 'badge__inner' }, [
+        el('div', { class: 'badge__layer badge__plate' }),
+        el('div', { class: 'badge__layer badge__foil' }),
+        el('img', {
+          class: 'badge__photo', src: p.photo, alt: t(p.name), decoding: 'async',
+        }),
+        el('div', { class: 'badge__layer badge__sheen' }),
+      ]),
     ]) : null;
 
     return el('section', { class: 'hero' }, [
@@ -546,13 +553,11 @@
   /* --- реакция на курсор: магниты и блик ---------------------------------- */
 
   var magnets = [];
-  var portrait = null;
-  var portraitImage = null;
+  var badge = null;
 
   function collectMagnets() {
     magnets = $$('.btn');
-    portrait = $('.portrait');
-    portraitImage = $('.portrait img');
+    badge = $('.badge');
   }
 
   /* Один обработчик движения мыши на две мелочи: кнопки рядом с курсором
@@ -577,16 +582,7 @@
         card.style.setProperty('--my', (event.clientY - box.top).toFixed(0) + 'px');
       }
 
-      // Портрет и свет за ним расходятся в разные стороны: фигура смещается
-      // навстречу курсору, ореол — от него. Разница хода и читается объёмом.
-      if (portraitImage) {
-        var nx = event.clientX / window.innerWidth - 0.5;
-        var ny = event.clientY / window.innerHeight - 0.5;
-        portraitImage.style.transform =
-          'translate(' + (-nx * 20).toFixed(1) + 'px, ' + (-ny * 14).toFixed(1) + 'px)';
-        portrait.style.transform =
-          'translate(' + (nx * 7).toFixed(1) + 'px, ' + (ny * 5).toFixed(1) + 'px)';
-      }
+      if (badge) tiltBadge(event);
 
       var rects = magnets.map(function (btn) { return btn.getBoundingClientRect(); });
 
@@ -611,7 +607,39 @@
 
     document.addEventListener('mouseleave', function () {
       magnets.forEach(function (button) { button.style.transform = ''; });
+      restBadge();
     });
+  }
+
+  var TILT = 15;   // максимальный наклон бейджа, градусы
+
+  /* Бейдж наклоняется вслед за курсором, а фольга и блик съезжают по тем же
+     координатам — так наклейка ловит свет, как настоящая. */
+  function tiltBadge(event) {
+    var rect = badge.getBoundingClientRect();
+    var inside = event.clientX >= rect.left && event.clientX <= rect.right &&
+      event.clientY >= rect.top && event.clientY <= rect.bottom;
+
+    if (!inside) {
+      restBadge();
+      return;
+    }
+
+    var px = (event.clientX - rect.left) / rect.width;
+    var py = (event.clientY - rect.top) / rect.height;
+
+    badge.classList.add('is-live');
+    badge.style.setProperty('--px', px.toFixed(3));
+    badge.style.setProperty('--py', py.toFixed(3));
+    badge.style.setProperty('--tilt-x', ((0.5 - py) * TILT).toFixed(2));
+    badge.style.setProperty('--tilt-y', ((px - 0.5) * TILT).toFixed(2));
+  }
+
+  function restBadge() {
+    if (!badge || !badge.classList.contains('is-live')) return;
+    badge.classList.remove('is-live');
+    badge.style.setProperty('--tilt-x', '0');
+    badge.style.setProperty('--tilt-y', '0');
   }
 
   /* --- расшифровка заголовков --------------------------------------------- */
