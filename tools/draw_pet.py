@@ -79,9 +79,27 @@ def line(g, x0, y0, x1, y1, ch):
             y0 += sy
 
 
-def body(legs='stand', eyes=True, lift=0, crouch=0, step=0, paw=None):
-    """legs — как стоят лапы; lift — подскок целиком; crouch — присесть на
-    клетку; step — какая пара лап оторвана; paw — лапа тянется к клавишам."""
+def volume(g):
+    """Немного объёма: верхняя кромка светлее, нижняя темнее. Обводку по краю на
+    тёмной странице всё равно не видно, а так тело перестаёт быть плоским."""
+    for x in range(BODY_W):
+        for y in range(H):
+            if g[y][x] == 'g':
+                g[y][x] = 'h'
+                break
+
+    for x in range(BODY_W):
+        for y in range(H - 1, -1, -1):
+            if g[y][x] == 'g':
+                g[y][x] = 'd'
+                break
+
+    return g
+
+
+def body(legs='stand', eyes=True, lift=0, crouch=0, step=0):
+    """legs — как стоят щупальца; lift — подскок целиком; crouch — присесть на
+    клетку; step — какая пара щупалец оторвана от земли."""
     g = blank(BODY_W)
     shift = crouch - lift
 
@@ -93,12 +111,14 @@ def body(legs='stand', eyes=True, lift=0, crouch=0, step=0, paw=None):
             if ch != '.':
                 g[ny][x] = ch
 
+    volume(g)
+
     top = LEGS_TOP + shift
     for i, (x0, x1) in enumerate(LEGS[legs]):
         if x1 < x0 or x0 < 0:
             continue
         short = 1 if step and (i % 2 == (step - 1)) else 0
-        rect(g, x0, top, x1, GROUND - lift - short, 'g')
+        rect(g, x0, top, x1, GROUND - lift - short, 'd')
 
     if not eyes:
         for y in range(H):
@@ -109,20 +129,15 @@ def body(legs='stand', eyes=True, lift=0, crouch=0, step=0, paw=None):
         rect(g, 2, 4 + shift, 3, 4 + shift, 'p')
         rect(g, 8, 4 + shift, 9, 4 + shift, 'p')
 
-    # Лапа на клавишах: тянется вправо, к соседнему слою с ноутбуком.
-    if paw is not None:
-        y = GROUND - 2 if paw else GROUND - 1
-        rect(g, BODY_W - 2, y, BODY_W - 1, y, 'g')
-
     return g
 
 
 def laptop(stage):
-    """Две серые полоски: клавиатура лежит, крышка поднимается и в раскрытом
-    виде стоит с наклоном назад, как у настоящего ноутбука.
+    """Клавиатура лежит, крышка поднимается от неё и в раскрытом виде откинута
+    назад — от осьминога, экраном к нему, как у настоящего ноутбука.
     stage: 0 — закрыт, 1 и 2 — раскрывается, 3 — открыт."""
     g = blank(LAP_W)
-    hinge = 6
+    hinge = 4
 
     rect(g, 0, GROUND, hinge, GROUND, 'k')          # клавиатура
 
@@ -133,9 +148,22 @@ def laptop(stage):
     elif stage == 2:
         line(g, hinge, GROUND - 1, 3, GROUND - 6, 'k')
     else:
-        # Крышка в две клетки толщиной, отклонена назад на две клетки.
-        line(g, hinge, GROUND - 1, hinge - 2, GROUND - 8, 'k')
-        line(g, hinge + 1, GROUND - 1, hinge - 1, GROUND - 8, 'k')
+        # Крышка в две клетки толщиной, откинута назад через вертикаль.
+        line(g, hinge, GROUND - 1, hinge + 2, GROUND - 8, 'k')
+        line(g, hinge + 1, GROUND - 1, hinge + 3, GROUND - 8, 'k')
+
+    return g
+
+
+def tentacle(g, pressing):
+    """Щупальце тянется от осьминога к клавишам и постукивает по ним. Живёт в
+    слое ноутбука: тот не зеркалится, а печатает осьминог всегда мордой к нему."""
+    g = [row[:] for row in g]
+    y = GROUND - 1 if pressing else GROUND - 2
+
+    rect(g, 0, y, 2, y, 'd')
+    if pressing:
+        rect(g, 2, GROUND, 2, GROUND, 'd')          # кончик на клавише
 
     return g
 
@@ -151,10 +179,11 @@ BODY_FRAMES = [
         lambda: body(legs='stand'),
     ]),
     ('hop', [lambda: body(legs='tuck', lift=2)]),
-    ('type', [lambda: body(paw=True), lambda: body(crouch=1, paw=False)]),
+    ('type', [lambda: body(), lambda: body(crouch=1)]),
 ]
 
 LAP_FRAMES = [laptop(0), laptop(1), laptop(2), laptop(3)]
+TYPE_FRAMES = [tentacle(laptop(3), False), tentacle(laptop(3), True)]
 
 HEAD = '  /* --- кадры ------------------------------------------------------------- */'
 TAIL = '  /* --- сборка кадров ----------------------------------------------------- */'
@@ -179,11 +208,14 @@ def art() -> str:
         parts.append('    ' + name + ': [' + grids + '],')
 
     laps = ',\n    '.join(grid_js(g) for g in LAP_FRAMES)
+    typing = ',\n    '.join(grid_js(g) for g in TYPE_FRAMES)
 
     return (HEAD + '\n\n' + NOTE
             + '  var ART = {\n' + '\n'.join(parts) + '\n  };\n\n'
-            + '  // Крышка: лежит, поднимается, поднимается выше, стоит с наклоном.\n'
-            + '  var LAPTOP = [\n    ' + laps + ',\n  ];\n\n')
+            + '  // Крышка: лежит, поднимается, поднимается выше, откинута назад.\n'
+            + '  var LAPTOP = [\n    ' + laps + ',\n  ];\n\n'
+            + '  // Тот же раскрытый ноутбук, но со щупальцем на клавишах.\n'
+            + '  var LAPTOP_TYPE = [\n    ' + typing + ',\n  ];\n\n')
 
 
 def main() -> int:

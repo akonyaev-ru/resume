@@ -27,6 +27,8 @@
 
   var COLORS = {
     g: '#7c7cff',            // тело
+    h: '#9a9aff',            // верхняя кромка светлее — тело не плоское
+    d: '#5b5bd6',            // щупальца и нижняя кромка
     w: '#e7eaf2',            // белки глаз
     p: '#12141c',            // зрачки
     k: '#838da4',            // ноутбук
@@ -40,133 +42,133 @@
      tools/draw_pet.py — руками их не правят. */
   var ART = {
     idle: [[
-        '.gggggggggg.',
-        'gggggggggggg',
+        '.hhhhhhhhhh.',
+        'hggggggggggh',
         'gggggggggggg',
         'ggwwggggwwgg',
         'ggwpggggwpgg',
         'ggwwggggwwgg',
         'gggggggggggg',
-        'gggggggggggg',
-        '.gggggggggg.',
-        '.gg.gg.gg.gg',
-        '.gg.gg.gg.gg',
+        'dggggggggggd',
+        '.dddddddddd.',
+        '.dd.dd.dd.dd',
+        '.dd.dd.dd.dd',
       ], [
         '............',
-        '.gggggggggg.',
-        'gggggggggggg',
+        '.hhhhhhhhhh.',
+        'hggggggggggh',
         'gggggggggggg',
         'ggwwggggwwgg',
         'ggwpggggwpgg',
         'ggwwggggwwgg',
         'gggggggggggg',
-        'gggggggggggg',
-        '.gggggggggg.',
-        '.gg.gg.gg.gg',
+        'dggggggggggd',
+        '.dddddddddd.',
+        '.dd.dd.dd.dd',
       ]],
     blink: [[
-        '.gggggggggg.',
-        'gggggggggggg',
+        '.hhhhhhhhhh.',
+        'hggggggggggh',
         'gggggggggggg',
         'gggggggggggg',
         'ggppggggppgg',
         'gggggggggggg',
         'gggggggggggg',
-        'gggggggggggg',
-        '.gggggggggg.',
-        '.gg.gg.gg.gg',
-        '.gg.gg.gg.gg',
+        'dggggggggggd',
+        '.dddddddddd.',
+        '.dd.dd.dd.dd',
+        '.dd.dd.dd.dd',
       ]],
     walk: [[
-        '.gggggggggg.',
-        'gggggggggggg',
+        '.hhhhhhhhhh.',
+        'hggggggggggh',
         'gggggggggggg',
         'ggwwggggwwgg',
         'ggwpggggwpgg',
         'ggwwggggwwgg',
         'gggggggggggg',
-        'gggggggggggg',
-        '.gggggggggg.',
-        'gg..gg.gg.gg',
-        '....gg....gg',
+        'dggggggggggd',
+        '.dddddddddd.',
+        'dd..dd.dd.dd',
+        '....dd....dd',
       ], [
-        'gggggggggggg',
+        'hhhhhhhhhhhh',
         'gggggggggggg',
         'ggwwggggwwgg',
         'ggwpggggwpgg',
         'ggwwggggwwgg',
         'gggggggggggg',
-        'gggggggggggg',
-        '.gggggggggg.',
-        '.gg.gg.gg.gg',
-        '.gg.gg.gg.gg',
+        'dggggggggggd',
+        '.dddddddddd.',
+        '.dd.dd.dd.dd',
+        '.dd.dd.dd.dd',
         '............',
       ], [
-        '.gggggggggg.',
-        'gggggggggggg',
+        '.hhhhhhhhhh.',
+        'hggggggggggh',
         'gggggggggggg',
         'ggwwggggwwgg',
         'ggwpggggwpgg',
         'ggwwggggwwgg',
         'gggggggggggg',
-        'gggggggggggg',
-        '.gggggggggg.',
-        '.gg..gg.gggg',
-        '.gg.....gg..',
+        'dggggggggggd',
+        '.dddddddddd.',
+        '.dd..dd.dddd',
+        '.dd.....dd..',
       ], [
-        '.gggggggggg.',
-        'gggggggggggg',
+        '.hhhhhhhhhh.',
+        'hggggggggggh',
         'gggggggggggg',
         'ggwwggggwwgg',
         'ggwpggggwpgg',
         'ggwwggggwwgg',
         'gggggggggggg',
-        'gggggggggggg',
-        '.gggggggggg.',
-        '.gg.gg.gg.gg',
-        '.gg.gg.gg.gg',
+        'dggggggggggd',
+        '.dddddddddd.',
+        '.dd.dd.dd.dd',
+        '.dd.dd.dd.dd',
       ]],
     hop: [[
-        'gggggggggggg',
+        'hhhhhhhhhhhh',
         'ggwwggggwwgg',
         'ggwpggggwpgg',
         'ggwwggggwwgg',
         'gggggggggggg',
-        'gggggggggggg',
-        '.gggggggggg.',
-        '...gg.gggg..',
-        '...gg.gggg..',
+        'dggggggggggd',
+        '.dddddddddd.',
+        '...dd.dddd..',
+        '...dd.dddd..',
         '............',
         '............',
       ]],
     type: [[
-        '.gggggggggg.',
-        'gggggggggggg',
+        '.hhhhhhhhhh.',
+        'hggggggggggh',
         'gggggggggggg',
         'ggwwggggwwgg',
         'ggwpggggwpgg',
         'ggwwggggwwgg',
         'gggggggggggg',
-        'gggggggggggg',
-        '.ggggggggggg',
-        '.gg.gg.gg.gg',
-        '.gg.gg.gg.gg',
+        'dggggggggggd',
+        '.dddddddddd.',
+        '.dd.dd.dd.dd',
+        '.dd.dd.dd.dd',
       ], [
         '............',
-        '.gggggggggg.',
-        'gggggggggggg',
+        '.hhhhhhhhhh.',
+        'hggggggggggh',
         'gggggggggggg',
         'ggwwggggwwgg',
         'ggwpggggwpgg',
         'ggwwggggwwgg',
         'gggggggggggg',
-        'gggggggggggg',
-        '.ggggggggggg',
-        '.gg.gg.gg.gg',
+        'dggggggggggd',
+        '.dddddddddd.',
+        '.dd.dd.dd.dd',
       ]],
   };
 
-  // Крышка: лежит, поднимается, поднимается выше, стоит с наклоном.
+  // Крышка: лежит, поднимается, поднимается выше, откинута назад.
   var LAPTOP = [
     [
         '........',
@@ -178,8 +180,8 @@
         '........',
         '........',
         '........',
-        'kkkkkkk.',
-        'kkkkkkk.',
+        'kkkkk...',
+        'kkkkk...',
       ],
     [
         '........',
@@ -189,10 +191,10 @@
         '........',
         '........',
         '........',
-        '.kk.....',
-        '...kk...',
-        '.....kk.',
-        'kkkkkkk.',
+        '.k......',
+        '..kk....',
+        '....k...',
+        'kkkkk...',
       ],
     [
         '........',
@@ -200,25 +202,55 @@
         '........',
         '........',
         '...k....',
+        '...k....',
+        '...k....',
         '....k...',
         '....k...',
-        '.....k..',
-        '.....k..',
-        '......k.',
-        'kkkkkkk.',
+        '....k...',
+        'kkkkk...',
       ],
     [
         '........',
         '........',
-        '....kk..',
-        '....kk..',
-        '.....kk.',
-        '.....kk.',
-        '.....kk.',
-        '.....kk.',
         '......kk',
         '......kk',
-        'kkkkkkk.',
+        '.....kk.',
+        '.....kk.',
+        '.....kk.',
+        '.....kk.',
+        '....kk..',
+        '....kk..',
+        'kkkkk...',
+      ],
+  ];
+
+  // Тот же раскрытый ноутбук, но со щупальцем на клавишах.
+  var LAPTOP_TYPE = [
+    [
+        '........',
+        '........',
+        '......kk',
+        '......kk',
+        '.....kk.',
+        '.....kk.',
+        '.....kk.',
+        '.....kk.',
+        'ddd.kk..',
+        '....kk..',
+        'kkkkk...',
+      ],
+    [
+        '........',
+        '........',
+        '......kk',
+        '......kk',
+        '.....kk.',
+        '.....kk.',
+        '.....kk.',
+        '.....kk.',
+        '....kk..',
+        'ddd.kk..',
+        'kkdkk...',
       ],
   ];
 
@@ -260,6 +292,7 @@
   // Ноутбук зеркалить нельзя: он должен стоять на месте и открываться в одну
   // сторону, как бы существо ни разворачивалось.
   var laptops = LAPTOP.map(function (art) { return render(art, false); });
+  var lapTypes = LAPTOP_TYPE.map(function (art) { return render(art, false); });
 
   /* --- паучок ------------------------------------------------------------ */
 
@@ -300,7 +333,7 @@
     var set = sprites[name][index % sprites[name].length];
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.drawImage(pet.dir < 0 ? set.left : set.right, 0, 0);
-    if (lap !== null && lap !== undefined) ctx.drawImage(laptops[lap], BODY_W * PIXEL, 0);
+    if (lap) ctx.drawImage(lap, BODY_W * PIXEL, 0);
   }
 
   function enter(state, now, until) {
@@ -370,9 +403,11 @@
       return draw('walk', pet.frame, null);
     }
 
-    if (pet.state === 'open') return draw('idle', 0, Math.min(pet.frame, OPEN_LAST));
-    if (pet.state === 'close') return draw('idle', 0, Math.max(0, OPEN_LAST - pet.frame));
-    if (pet.state === 'type') return draw('type', pet.frame, OPEN_LAST);
+    if (pet.state === 'open') return draw('idle', 0, laptops[Math.min(pet.frame, OPEN_LAST)]);
+    if (pet.state === 'close') return draw('idle', 0, laptops[Math.max(0, OPEN_LAST - pet.frame)]);
+    if (pet.state === 'type') {
+      return draw('type', pet.frame, lapTypes[pet.frame % lapTypes.length]);
+    }
     if (pet.state === 'hop') return draw('hop', 0, null);
 
     if (now - pet.blinkAt > BLINK_EVERY) {
@@ -442,7 +477,7 @@
   place();
 
   if (LESS_MOTION) {
-    draw('idle', 0, OPEN_LAST);
+    draw('idle', 0, laptops[OPEN_LAST]);
     return;
   }
 
