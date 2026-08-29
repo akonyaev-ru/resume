@@ -428,7 +428,9 @@
     var CELL_W = 15;
     var CELL_H = 19;
     var FONT = 12;
-    var RADIUS = 172;          // радиус освещённого круга, px
+    var RADIUS = 132;          // радиус пятна под курсором, px
+    var DECAY = 0.84;          // во сколько раз гаснет тепло за кадр (16.7 мс)
+    var THRESH = 0.02;         // ниже этого символ считается погасшим
     var BASE = '#8791ab';      // цвет спящего символа
     var BASE_ALPHA = 0.085;
     var ACCENT = '#7c7cff';
@@ -439,9 +441,11 @@
     var cols = 0;
     var rows = 0;
     var chars = [];
-    var spot = null;
+    var heat = null;           // сколько «света» осталось в каждой ячейке
     var lastBox = null;
-    var pending = false;
+    var lastPoint = null;
+    var lastFrame = 0;
+    var running = false;
 
     function build() {
       var dpr = Math.min(window.devicePixelRatio || 1, 2);
@@ -460,8 +464,10 @@
       rows = Math.ceil(height / CELL_H);
       chars = new Array(cols * rows);
       for (var i = 0; i < chars.length; i += 1) chars[i] = randomGlyph();
+      heat = new Float32Array(cols * rows);
 
       lastBox = null;
+      lastPoint = null;
       paintAll();
     }
 
@@ -479,16 +485,6 @@
       ctx.globalAlpha = 1;
     }
 
-    /* Квадрат ячеек вокруг точки — область, которую нужно перерисовать. */
-    function boxAt(point) {
-      return {
-        c0: Math.max(0, Math.floor((point.x - RADIUS) / CELL_W)),
-        c1: Math.min(cols - 1, Math.ceil((point.x + RADIUS) / CELL_W)),
-        r0: Math.max(0, Math.floor((point.y - RADIUS) / CELL_H)),
-        r1: Math.min(rows - 1, Math.ceil((point.y + RADIUS) / CELL_H)),
-      };
-    }
-
     function merge(a, b) {
       if (!a) return b;
       if (!b) return a;
@@ -498,58 +494,103 @@
       };
     }
 
-    function paintSpot() {
-      pending = false;
+    /* Курсор подогревает ячейки вокруг себя. Тепло не сбрасывается мгновенно, а
+       гаснет кадр за кадром — поэтому за курсором тянется короткий хвост. */
+    function warm(x, y) {
+      var c0 = Math.max(0, Math.floor((x - RADIUS) / CELL_W));
+      var c1 = Math.min(cols - 1, Math.ceil((x + RADIUS) / CELL_W));
+      var r0 = Math.max(0, Math.floor((y - RADIUS) / CELL_H));
+      var r1 = Math.min(rows - 1, Math.ceil((y + RADIUS) / CELL_H));
 
-      var box = merge(lastBox, spot ? boxAt(spot) : null);
-      if (!box) return;
-
-      ctx.clearRect(box.c0 * CELL_W, box.r0 * CELL_H,
-        (box.c1 - box.c0 + 1) * CELL_W, (box.r1 - box.r0 + 1) * CELL_H);
-
-      for (var row = box.r0; row <= box.r1; row += 1) {
-        for (var col = box.c0; col <= box.c1; col += 1) {
-          var alpha = BASE_ALPHA;
-          var color = BASE;
-
-          if (spot) {
-            var dx = col * CELL_W + CELL_W / 2 - spot.x;
-            var dy = row * CELL_H + CELL_H / 2 - spot.y;
-            var near = 1 - Math.sqrt(dx * dx + dy * dy) / RADIUS;
-            if (near > 0) {
-              alpha = BASE_ALPHA + near * near * 1;
-              color = near > 0.78 ? MINT : ACCENT;
-            }
-          }
-
-          paintCell(col, row, alpha, color);
+      for (var row = r0; row <= r1; row += 1) {
+        for (var col = c0; col <= c1; col += 1) {
+          var dx = col * CELL_W + CELL_W / 2 - x;
+          var dy = row * CELL_H + CELL_H / 2 - y;
+          var value = 1 - Math.sqrt(dx * dx + dy * dy) / RADIUS;
+          var index = row * cols + col;
+          if (value > heat[index]) heat[index] = value;
         }
       }
 
-      ctx.globalAlpha = 1;
-      lastBox = spot ? boxAt(spot) : null;
+      if (!running) {
+        running = true;
+        lastFrame = 0;
+        window.requestAnimationFrame(frame);
+      }
     }
 
-    function request() {
-      if (pending) return;
-      pending = true;
-      window.requestAnimationFrame(paintSpot);
+    function frame(now) {
+      var step = lastFrame ? Math.min(now - lastFrame, 64) : 16.7;
+      lastFrame = now;
+
+      var fade = Math.pow(DECAY, step / 16.7);
+      var c0 = cols;
+      var c1 = -1;
+      var r0 = rows;
+      var r1 = -1;
+
+      for (var i = 0; i < heat.length; i += 1) {
+        if (heat[i] <= 0) continue;
+        heat[i] *= fade;
+        if (heat[i] < THRESH) heat[i] = 0;
+
+        // Погасшая в этом кадре ячейка тоже входит в область: её нужно
+        // перерисовать обратно в спящий цвет.
+        var row = (i / cols) | 0;
+        var col = i - row * cols;
+        if (col < c0) c0 = col;
+        if (col > c1) c1 = col;
+        if (row < r0) r0 = row;
+        if (row > r1) r1 = row;
+      }
+
+      var box = c1 >= 0 ? { c0: c0, c1: c1, r0: r0, r1: r1 } : null;
+      var area = merge(lastBox, box);
+
+      if (area) {
+        ctx.clearRect(area.c0 * CELL_W, area.r0 * CELL_H,
+          (area.c1 - area.c0 + 1) * CELL_W, (area.r1 - area.r0 + 1) * CELL_H);
+
+        for (var r = area.r0; r <= area.r1; r += 1) {
+          for (var c = area.c0; c <= area.c1; c += 1) {
+            var value = heat[r * cols + c];
+            if (value > 0) paintCell(c, r, BASE_ALPHA + value * value, value > 0.78 ? MINT : ACCENT);
+            else paintCell(c, r, BASE_ALPHA, BASE);
+          }
+        }
+
+        ctx.globalAlpha = 1;
+      }
+
+      lastBox = box;
+
+      if (box) window.requestAnimationFrame(frame);
+      else running = false;
     }
 
     build();
     window.addEventListener('resize', build);
 
-    if (!FINE_POINTER) return;
+    if (FINE_POINTER && !LESS_MOTION) {
+      window.addEventListener('mousemove', function (event) {
+        var x = event.clientX;
+        var y = event.clientY;
 
-    window.addEventListener('mousemove', function (event) {
-      spot = { x: event.clientX, y: event.clientY };
-      request();
-    }, { passive: true });
+        // Между кадрами курсор успевает уехать далеко: подогреваем и точки по
+        // пути, иначе хвост получается пунктирным.
+        if (lastPoint) {
+          var dx = x - lastPoint.x;
+          var dy = y - lastPoint.y;
+          var steps = Math.min(8, Math.floor(Math.sqrt(dx * dx + dy * dy) / (RADIUS / 3)));
+          for (var s = 1; s <= steps; s += 1) {
+            warm(lastPoint.x + (dx * s) / (steps + 1), lastPoint.y + (dy * s) / (steps + 1));
+          }
+        }
 
-    document.addEventListener('mouseleave', function () {
-      spot = null;
-      request();
-    });
+        lastPoint = { x: x, y: y };
+        warm(x, y);
+      }, { passive: true });
+    }
 
     if (LESS_MOTION) return;
 
