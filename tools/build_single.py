@@ -10,6 +10,7 @@
 
 from __future__ import annotations
 
+import base64
 import re
 import sys
 from pathlib import Path
@@ -17,8 +18,17 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 DIST = ROOT / "dist"
 
-LINK = re.compile(r'\s*<link rel="stylesheet" href="(assets/[^"]+)" />')
+LINK = re.compile(r'\s*<link rel="stylesheet" href="(assets/css/[^"]+)" />')
 SCRIPT = re.compile(r'\s*<script src="([^"]+)"></script>')
+IMAGE = re.compile(r"assets/img/([\w.-]+)")
+
+MIME = {
+    ".webp": "image/webp",
+    ".png": "image/png",
+    ".jpg": "image/jpeg",
+    ".jpeg": "image/jpeg",
+    ".svg": "image/svg+xml",
+}
 
 
 def inline(html: str) -> str:
@@ -32,7 +42,21 @@ def inline(html: str) -> str:
         body = body.replace("</script>", "<\\/script>")
         return "\n  <script>\n" + body + "\n  </script>"
 
-    return SCRIPT.sub(js, LINK.sub(css, html))
+    return inline_images(SCRIPT.sub(js, LINK.sub(css, html)))
+
+
+def inline_images(html: str) -> str:
+    """Пути к картинкам превращаются в data:-ссылки — и в разметке, и внутри
+    вшитого скрипта, где путь к портрету лежит обычной строкой."""
+    def replace(match: re.Match[str]) -> str:
+        path = ROOT / "assets" / "img" / match.group(1)
+        if not path.exists():
+            return match.group(0)
+        payload = base64.b64encode(path.read_bytes()).decode("ascii")
+        mime = MIME.get(path.suffix.lower(), "application/octet-stream")
+        return f"data:{mime};base64,{payload}"
+
+    return IMAGE.sub(replace, html)
 
 
 def to_fragment(html: str) -> str:

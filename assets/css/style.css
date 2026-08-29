@@ -198,9 +198,59 @@ a:hover { color: var(--text); }
   border-bottom-color: var(--accent);
 }
 
+.topbar__tools {
+  display: flex;
+  gap: 0.4rem;
+  margin-inline-start: auto;
+}
+
+.topbar__nav + .topbar__tools { margin-inline-start: 1.35rem; }
+
 @media (max-width: 880px) {
   .topbar__nav { display: none; }
 }
+
+/* --- Переключатель языка ------------------------------------------------ */
+
+.lang {
+  position: relative;
+  display: flex;
+  padding: 3px;
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  background: var(--panel);
+}
+
+/* Подложка едет под выбранную половину — отсюда ощущение ползунка. */
+.lang__pill {
+  position: absolute;
+  inset-block: 3px;
+  inset-inline-start: 3px;
+  width: calc(50% - 3px);
+  background: var(--accent);
+  border-radius: 2px;
+  transition: transform 0.22s cubic-bezier(0.2, 0.7, 0.3, 1);
+}
+
+.lang.is-en .lang__pill { transform: translateX(100%); }
+
+.lang__btn {
+  position: relative;
+  z-index: 1;
+  min-width: 2.6rem;
+  font-family: var(--font-mono);
+  font-size: var(--step--2);
+  letter-spacing: 0.08em;
+  color: var(--muted);
+  background: none;
+  border: 0;
+  padding: 0.38rem 0.3rem;
+  cursor: pointer;
+  transition: color 0.2s ease;
+}
+
+.lang__btn[aria-pressed='true'] { color: #fff; }
+.lang__btn:not([aria-pressed='true']):hover { color: var(--text); }
 
 /* --- Кнопки ------------------------------------------------------------- */
 
@@ -341,7 +391,35 @@ a:hover { color: var(--text); }
   margin-block-start: 1.9rem;
 }
 
-/* Анкета */
+/* Портрет и анкета */
+
+.hero__aside {
+  display: grid;
+  gap: 1.25rem;
+  align-content: start;
+}
+
+/* Фон у портрета вырезан, края растворяются — рамка и скругления не нужны,
+   иначе он снова превращается в квадратную карточку. */
+.portrait {
+  position: relative;
+  margin: 0;
+  isolation: isolate;
+}
+
+.portrait::before {
+  content: '';
+  position: absolute;
+  inset: 6% 0 14%;
+  z-index: -1;
+  background: radial-gradient(58% 58% at 52% 42%, rgba(124, 124, 255, 0.22), transparent 72%);
+}
+
+.portrait img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
 
 .factsheet {
   border: 1px solid var(--line);
@@ -559,6 +637,88 @@ a:hover { color: var(--text); }
   padding: 0.2rem 0 0.2rem 1.25rem;
   text-wrap: balance;
   margin: 0;
+}
+
+/* --- Шкала опыта -------------------------------------------------------- */
+
+.timeline { margin-block-end: clamp(2rem, 4vw, 3rem); }
+
+.timeline__scale {
+  position: relative;
+  height: 1.3rem;
+}
+
+/* Левая граница метки работает засечкой года — отдельных палочек не нужно. */
+.timeline__year {
+  position: absolute;
+  inset-block-start: 0;
+  font-family: var(--font-mono);
+  font-size: var(--step--2);
+  line-height: 1.3rem;
+  color: var(--muted);
+  padding-inline-start: 0.4rem;
+  border-inline-start: 1px solid var(--line);
+  font-variant-numeric: tabular-nums;
+}
+
+.timeline__track {
+  position: relative;
+  height: 10px;
+  background: var(--line-soft);
+  border-radius: 2px;
+}
+
+.timeline__seg {
+  position: absolute;
+  inset-block: 0;
+  border-radius: 2px;
+  background: var(--accent-dim);
+  transition: background 0.18s ease, transform 0.18s ease;
+}
+
+.timeline__seg:hover {
+  background: var(--accent);
+  transform: scaleY(1.35);
+}
+
+.timeline__seg.is-current { background: var(--mint); }
+.timeline__seg.is-current:hover { background: color-mix(in srgb, var(--mint) 80%, #fff); }
+
+.timeline__labels {
+  position: relative;
+  height: 2.7rem;
+  margin-block-start: 0.6rem;
+}
+
+.timeline__label {
+  position: absolute;
+  inset-block-start: 0;
+  display: grid;
+  gap: 0.1rem;
+  text-decoration: none;
+}
+
+.timeline__company {
+  font-size: var(--step--1);
+  color: var(--text-dim);
+  white-space: nowrap;
+  transition: color 0.15s ease;
+}
+
+.timeline__span {
+  font-family: var(--font-mono);
+  font-size: var(--step--2);
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.timeline__label:hover .timeline__company { color: var(--accent); }
+
+/* На узком экране подписи наезжают друг на друга: полоса остаётся, названия
+   всё равно видны ниже, в самих карточках опыта. */
+@media (max-width: 720px) {
+  .timeline__labels { display: none; }
+  .timeline { margin-block-end: 1.75rem; }
 }
 
 /* --- Опыт --------------------------------------------------------------- */

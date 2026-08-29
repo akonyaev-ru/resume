@@ -16,7 +16,58 @@
   // месте подставлялся бы запасной шрифт — буквы бы прыгали по ширине.
   var TITLE_GLYPHS = '{}[]()<>/\\|;:=+-*#$%&!?^~0123456789';
 
+  var LANGS = ['ru', 'en'];
+  var LANG = readLang();
+
   var state = { filter: null, filterLabel: null };
+  var observers = [];
+
+  /* --- язык --------------------------------------------------------------- */
+
+  function readLang() {
+    var fromUrl = new URLSearchParams(location.search).get('lang');
+    if (fromUrl && LANGS.indexOf(fromUrl) !== -1) return fromUrl;
+
+    var saved = null;
+    try { saved = localStorage.getItem('cv:lang'); } catch (e) { /* приватный режим */ }
+    if (saved && LANGS.indexOf(saved) !== -1) return saved;
+
+    return CFG.defaultLang || 'ru';
+  }
+
+  /* Переводимая строка хранится парой { ru, en }; всё остальное — даты, ссылки,
+     теги — общее и возвращается как есть. */
+  function t(value) {
+    if (value && typeof value === 'object' && !Array.isArray(value) &&
+      (Object.prototype.hasOwnProperty.call(value, 'ru') ||
+        Object.prototype.hasOwnProperty.call(value, 'en'))) {
+      return value[LANG];
+    }
+    return value;
+  }
+
+  function u(key) {
+    return t(R.ui[key]);
+  }
+
+  function setLang(lang) {
+    if (lang === LANG || LANGS.indexOf(lang) === -1) return;
+    LANG = lang;
+
+    try { localStorage.setItem('cv:lang', lang); } catch (e) { /* приватный режим */ }
+    try {
+      var url = new URL(location.href);
+      url.searchParams.set('lang', lang);
+      history.replaceState(null, '', url);
+    } catch (e) { /* страница открыта во встроенном окне без своей истории */ }
+
+    document.documentElement.lang = lang;
+    document.title = u('docTitle');
+    state.filter = null;
+    state.filterLabel = null;
+    document.body.classList.remove('is-filtering');
+    render();
+  }
 
   /* --- мелкие помощники -------------------------------------------------- */
 
@@ -61,25 +112,38 @@
 
   /* --- шапка ------------------------------------------------------------- */
 
-  var NAV = [
-    ['results', 'Результаты'],
-    ['experience', 'Опыт'],
-    ['projects', 'Проекты'],
-    ['skills', 'Навыки'],
-    ['education', 'Образование'],
-    ['contact', 'Контакты'],
-  ];
+  var NAV = ['results', 'experience', 'projects', 'skills', 'education', 'contact'];
 
   function buildTopbar() {
     return el('header', { class: 'topbar' }, [
       el('div', { class: 'wrap topbar__inner' }, [
-        el('span', { class: 'topbar__name', text: R.person.name }),
-        el('nav', { class: 'topbar__nav', 'aria-label': 'Разделы' },
-          NAV.map(function (item) {
-            return el('a', { href: '#' + item[0], text: item[1], 'data-nav': item[0] });
+        el('span', { class: 'topbar__name', text: t(R.person.name) }),
+        el('nav', { class: 'topbar__nav', 'aria-label': u('nav').experience },
+          NAV.map(function (id) {
+            return el('a', { href: '#' + id, text: t(R.ui.nav[id]), 'data-nav': id });
           })),
+        el('div', { class: 'topbar__tools' }, [buildLangSwitch()]),
       ]),
     ]);
+  }
+
+  /* Ползунок языка: подложка уезжает под выбранную половину. */
+  function buildLangSwitch() {
+    return el('div', {
+      class: 'lang' + (LANG === 'en' ? ' is-en' : ''),
+      role: 'group',
+      'aria-label': u('langLabel'),
+    }, [
+      el('span', { class: 'lang__pill', 'aria-hidden': 'true' }),
+    ].concat(LANGS.map(function (lang) {
+      return el('button', {
+        class: 'lang__btn',
+        type: 'button',
+        'aria-pressed': String(lang === LANG),
+        text: lang.toUpperCase(),
+        onclick: function () { setLang(lang); },
+      });
+    })));
   }
 
   /* --- первый экран ------------------------------------------------------ */
@@ -105,17 +169,17 @@
     var p = R.person;
 
     var left = el('div', {}, [
-      el('p', { class: 'eyebrow', text: 'Резюме · обновлено ' + p.updated }),
-      el('p', { class: 'hero__name', text: p.name }),
-      roleNode(p.role, p.roleAccent),
-      el('p', { class: 'hero__lede', text: p.lede }),
-      el('div', { class: 'hero__specs' }, p.specializations.map(function (s) {
+      el('p', { class: 'eyebrow', text: u('eyebrow') + ' ' + t(p.updated) }),
+      el('p', { class: 'hero__name', text: t(p.name) }),
+      roleNode(t(p.role), t(p.roleAccent)),
+      el('p', { class: 'hero__lede', text: t(p.lede) }),
+      el('div', { class: 'hero__specs' }, t(p.specializations).map(function (s) {
         return el('span', { class: 'spec', text: s });
       })),
       el('div', { class: 'hero__actions' }, [
         el('a', {
           class: 'btn btn--primary', href: p.contacts.telegram.href,
-          target: '_blank', rel: 'noopener', text: p.contacts.telegram.label,
+          target: '_blank', rel: 'noopener', text: t(p.contacts.telegram.label),
         }),
         el('a', {
           class: 'btn btn--ghost', href: p.contacts.github.href,
@@ -124,8 +188,18 @@
       ]),
     ]);
 
+    var aside = el('div', { class: 'hero__aside' }, [
+      p.photo ? el('figure', { class: 'portrait' }, [
+        el('img', {
+          src: p.photo, alt: t(p.name), width: '760', height: '760',
+          decoding: 'async',
+        }),
+      ]) : null,
+      buildFactsheet(),
+    ]);
+
     return el('section', { class: 'hero' }, [
-      el('div', { class: 'wrap hero__grid' }, [left, buildFactsheet()]),
+      el('div', { class: 'wrap hero__grid' }, [left, aside]),
     ]);
   }
 
@@ -133,40 +207,40 @@
     var p = R.person;
 
     var rows = [
-      ['Город', el('span', { text: p.city + ' · ' + p.age + ' лет' })],
-      ['Формат', el('span', { text: p.schedule + ' · ' + p.employment.toLowerCase() })],
-      ['Переезд', el('span', { text: p.relocation })],
-      ['Опыт', el('span', { text: p.experienceTotal })],
-      ['Почта', link(p.contacts.email)],
+      [u('factCity'), t(p.city) + ' · ' + p.age + ' ' + u('years')],
+      [u('factFormat'), t(p.schedule) + ' · ' + t(p.employment)],
+      [u('factRelocation'), t(p.relocation)],
+      [u('factExperience'), t(p.experienceTotal)],
     ];
 
-    if (CFG.showSalary) rows.splice(4, 0, ['Ожидание', el('span', { text: p.salary })]);
+    if (CFG.showSalary) rows.push([u('factSalary'), t(p.salary)]);
 
-    // Без класса enter: анкета — часть первого экрана, на телефоне она уезжает
-    // под сгиб, и появление по прокрутке оставляло бы на её месте пустое поле.
     return el('aside', { class: 'factsheet' }, [
       el('div', { class: 'factsheet__head' }, [
-        el('span', { text: 'Анкета' }),
-        el('span', { text: p.updated }),
+        el('span', { text: u('profile') }),
+        el('span', { text: t(p.updated) }),
       ]),
       el('div', { class: 'factsheet__body' }, rows.map(function (row) {
         return el('div', { class: 'fact' }, [
           el('span', { class: 'fact__key', text: row[0] }),
-          el('span', { class: 'fact__val' }, [row[1]]),
+          el('span', { class: 'fact__val', text: row[1] }),
         ]);
-      })),
+      }).concat([
+        el('div', { class: 'fact' }, [
+          el('span', { class: 'fact__key', text: u('factEmail') }),
+          el('span', { class: 'fact__val' }, [
+            el('a', { href: p.contacts.email.href, text: p.contacts.email.label }),
+          ]),
+        ]),
+      ])),
     ]);
-  }
-
-  function link(contact) {
-    return el('a', { href: contact.href, target: '_blank', rel: 'noopener', text: contact.label });
   }
 
   /* --- результаты -------------------------------------------------------- */
 
   function buildMetrics() {
     var grid = el('div', { class: 'metrics enter' }, R.metrics.map(function (m) {
-      return el('div', { class: 'metric' + (m.accent ? ' metric--accent' : '') }, [
+      return el('div', { class: 'metric' }, [
         el('span', {
           class: 'metric__value',
           'data-value': String(m.value),
@@ -174,12 +248,12 @@
           'data-suffix': m.suffix || '',
           text: (m.prefix || '') + '0' + (m.suffix || ''),
         }),
-        el('span', { class: 'metric__caption', text: m.caption }),
+        el('span', { class: 'metric__caption', text: t(m.caption) }),
       ]);
     }));
 
-    return section('results', 'Что изменилось после внедрений', [
-      el('p', { class: 'section__note', text: 'За полтора года на текущем месте работы.' }),
+    return section('results', u('resultsTitle'), [
+      el('p', { class: 'section__note', text: u('resultsNote') }),
       grid,
     ]);
   }
@@ -187,39 +261,99 @@
   /* --- подход ------------------------------------------------------------ */
 
   function buildApproach() {
-    return section('approach', 'Подход', [
+    return section('approach', u('approachTitle'), [
       el('div', { class: 'approach enter' }, [
-        el('p', { class: 'approach__text', text: R.person.about }),
-        el('blockquote', { class: 'pullquote', text: R.person.pullquote }),
+        el('p', { class: 'approach__text', text: t(R.person.about) }),
+        el('blockquote', { class: 'pullquote', text: t(R.person.pullquote) }),
       ]),
     ]);
   }
 
   /* --- опыт -------------------------------------------------------------- */
 
+  function months(iso) {
+    var parts = iso.split('-');
+    return Number(parts[0]) * 12 + Number(parts[1]) - 1;
+  }
+
+  /* Шкала: три места работы отрезками на общей оси от первого месяца до
+     сегодняшнего. Пропуски между работами показаны честно — они и есть
+     промежутки на шкале. */
+  function buildTimeline() {
+    var today = new Date();
+    var now = today.getFullYear() * 12 + today.getMonth();
+
+    var jobs = R.experience.slice().reverse();
+    var from = Math.min.apply(null, jobs.map(function (job) { return months(job.start); }));
+    var to = Math.max.apply(null, jobs.map(function (job) {
+      return job.end ? months(job.end) : now;
+    }));
+    var span = Math.max(1, to - from + 1);
+
+    var scale = el('div', { class: 'timeline__scale' });
+    for (var year = Math.ceil(from / 12); year * 12 <= to; year += 1) {
+      var offset = ((year * 12 - from) / span) * 100;
+      scale.appendChild(el('span', {
+        class: 'timeline__year',
+        style: 'left:' + offset.toFixed(2) + '%',
+        text: String(year),
+      }));
+    }
+
+    var track = el('div', { class: 'timeline__track' });
+    var labels = el('div', { class: 'timeline__labels' });
+
+    jobs.forEach(function (job, index) {
+      var start = months(job.start);
+      var end = job.end ? months(job.end) : now;
+      var left = ((start - from) / span) * 100;
+      var width = ((end - start + 1) / span) * 100;
+      var target = '#job-' + (R.experience.length - 1 - index);
+
+      track.appendChild(el('a', {
+        class: 'timeline__seg' + (job.current ? ' is-current' : ''),
+        href: target,
+        style: 'left:' + left.toFixed(2) + '%;width:' + width.toFixed(2) + '%',
+        'aria-label': t(job.company) + ', ' + t(job.period),
+        title: t(job.company) + ' · ' + t(job.period),
+      }));
+
+      labels.appendChild(el('a', {
+        class: 'timeline__label',
+        href: target,
+        style: 'left:' + left.toFixed(2) + '%',
+      }, [
+        el('span', { class: 'timeline__company', text: t(job.company) }),
+        el('span', { class: 'timeline__span', text: t(job.duration) }),
+      ]));
+    });
+
+    return el('div', { class: 'timeline enter' }, [scale, track, labels]);
+  }
+
   function buildJobs() {
-    var list = el('div', { class: 'jobs' }, R.experience.map(function (job) {
-      return el('article', { class: 'job enter' }, [
+    var list = el('div', { class: 'jobs' }, R.experience.map(function (job, index) {
+      return el('article', { class: 'job enter', id: 'job-' + index }, [
         el('div', { class: 'job__meta' }, [
-          el('span', { class: 'job__period', text: job.period }),
-          el('span', { class: 'job__duration', text: job.duration }),
-          job.current ? el('span', { class: 'job__now', text: 'сейчас' }) : null,
+          el('span', { class: 'job__period', text: t(job.period) }),
+          el('span', { class: 'job__duration', text: t(job.duration) }),
+          job.current ? el('span', { class: 'job__now', text: u('now') }) : null,
         ]),
         el('div', {}, [
-          el('h3', { class: 'job__company', text: job.company }),
-          el('p', { class: 'job__role', text: job.role }),
+          el('h3', { class: 'job__company', text: t(job.company) }),
+          el('p', { class: 'job__role', text: t(job.role) }),
           el('ul', { class: 'job__bullets' }, job.bullets.map(function (bullet) {
             return el('li', {
               class: 'bullet',
               'data-tags': (bullet.tags || []).join(' '),
-              text: bullet.text,
+              text: t(bullet.text),
             });
           })),
         ]),
       ]);
     }));
 
-    return section('experience', 'Опыт работы', [list]);
+    return section('experience', u('experienceTitle'), [buildTimeline(), list]);
   }
 
   /* --- проекты ----------------------------------------------------------- */
@@ -232,23 +366,20 @@
           el('h3', { class: 'project__name', text: pr.name }),
           typeof stars === 'number' ? el('span', { class: 'project__stars', text: '★ ' + stars }) : null,
         ]),
-        el('p', { class: 'project__tagline', text: pr.tagline }),
-        el('p', { class: 'project__text', text: pr.description }),
+        el('p', { class: 'project__tagline', text: t(pr.tagline) }),
+        el('p', { class: 'project__text', text: t(pr.description) }),
         el('div', { class: 'project__stack' }, pr.stack.map(function (s) {
           return el('span', { text: s });
         })),
         el('a', {
           class: 'project__link', href: pr.link, target: '_blank', rel: 'noopener',
-          text: 'Открыть на GitHub →',
+          text: u('openOnGithub'),
         }),
       ]);
     }));
 
-    return section('projects', 'Собственные продукты', [
-      el('p', {
-        class: 'section__note',
-        text: 'Обе программы выросли из рабочих задач: сначала нужны были мне, потом — команде.',
-      }),
+    return section('projects', u('projectsTitle'), [
+      el('p', { class: 'section__note', text: u('projectsNote') }),
       grid,
     ]);
   }
@@ -258,28 +389,26 @@
   function buildSkills() {
     var groups = el('div', { class: 'skill-groups enter' }, R.skillGroups.map(function (group) {
       return el('div', {}, [
-        el('h3', { class: 'skill-group__title', text: group.title }),
+        el('h3', { class: 'skill-group__title', text: t(group.title) }),
         el('div', { class: 'chips' }, group.skills.map(function (skill) {
-          if (!skill.filter) return el('span', { class: 'chip', text: skill.name });
+          var name = t(skill.name);
+          if (!skill.filter) return el('span', { class: 'chip', text: name });
           return el('button', {
             class: 'chip',
             type: 'button',
             'data-filter': skill.filter,
             'aria-pressed': 'false',
-            text: skill.name,
+            text: name,
             onclick: function () {
-              setFilter(state.filter === skill.filter ? null : skill.filter, skill.name);
+              setFilter(state.filter === skill.filter ? null : skill.filter, name);
             },
           });
         })),
       ]);
     }));
 
-    return section('skills', 'Навыки', [
-      el('p', {
-        class: 'section__note',
-        text: 'Навык с точкой — кликабельный: страница оставит на виду те задачи и проекты, где он применялся.',
-      }),
+    return section('skills', u('skillsTitle'), [
+      el('p', { class: 'section__note', text: u('skillsNote') }),
       groups,
       el('div', { class: 'filter-status', id: 'filter-status' }),
     ]);
@@ -306,6 +435,7 @@
     var status = $('#filter-status');
     if (!status) return;
     status.textContent = '';
+
     if (!tag) {
       collectMagnets();
       return;
@@ -313,13 +443,10 @@
 
     var hits = $$('.bullet.is-hit').length + $$('.project.is-hit').length;
     status.appendChild(el('span', {
-      text: hits
-        ? state.filterLabel + ' — ' + hits + ' ' +
-          plural(hits, ['совпадение', 'совпадения', 'совпадений'])
-        : 'В опыте нет задач с этим навыком',
+      text: hits ? state.filterLabel + ' — ' + hits + ' ' + plural(hits) : u('noMatches'),
     }));
     status.appendChild(el('button', {
-      class: 'btn', type: 'button', text: 'Сбросить',
+      class: 'btn', type: 'button', text: u('reset'),
       onclick: function () { setFilter(null, null); },
     }));
 
@@ -327,7 +454,10 @@
     collectMagnets();
   }
 
-  function plural(n, forms) {
+  function plural(n) {
+    var forms = u('matchForms');
+    if (LANG !== 'ru') return n === 1 ? forms[0] : forms[1];
+
     var mod10 = n % 10;
     var mod100 = n % 100;
     if (mod10 === 1 && mod100 !== 11) return forms[0];
@@ -344,34 +474,34 @@
   }
 
   function buildEducation() {
-    var edu = records('Образование', R.education, function (rec) {
+    var edu = records(u('educationTitle'), R.education, function (rec) {
       return el('div', { class: 'record' }, [
         el('span', { class: 'record__year', text: rec.year }),
         el('div', {}, [
-          el('p', { class: 'record__title', text: rec.degree }),
-          el('p', { class: 'record__place', text: rec.place }),
+          el('p', { class: 'record__title', text: t(rec.degree) }),
+          el('p', { class: 'record__place', text: t(rec.place) }),
         ]),
       ]);
     });
 
-    var courses = records('Повышение квалификации', R.courses, function (rec) {
+    var courses = records(u('coursesTitle'), R.courses, function (rec) {
       return el('div', { class: 'record' }, [
         el('span', { class: 'record__year', text: rec.year }),
         el('div', {}, [
-          el('p', { class: 'record__title', text: rec.name }),
-          el('p', { class: 'record__place', text: rec.place }),
+          el('p', { class: 'record__title', text: t(rec.name) }),
+          el('p', { class: 'record__place', text: t(rec.place) }),
         ]),
       ]);
     });
 
     courses.appendChild(el('div', { class: 'record' }, [
-      el('span', { class: 'record__year', text: 'Языки' }),
+      el('span', { class: 'record__year', text: u('languagesTitle') }),
       el('div', {}, R.languages.map(function (lang) {
-        return el('p', { class: 'record__place', text: lang.name + ' — ' + lang.level });
+        return el('p', { class: 'record__place', text: t(lang.name) + ' — ' + t(lang.level) });
       })),
     ]));
 
-    return section('education', 'Образование', [
+    return section('education', u('educationTitle'), [
       el('div', { class: 'two-col enter' }, [edu, courses]),
     ]);
   }
@@ -382,18 +512,15 @@
     var p = R.person;
     return el('section', { class: 'contact', id: 'contact' }, [
       el('div', { class: 'wrap' }, [
-        el('p', { class: 'eyebrow', text: 'Открыт к предложениям' }),
-        el('h2', { class: 'contact__title', text: 'Обсудим, что у вас работает вручную' }),
-        el('p', {
-          class: 'contact__text',
-          text: 'Расскажите про процесс, который тормозит команду. Отвечу, за какой срок и какими средствами его получится автоматизировать — или честно скажу, что автоматизация здесь не нужна.',
-        }),
+        el('p', { class: 'eyebrow', text: u('contactEyebrow') }),
+        el('h2', { class: 'contact__title', text: u('contactTitle') }),
+        el('p', { class: 'contact__text', text: u('contactText') }),
         el('div', { class: 'contact__actions' }, [
           el('a', {
             class: 'btn btn--primary', href: p.contacts.telegram.href,
-            target: '_blank', rel: 'noopener', text: p.contacts.telegram.label,
+            target: '_blank', rel: 'noopener', text: t(p.contacts.telegram.label),
           }),
-          el('a', { class: 'btn btn--ghost', href: p.contacts.email.href, text: 'Написать на почту' }),
+          el('a', { class: 'btn btn--ghost', href: p.contacts.email.href, text: u('writeEmail') }),
           el('a', {
             class: 'btn btn--ghost', href: p.contacts.github.href,
             target: '_blank', rel: 'noopener', text: 'GitHub',
@@ -411,14 +538,14 @@
   function buildFooter() {
     return el('footer', { class: 'footer' }, [
       el('div', { class: 'wrap footer__inner' }, [
-        el('span', { text: R.person.name + ' · ' + R.person.city }),
+        el('span', { text: t(R.person.name) + ' · ' + t(R.person.city) }),
         el('span', {}, [
           el('a', {
             href: 'https://github.com/akonyaev-ru/resume', target: '_blank', rel: 'noopener',
-            text: 'Исходный код страницы',
+            text: u('sourceCode'),
           }),
         ]),
-        el('span', { text: 'Обновлено ' + R.person.updated }),
+        el('span', { text: u('updatedAt') + ' ' + t(R.person.updated) }),
       ]),
     ]);
   }
@@ -444,8 +571,6 @@
     var PULL = 0.18;
     var MAX_X = 8;
     var MAX_Y = 6;
-
-    collectMagnets();
 
     document.addEventListener('mousemove', function (event) {
       var card = event.target.closest ? event.target.closest('.metric, .project') : null;
@@ -497,6 +622,7 @@
     }, { rootMargin: '0px 0px -15% 0px', threshold: 0.6 });
 
     $$('.section__title').forEach(function (title) { observer.observe(title); });
+    observers.push(observer);
   }
 
   function decodeTitle(node) {
@@ -535,10 +661,10 @@
 
   /* --- поле символов ------------------------------------------------------ */
 
-  /* Фон страницы — сплошная сетка моноширинных знаков: синтаксис кода вперемешку
-     с юридическими символами. Сама по себе она едва различима; курсор освещает
-     вокруг себя круг, где символы разгораются от индиго к мятному, а часть из
-     них пересобирается. Без мыши поле живёт медленным мерцанием.
+  /* Фон страницы — сплошная сетка моноширинных знаков. Сама по себе она едва
+     различима; курсор освещает вокруг себя круг, где символы разгораются от
+     индиго к мятному. Свет гаснет не сразу, а затухает кадр за кадром, поэтому
+     за курсором тянется короткий шлейф.
 
      Рисуется целиком только при сборке и изменении размера окна. На каждый кадр
      перерисовывается лишь квадрат вокруг курсора — иначе четыре с лишним тысячи
@@ -768,10 +894,12 @@
       });
     }, { rootMargin: '-45% 0px -50% 0px' });
 
-    NAV.forEach(function (item) {
-      var node = document.getElementById(item[0]);
+    NAV.forEach(function (id) {
+      var node = document.getElementById(id);
       if (node) spy.observe(node);
     });
+
+    observers.push(appear, spy);
   }
 
   function countTo(node) {
@@ -798,10 +926,14 @@
     window.requestAnimationFrame(frame);
   }
 
-  /* --- запуск ------------------------------------------------------------ */
+  /* --- сборка ------------------------------------------------------------ */
 
-  function init() {
+  function render() {
+    observers.forEach(function (observer) { observer.disconnect(); });
+    observers = [];
+
     var app = $('#app');
+    app.textContent = '';
     app.appendChild(buildTopbar());
     app.appendChild(el('main', { id: 'main' }, [
       buildHero(),
@@ -817,6 +949,13 @@
 
     initObservers();
     initTitleDecode();
+    collectMagnets();
+  }
+
+  function init() {
+    document.documentElement.lang = LANG;
+    document.title = u('docTitle');
+    render();
     initPointerFx();
     initField();
   }
