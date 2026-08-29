@@ -188,22 +188,22 @@
       ]),
     ]);
 
-    var aside = el('div', { class: 'hero__aside' }, [
-      p.photo ? el('figure', { class: 'portrait' }, [
-        el('img', {
-          src: p.photo, alt: t(p.name), width: '760', height: '760',
-          decoding: 'async',
-        }),
-      ]) : null,
-      buildFactsheet(),
-    ]);
+    var portrait = p.photo ? el('figure', { class: 'portrait' }, [
+      el('img', {
+        src: p.photo, alt: t(p.name), width: '760', height: '950',
+        decoding: 'async',
+      }),
+    ]) : null;
 
     return el('section', { class: 'hero' }, [
-      el('div', { class: 'wrap hero__grid' }, [left, aside]),
+      el('div', { class: 'wrap hero__grid' }, [left, portrait]),
+      buildFacts(),
     ]);
   }
 
-  function buildFactsheet() {
+  /* Анкета лентой во всю ширину под первым экраном. Панелью сбоку она делала
+     правую колонку вдвое выше левой, и под текстом зияла пустота. */
+  function buildFacts() {
     var p = R.person;
 
     var rows = [
@@ -215,25 +215,19 @@
 
     if (CFG.showSalary) rows.push([u('factSalary'), t(p.salary)]);
 
-    return el('aside', { class: 'factsheet' }, [
-      el('div', { class: 'factsheet__head' }, [
-        el('span', { text: u('profile') }),
-        el('span', { text: t(p.updated) }),
-      ]),
-      el('div', { class: 'factsheet__body' }, rows.map(function (row) {
-        return el('div', { class: 'fact' }, [
-          el('span', { class: 'fact__key', text: row[0] }),
-          el('span', { class: 'fact__val', text: row[1] }),
-        ]);
-      }).concat([
-        el('div', { class: 'fact' }, [
-          el('span', { class: 'fact__key', text: u('factEmail') }),
-          el('span', { class: 'fact__val' }, [
-            el('a', { href: p.contacts.email.href, text: p.contacts.email.label }),
-          ]),
+    return el('div', { class: 'wrap facts' }, rows.map(function (row) {
+      return el('div', { class: 'fact' }, [
+        el('span', { class: 'fact__key', text: row[0] }),
+        el('span', { class: 'fact__val', text: row[1] }),
+      ]);
+    }).concat([
+      el('div', { class: 'fact' }, [
+        el('span', { class: 'fact__key', text: u('factEmail') }),
+        el('span', { class: 'fact__val' }, [
+          el('a', { href: p.contacts.email.href, text: p.contacts.email.label }),
         ]),
-      ])),
-    ]);
+      ]),
+    ]));
   }
 
   /* --- результаты -------------------------------------------------------- */

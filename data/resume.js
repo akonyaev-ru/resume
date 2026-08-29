@@ -26,7 +26,6 @@ window.RESUME = {
       contact: { ru: 'Контакты', en: 'Contact' },
     },
     eyebrow: { ru: 'Резюме · обновлено', en: 'CV · updated' },
-    profile: { ru: 'Анкета', en: 'Profile' },
     factCity: { ru: 'Город', en: 'Based in' },
     factFormat: { ru: 'Формат', en: 'Format' },
     factRelocation: { ru: 'Переезд', en: 'Relocation' },

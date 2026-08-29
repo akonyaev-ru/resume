@@ -31,10 +31,12 @@ OUT = ROOT / "assets" / "img" / "portrait.webp"
 MODEL = Path.home() / ".u2net" / "u2net_human_seg.onnx"
 
 TARGET_W = 760          # ширина итогового файла, px (показывается вдвое меньше)
+ASPECT = 0.8            # ширина к высоте: портретный кадр 4:5
 SHADOW = (0x1b, 0x22, 0x30)   # куда уходят тени — синевато-тёмный из палитры
 HIGHLIGHT = (0xe9, 0xec, 0xf4)  # куда уходят света
 FADE = 0.13             # доля высоты снизу, которая растворяется в фоне
 SIDE_FADE = 0.07        # то же по бокам: плечи упираются в края кадра
+TOP_FADE = 0.06         # и сверху: в исходнике волосы срезаны краем кадра
 
 
 def cutout(path: Path) -> tuple[np.ndarray, np.ndarray]:
@@ -84,6 +86,34 @@ def crop(gray: np.ndarray, mask: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
     return gray[y0:y1, x0:x1], mask[y0:y1, x0:x1]
 
 
+def reframe(gray: np.ndarray, mask: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+    """Портретный кадр 4:5, привязанный к голове.
+
+    Квадрат из исходника показывал слишком много свитера: лицо получалось
+    мелким, а срезанные краем кадра плечи бросались в глаза. Кадр по голове
+    читается как обычный портрет, а не как вырезанная фигура без плеч.
+    """
+    height, width = gray.shape
+    solid = mask > 0.5
+
+    rows = np.where(solid.any(axis=1))[0]
+    top = int(rows[0]) if len(rows) else 0
+
+    band = solid[top:top + max(1, int(height * 0.35))]
+    xs = np.where(band.any(axis=0))[0]
+    face_x = int((xs[0] + xs[-1]) / 2) if len(xs) else width // 2
+
+    new_h = height
+    new_w = int(round(new_h * ASPECT))
+    if new_w > width:
+        new_w = width
+        new_h = int(round(new_w / ASPECT))
+
+    x0 = int(np.clip(face_x - new_w // 2, 0, width - new_w))
+    y0 = int(np.clip(top - int(new_h * 0.04), 0, height - new_h))
+    return gray[y0:y0 + new_h, x0:x0 + new_w], mask[y0:y0 + new_h, x0:x0 + new_w]
+
+
 def duotone(gray: np.ndarray) -> np.ndarray:
     """Серое в две краски палитры. Заодно поднимает тени, иначе тёмный свитер
     пропадает на почти чёрном полотне страницы."""
@@ -105,7 +135,7 @@ def main() -> int:
     if not source.exists():
         raise SystemExit(f"Не найден файл {source}")
 
-    gray, mask = crop(*cutout(source))
+    gray, mask = reframe(*crop(*cutout(source)))
 
     height = round(gray.shape[0] * TARGET_W / gray.shape[1])
     gray = cv2.resize(gray, (TARGET_W, height), interpolation=cv2.INTER_AREA)
@@ -120,6 +150,9 @@ def main() -> int:
     side = (np.linspace(0.0, 1.0, fade_cols) ** 1.2)
     mask[:, :fade_cols] *= side[None, :]
     mask[:, TARGET_W - fade_cols:] *= side[::-1][None, :]
+
+    top_rows = max(1, int(height * TOP_FADE))
+    mask[:top_rows, :] *= (np.linspace(0.0, 1.0, top_rows) ** 1.4)[:, None]
 
     rgba = np.dstack([duotone(gray), (mask * 255).astype(np.uint8)])
 

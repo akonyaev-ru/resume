@@ -327,13 +327,24 @@ a:hover { color: var(--text); }
 
 .hero__grid {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 17.5rem;
+  grid-template-columns: minmax(0, 1fr) 20rem;
   gap: clamp(1.5rem, 4vw, 3.5rem);
   align-items: start;
 }
 
+/* Портрет прижат к низу строки: так он заканчивается вровень с кнопками, а не
+   висит над пустотой. */
+.hero__grid .portrait { align-self: end; }
+
 @media (max-width: 920px) {
   .hero__grid { grid-template-columns: minmax(0, 1fr); }
+
+  /* На телефоне лицо показывается первым, до заголовка. */
+  .hero__grid .portrait {
+    order: -1;
+    align-self: start;
+    width: min(14rem, 55%);
+  }
 }
 
 .hero__name {
@@ -391,13 +402,7 @@ a:hover { color: var(--text); }
   margin-block-start: 1.9rem;
 }
 
-/* Портрет и анкета */
-
-.hero__aside {
-  display: grid;
-  gap: 1.25rem;
-  align-content: start;
-}
+/* Портрет */
 
 /* Фон у портрета вырезан, края растворяются — рамка и скругления не нужны,
    иначе он снова превращается в квадратную карточку. */
@@ -410,9 +415,9 @@ a:hover { color: var(--text); }
 .portrait::before {
   content: '';
   position: absolute;
-  inset: 6% 0 14%;
+  inset: 4% 0 12%;
   z-index: -1;
-  background: radial-gradient(58% 58% at 52% 42%, rgba(124, 124, 255, 0.22), transparent 72%);
+  background: radial-gradient(56% 56% at 52% 38%, rgba(124, 124, 255, 0.24), transparent 72%);
 }
 
 .portrait img {
@@ -421,29 +426,25 @@ a:hover { color: var(--text); }
   height: auto;
 }
 
-.factsheet {
-  border: 1px solid var(--line);
-  border-radius: 3px;
-  background: var(--panel);
-}
+/* Анкета лентой под первым экраном */
 
-.factsheet__head {
-  display: flex;
-  justify-content: space-between;
-  gap: 0.75rem;
-  padding: 0.7rem 1rem;
-  border-bottom: 1px solid var(--line);
-  font-family: var(--font-mono);
-  font-size: var(--step--2);
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--muted);
-}
-
-.factsheet__body {
+/* Колонки заданы явно: при автоподборе шесть пунктов вставали как 5 + 1 и
+   последний висел в отдельном ряду. */
+.facts {
   display: grid;
-  gap: 0.85rem;
-  padding: 1rem;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 1.35rem 2rem;
+  margin-block-start: clamp(2rem, 4vw, 3rem);
+  padding-block-start: clamp(1.25rem, 3vw, 1.75rem);
+  border-block-start: 1px solid var(--line);
+}
+
+@media (max-width: 1080px) {
+  .facts { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+
+@media (max-width: 620px) {
+  .facts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
 .fact { display: grid; gap: 0.15rem; }
