@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Адресов всего два: русская страница и английская. Даты правки нет
+     намеренно — выкладка идёт и по расписанию, и подставленное «сегодня»
+     означало бы правку, которой не было. -->
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+        xmlns:xhtml="http://www.w3.org/1999/xhtml">
+  <url>
+    <loc>https://akonyaev-ru.github.io/resume/</loc>
+    <xhtml:link rel="alternate" hreflang="ru" href="https://akonyaev-ru.github.io/resume/" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://akonyaev-ru.github.io/resume/en.html" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://akonyaev-ru.github.io/resume/" />
+  </url>
+  <url>
+    <loc>https://akonyaev-ru.github.io/resume/en.html</loc>
+    <xhtml:link rel="alternate" hreflang="ru" href="https://akonyaev-ru.github.io/resume/" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://akonyaev-ru.github.io/resume/en.html" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://akonyaev-ru.github.io/resume/" />
+  </url>
+</urlset>

@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Страницы нет — Алексей Коняев</title>
+  <meta name="robots" content="noindex" />
+  <meta name="color-scheme" content="dark" />
+  <meta name="theme-color" content="#080a10" />
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500&family=JetBrains+Mono:wght@400;500&family=Unbounded:wght@600;700&display=swap" />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%23080a10'/%3E%3Cpath d='M7 10l5 6-5 6' fill='none' stroke='%237c7cff' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpath d='M16 22h9' stroke='%233ddc97' stroke-width='2.5' stroke-linecap='round'/%3E%3C/svg%3E" />
+
+  <!-- Страница одна и служебная: стили внутри, чтобы она открывалась с любого
+       несуществующего адреса, как бы глубоко он ни лежал. -->
+  <style>
+    :root {
+      --void: #080a10;
+      --line: #1e2534;
+      --text: #e7eaf2;
+      --muted: #838da4;
+      --accent: #7c7cff;
+      --mint: #3ddc97;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      padding: 2rem 1.25rem;
+      background: var(--void);
+      color: var(--text);
+      font-family: 'Golos Text', -apple-system, 'Segoe UI', Roboto, Arial, sans-serif;
+      line-height: 1.6;
+    }
+
+    main { max-width: 34rem; text-align: center; }
+
+    .glyphs {
+      font-family: 'JetBrains Mono', ui-monospace, Consolas, monospace;
+      font-size: 0.72rem;
+      letter-spacing: 0.35em;
+      color: var(--accent);
+      opacity: 0.22;
+      overflow: hidden;
+      white-space: nowrap;
+      margin: 0 0 1.5rem;
+    }
+
+    .code {
+      font-family: 'Unbounded', 'Golos Text', system-ui, sans-serif;
+      font-weight: 700;
+      font-size: clamp(3.4rem, 2rem + 6vw, 5.5rem);
+      line-height: 1;
+      margin: 0;
+      color: var(--accent);
+    }
+
+    h1 {
+      font-family: 'Unbounded', 'Golos Text', system-ui, sans-serif;
+      font-weight: 600;
+      font-size: clamp(1.2rem, 1rem + 1vw, 1.6rem);
+      margin: 1rem 0 0.35rem;
+    }
+
+    .en { color: var(--muted); margin: 0; }
+
+    .links {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 0.75rem;
+      margin-block-start: 2rem;
+      padding-block-start: 1.5rem;
+      border-block-start: 1px solid var(--line);
+    }
+
+    a {
+      font-family: 'JetBrains Mono', ui-monospace, Consolas, monospace;
+      font-size: 0.83rem;
+      letter-spacing: 0.04em;
+      color: var(--text);
+      text-decoration: none;
+      border: 1px solid var(--line);
+      border-radius: 4px;
+      padding: 0.6rem 0.9rem;
+    }
+
+    a:hover, a:focus-visible { border-color: var(--accent); color: var(--accent); }
+    a.mint:hover, a.mint:focus-visible { border-color: var(--mint); color: var(--mint); }
+  </style>
+</head>
+<body>
+  <main>
+    <p class="glyphs" aria-hidden="true">{}[]()&lt;&gt;/\|;:=+-*#$%&amp;!?^~01234567§№¶λ</p>
+
+    <p class="code">404</p>
+    <h1>Такой страницы нет</h1>
+    <p class="en">No such page — the address does not exist.</p>
+
+    <p class="links">
+      <a href="https://akonyaev-ru.github.io/resume/">Резюме →</a>
+      <a class="mint" href="https://akonyaev-ru.github.io/resume/en.html">CV in English →</a>
+    </p>
+  </main>
+</body>
+</html>

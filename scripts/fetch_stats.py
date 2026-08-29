@@ -1,8 +1,8 @@
-"""Собирает счётчики звёзд для проектов из resume.js и пишет data/stats.js.
+"""Собирает звёзды и последний выпуск проектов из resume.js в data/stats.js.
 
 Запускается в GitHub Actions перед публикацией. Зависимостей нет: только
 стандартная библиотека. При недоступном API файл остаётся с пустыми данными —
-страница в этом случае просто не показывает счётчики.
+страница в этом случае просто не показывает ни счётчиков, ни выпусков.
 """
 
 from __future__ import annotations
@@ -20,6 +20,7 @@ ROOT = Path(__file__).resolve().parent.parent
 RESUME = ROOT / "data" / "resume.js"
 OUT = ROOT / "data" / "stats.js"
 API = "https://api.github.com/repos/{repo}"
+RELEASE_API = "https://api.github.com/repos/{repo}/releases/latest"
 TIMEOUT = 15
 
 
@@ -28,9 +29,9 @@ def repos_from_resume() -> list[str]:
     return re.findall(r"repo:\s*'([^']+)'", text)
 
 
-def stars(repo: str) -> int | None:
+def ask(url: str, quiet_404: bool = False) -> dict | None:
     request = urllib.request.Request(
-        API.format(repo=repo),
+        url,
         headers={
             "Accept": "application/vnd.github+json",
             "User-Agent": "akonyaev-ru-cv",
@@ -42,21 +43,47 @@ def stars(repo: str) -> int | None:
 
     try:
         with urllib.request.urlopen(request, timeout=TIMEOUT) as response:
-            payload = json.load(response)
+            return json.load(response)
+    except urllib.error.HTTPError as error:
+        # 404 у выпусков — обычное дело: у проекта их может не быть вовсе.
+        if error.code == 404 and quiet_404:
+            return None
+        print(f"{url}: не удалось получить данные — {error}", file=sys.stderr)
+        return None
     except (urllib.error.URLError, TimeoutError, json.JSONDecodeError) as error:
-        print(f"{repo}: не удалось получить данные — {error}", file=sys.stderr)
+        print(f"{url}: не удалось получить данные — {error}", file=sys.stderr)
         return None
 
-    return payload.get("stargazers_count")
+
+def repo_stats(repo: str) -> dict | None:
+    """Звёзды и последний выпуск. Без выпусков репозиторий не пропадает —
+    у него просто не будет строки о выпуске на странице."""
+    payload = ask(API.format(repo=repo))
+    if payload is None or payload.get("stargazers_count") is None:
+        return None
+
+    stats: dict = {"stars": payload["stargazers_count"], "release": None}
+
+    latest = ask(RELEASE_API.format(repo=repo), quiet_404=True)
+    if latest and latest.get("tag_name") and latest.get("published_at"):
+        stats["release"] = {
+            "tag": latest["tag_name"],
+            # На странице показывается только дата, время ни к чему.
+            "date": latest["published_at"][:10],
+        }
+
+    return stats
 
 
 def main() -> int:
-    collected: dict[str, int] = {}
+    collected: dict[str, dict] = {}
     for repo in repos_from_resume():
-        count = stars(repo)
-        if count is not None:
-            collected[repo] = count
-            print(f"{repo}: {count} звёзд")
+        stats = repo_stats(repo)
+        if stats is not None:
+            collected[repo] = stats
+            release = stats["release"]
+            tail = f", выпуск {release['tag']} от {release['date']}" if release else ""
+            print(f"{repo}: {stats['stars']} звёзд{tail}")
 
     data = {
         "updated": datetime.now(timezone.utc).strftime("%Y-%m-%d"),

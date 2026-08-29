@@ -261,6 +261,26 @@
     ]));
   }
 
+  /* Тег выпуска показывается без ведущей `v`: рядом со словом «Выпуск» она
+     ничего не добавляет. */
+  function tagName(tag) {
+    return /^v\d/.test(tag) ? tag.slice(1) : tag;
+  }
+
+  function humanDate(iso) {
+    var date = new Date(iso + 'T00:00:00Z');
+    if (isNaN(date.getTime())) return iso;
+    try {
+      var text = new Intl.DateTimeFormat(LANG === 'en' ? 'en-GB' : 'ru-RU', {
+        day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC',
+      }).format(date);
+      // Русская локаль приписывает « г.»; на странице даты пишутся без него.
+      return text.replace(/\s*г\.$/, '');
+    } catch (e) {
+      return iso;
+    }
+  }
+
   /* --- результаты -------------------------------------------------------- */
 
   function buildMetrics() {
@@ -383,15 +403,23 @@
 
   /* --- проекты ----------------------------------------------------------- */
 
+  /* Звёзды и последний выпуск подставляет `scripts/fetch_stats.py` перед
+     выкладкой. Данных может не быть вовсе — тогда строки просто нет. */
   function buildProjects() {
     var grid = el('div', { class: 'projects enter' }, R.projects.map(function (pr) {
-      var stars = STATS.repos && STATS.repos[pr.repo];
+      var stat = (STATS.repos && STATS.repos[pr.repo]) || null;
+      var stars = stat && typeof stat.stars === 'number' ? stat.stars : null;
+      var release = stat && stat.release;
       return el('article', { class: 'project', 'data-tags': (pr.tags || []).join(' ') }, [
         el('div', { class: 'project__top' }, [
           el('h3', { class: 'project__name', text: pr.name }),
-          typeof stars === 'number' ? el('span', { class: 'project__stars', text: '★ ' + stars }) : null,
+          stars !== null ? el('span', { class: 'project__stars', text: '★ ' + stars }) : null,
         ]),
         el('p', { class: 'project__tagline', text: t(pr.tagline) }),
+        release ? el('p', {
+          class: 'project__release',
+          text: u('releaseLabel') + ' ' + tagName(release.tag) + ' · ' + humanDate(release.date),
+        }) : null,
         el('p', { class: 'project__text', text: t(pr.description) }),
         el('div', { class: 'project__stack' }, pr.stack.map(function (s) {
           return el('span', { text: s });

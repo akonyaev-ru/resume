@@ -45,6 +45,7 @@ window.RESUME = {
       en: 'Both grew out of real work: first I needed them, then the team did.',
     },
     openOnGithub: { ru: 'Открыть на GitHub →', en: 'Open on GitHub →' },
+    releaseLabel: { ru: 'Выпуск', en: 'Release' },
     skillsTitle: { ru: 'Навыки', en: 'Skills' },
     skillsNote: {
       ru: 'Навык с точкой — кликабельный: страница оставит на виду те задачи и проекты, где он применялся.',
