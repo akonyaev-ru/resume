@@ -26,11 +26,11 @@ from PIL import Image
 ROOT = Path(__file__).resolve().parent.parent
 OUT = ROOT / "assets" / "img" / "foil.webp"
 
-WIDTH = 560
-HEIGHT = 700
+WIDTH = 900
+HEIGHT = 1120
 BANDS = 5.2             # сколько цветных полос укладывается по диагонали
 WARP = 1.9              # насколько сильно шум коробит полосы
-SCANLINE = 0.14         # глубина построчной штриховки
+GRAIN = 1.2             # зерно, чтобы плавные переходы не полосили
 FLOOR = 0.13            # яркость впадины между складками
 RIDGE = 0.030           # ширина светящегося гребня, доля полосы
 SEED = 11
@@ -52,7 +52,10 @@ def smooth_noise(shape: tuple[int, int], rng: np.random.Generator) -> np.ndarray
     """Многооктавный мягкий шум — он и делает фольгу мятой."""
     field = np.zeros(shape, np.float32)
     total = 0.0
-    for sigma, weight in ((46.0, 1.0), (19.0, 0.5), (8.0, 0.22)):
+    # Радиусы размытия — доли ширины, иначе при смене разрешения меняется и
+    # рисунок складок.
+    scale = shape[1] / 560.0
+    for sigma, weight in ((46.0 * scale, 1.0), (19.0 * scale, 0.5), (8.0 * scale, 0.22)):
         octave = cv2.GaussianBlur(rng.random(shape).astype(np.float32), (0, 0), sigma)
         span = octave.max() - octave.min()
         field += weight * (octave - octave.min()) / (span if span else 1.0)
@@ -92,14 +95,18 @@ def main() -> int:
 
     out = colour * (FLOOR + 0.95 * glow)[..., None] + 250.0 * ridge[..., None]
 
-    # Построчная штриховка: тонкая техническая развёртка поверх металла.
-    scan = 1.0 - SCANLINE * (np.mod(rows, 3.0) < 1.0)
-    out *= scan[..., None]
+    # Зерно вместо построчной штриховки: полосы через строку давали муар при
+    # масштабировании — именно он и читался квадратами.
+    out += rng.normal(0.0, GRAIN, out.shape).astype(np.float32)
 
     out = np.clip(out, 0, 255).astype(np.uint8)
 
     OUT.parent.mkdir(parents=True, exist_ok=True)
-    Image.fromarray(out, mode="RGB").save(OUT, "WEBP", quality=86, method=6)
+    # Качество высокое: на плавных переходах и узких гребнях обычное сжатие
+    # оставляет блочные артефакты, и на крупном бейдже они видны квадратами.
+    # Полностью без потерь файл раздувается до полутора мегабайт — зерно
+    # несжимаемо.
+    Image.fromarray(out, mode="RGB").save(OUT, "WEBP", quality=95, method=6)
 
     sys.stdout.reconfigure(encoding="utf-8")
     print(f"{OUT.relative_to(ROOT)} - {WIDTH}x{HEIGHT}, {OUT.stat().st_size / 1024:.0f} KB")
