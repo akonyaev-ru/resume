@@ -728,7 +728,12 @@
         var col = index % cols;
         chars[index] = randomGlyph();
         ctx.clearRect(col * CELL_W, row * CELL_H, CELL_W, CELL_H);
-        paintCell(col, row, BASE_ALPHA, BASE);
+
+        // Если ячейка сейчас освещена, её нельзя гасить до спящего цвета:
+        // получалась бы тёмная точка внутри пятна на один кадр.
+        var value = heat[index];
+        if (value > 0) paintCell(col, row, BASE_ALPHA + value * value, value > 0.78 ? MINT : ACCENT);
+        else paintCell(col, row, BASE_ALPHA, BASE);
       }
       ctx.globalAlpha = 1;
     }, FLICKER_MS);
