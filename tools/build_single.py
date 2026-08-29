@@ -20,7 +20,9 @@ DIST = ROOT / "dist"
 
 LINK = re.compile(r'\s*<link rel="stylesheet" href="(assets/css/[^"]+)" />')
 SCRIPT = re.compile(r'\s*<script src="([^"]+)"></script>')
-IMAGE = re.compile(r"assets/img/([\w.-]+)")
+# Путь к картинке встречается в двух видах: от корня сайта в разметке и
+# скрипте, относительным — в стилях, которые лежат этажом ниже.
+IMAGE = re.compile(r"(?:assets|\.\.)/img/([\w.-]+)")
 
 MIME = {
     ".webp": "image/webp",

@@ -24,6 +24,25 @@
   <a class="skip" href="#main">К содержанию</a>
 
   <canvas id="field" aria-hidden="true"></canvas>
+
+  <!-- Контур вырубки бейджа. Щиток со скруглёнными углами и мягким сходом
+       книзу: polygon() такие кривые не умеет, поэтому форма задана путём.
+       Координаты доли от габарита, поэтому форма тянется за размером. -->
+  <svg width="0" height="0" aria-hidden="true" focusable="false" style="position:absolute">
+    <defs>
+      <clipPath id="badge-shield" clipPathUnits="objectBoundingBox">
+        <path d="M 0.09 0
+                 L 0.91 0
+                 C 0.96 0 1 0.04 1 0.09
+                 L 1 0.46
+                 C 1 0.71 0.84 0.89 0.5 1
+                 C 0.16 0.89 0 0.71 0 0.46
+                 L 0 0.09
+                 C 0 0.04 0.04 0 0.09 0
+                 Z" />
+      </clipPath>
+    </defs>
+  </svg>
   <div id="app"></div>
 
   <noscript>

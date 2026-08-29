@@ -190,14 +190,21 @@
 
     // Слои бейджа снизу вверх: подложка, фольга, фотография, блик. Фольга
     // лежит под фигурой и видна там, где у вырезанного портрета прозрачность.
+    // Три вложенных коробки с одним и тем же контуром дают кант вырубки:
+    // тёмный ободок, светлый ободок, содержимое. Слои внутри снизу вверх —
+    // подложка, фольга, фотография, блик.
     var portrait = p.photo ? el('figure', { class: 'badge' }, [
-      el('div', { class: 'badge__inner' }, [
-        el('div', { class: 'badge__layer badge__plate' }),
-        el('div', { class: 'badge__layer badge__foil' }),
-        el('img', {
-          class: 'badge__photo', src: p.photo, alt: t(p.name), decoding: 'async',
-        }),
-        el('div', { class: 'badge__layer badge__sheen' }),
+      el('div', { class: 'badge__die' }, [
+        el('div', { class: 'badge__ring' }, [
+          el('div', { class: 'badge__inner' }, [
+            el('div', { class: 'badge__layer badge__plate' }),
+            el('div', { class: 'badge__layer badge__foil' }),
+            el('img', {
+              class: 'badge__photo', src: p.photo, alt: t(p.name), decoding: 'async',
+            }),
+            el('div', { class: 'badge__layer badge__sheen' }),
+          ]),
+        ]),
       ]),
     ]) : null;
 
