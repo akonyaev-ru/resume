@@ -1185,7 +1185,9 @@
       entries.forEach(function (entry) {
         if (!entry.isIntersecting) return;
         $$('[data-nav]').forEach(function (a) {
-          a.classList.toggle('is-active', a.getAttribute('data-nav') === entry.target.id);
+          var active = a.getAttribute('data-nav') === entry.target.id;
+          a.classList.toggle('is-active', active);
+          if (active) revealNav(a);
         });
       });
     }, { rootMargin: '-45% 0px -50% 0px' });
@@ -1196,6 +1198,28 @@
     });
 
     observers.push(appear, spy);
+  }
+
+  /* В узкой шапке меню прокручивается вбок: без этого отметка текущего раздела
+     уезжает за край и подсказывать перестаёт. Двигается только сама лента —
+     положение страницы не трогаем. */
+  function revealNav(link) {
+    var strip = link.parentNode;
+    if (!strip || strip.scrollWidth <= strip.clientWidth + 1) return;
+
+    var stripBox = strip.getBoundingClientRect();
+    var linkBox = link.getBoundingClientRect();
+    var left = strip.scrollLeft + (linkBox.left - stripBox.left) -
+      (stripBox.width - linkBox.width) / 2;
+
+    left = Math.max(0, Math.min(left, strip.scrollWidth - strip.clientWidth));
+    if (Math.abs(strip.scrollLeft - left) < 2) return;
+
+    try {
+      strip.scrollTo({ left: left, behavior: LESS_MOTION ? 'auto' : 'smooth' });
+    } catch (e) {
+      strip.scrollLeft = left;
+    }
   }
 
   function countTo(node) {

@@ -206,8 +206,39 @@ a:hover { color: var(--text); }
 
 .topbar__nav + .topbar__tools { margin-inline-start: 1.35rem; }
 
+/* Шесть разделов в одну строку с именем и языком не помещаются. Раньше меню
+   в этом месте просто пряталось, и на телефоне страница оставалась вообще без
+   навигации — только прокрутка сверху донизу. Теперь оно переезжает во вторую
+   строку шапки и прокручивается вбок. */
 @media (max-width: 880px) {
-  .topbar__nav { display: none; }
+  .topbar__inner {
+    flex-wrap: wrap;
+    gap: 0.1rem 1rem;
+    min-height: 0;
+    /* Шапка липкая и стала в две строки — лишнюю высоту тут держать нечем. */
+    padding-block: 0.35rem;
+  }
+
+  .topbar__nav {
+    order: 3;
+    width: 100%;
+    margin-inline-start: 0;
+    gap: 1.15rem;
+    overflow-x: auto;
+    /* Прокрутка ленты не должна утягивать за собой страницу. */
+    overscroll-behavior-x: contain;
+    scrollbar-width: none;
+  }
+
+  .topbar__nav::-webkit-scrollbar { display: none; }
+
+  .topbar__nav a {
+    white-space: nowrap;
+    font-size: var(--step--2);
+    padding-block: 0.4rem;
+  }
+
+  .topbar__nav + .topbar__tools { margin-inline-start: auto; }
 }
 
 /* --- Переключатель языка ------------------------------------------------ */
@@ -468,6 +499,9 @@ a:hover { color: var(--text); }
 
 @media (max-width: 620px) {
   .facts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  /* Пунктов пять: последний остаётся один в ряду — пусть занимает его целиком,
+     тем более что почта из них самая длинная. */
+  .facts .fact:last-child { grid-column: 1 / -1; }
 }
 
 .fact { display: grid; gap: 0.15rem; }
@@ -703,6 +737,19 @@ a:hover { color: var(--text); }
 .timeline__seg:hover {
   background: var(--accent);
   transform: scaleY(1.35);
+}
+
+/* Полоса высотой 10 px — пальцем в неё не попасть. Прозрачная накладка
+   расширяет область нажатия по вертикали, не трогая вид. Только для
+   неточного указателя: под мышью подсветка отрезка «за 14 px до него»
+   выглядела бы поломкой. */
+@media (pointer: coarse) {
+  .timeline__seg::after {
+    content: '';
+    position: absolute;
+    inset-block: -14px;
+    inset-inline: 0;
+  }
 }
 
 .timeline__seg.is-current { background: var(--mint); }
