@@ -28,6 +28,42 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;600&family=JetBrains+Mono:wght@400;500&family=Unbounded:wght@500;600;700&display=swap" />
+  <!-- Машиночитаемое описание: тот же человек, роль, город и профили, но
+       словарём schema.org. Глазами не видно; читают поисковики и парсеры,
+       которые скрипт не выполняют, — поэтому блок статический, как мета-теги.
+       Английская копия получает свой перевод в tools/build_en.py. -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "ProfilePage",
+    "inLanguage": "ru",
+    "mainEntity": {
+      "@type": "Person",
+      "@id": "https://akonyaev-ru.github.io/resume/#person",
+      "name": "Алексей Коняев",
+      "alternateName": "Alexey Konyaev",
+      "jobTitle": "Специалист по LegalOPS и AI-разработке",
+      "description": "Автоматизация юридических и операционных процессов, внедрение ИИ: Python, LLM, Битрикс24.",
+      "url": "https://akonyaev-ru.github.io/resume/",
+      "email": "inbox@akonyaev.ru",
+      "address": {
+        "@type": "PostalAddress",
+        "addressLocality": "Москва",
+        "addressCountry": "RU"
+      },
+      "worksFor": {
+        "@type": "Organization",
+        "name": "Айковер ПРО"
+      },
+      "knowsAbout": ["LegalTech", "LegalOps", "Python", "LLM", "RAG", "Bitrix24"],
+      "sameAs": [
+        "https://github.com/akonyaev-ru",
+        "https://t.me/konyaev929"
+      ]
+    }
+  }
+  </script>
+
   <link rel="stylesheet" href="assets/css/style.css" />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%23080a10'/%3E%3Cpath d='M7 10l5 6-5 6' fill='none' stroke='%237c7cff' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpath d='M16 22h9' stroke='%233ddc97' stroke-width='2.5' stroke-linecap='round'/%3E%3C/svg%3E" />
 </head>

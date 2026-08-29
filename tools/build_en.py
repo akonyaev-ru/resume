@@ -40,6 +40,23 @@ STRINGS = [
         'content="LegalOPS and AI engineering specialist: automating legal and'
         ' operational processes, rolling out AI."',
     ),
+    # Машиночитаемый блок schema.org: у него свои строки, каждая с ключом
+    # впереди — иначе они совпали бы с текстом мета-тегов и разметки.
+    ('"inLanguage": "ru"', '"inLanguage": "en"'),
+    ('"name": "Алексей Коняев"', '"name": "Alexey Konyaev"'),
+    ('"alternateName": "Alexey Konyaev"', '"alternateName": "Алексей Коняев"'),
+    (
+        '"jobTitle": "Специалист по LegalOPS и AI-разработке"',
+        '"jobTitle": "LegalOPS and AI engineering specialist"',
+    ),
+    (
+        '"description": "Автоматизация юридических и операционных процессов,'
+        ' внедрение ИИ: Python, LLM, Битрикс24."',
+        '"description": "Automating legal and operational processes, rolling out'
+        ' AI: Python, LLM, Bitrix24."',
+    ),
+    ('"addressLocality": "Москва"', '"addressLocality": "Moscow"'),
+    ('"name": "Айковер ПРО"', '"name": "iCover PRO"'),
     (">К содержанию<", ">Skip to content<"),
     ("<h1>Алексей Коняев</h1>", "<h1>Alexey Konyaev</h1>"),
     (
