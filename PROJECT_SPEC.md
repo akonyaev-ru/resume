@@ -158,6 +158,7 @@ sitemap.xml             два адреса страницы для поиско
 assets/css/style.css    оформление
 assets/js/app.js        сборка страницы, фильтр, поле символов
 assets/js/pet.js        пиксельный паучок внизу страницы
+tools/draw_pet.py       перерисовка его кадров
 scripts/fetch_stats.py  запрос звёзд и выпусков к GitHub API
 tools/build_en.py       английская копия страницы: en.html
 tools/build_single.py   сборка в один файл

@@ -187,6 +187,7 @@ assets/img/portrait.webp портрет с прозрачным фоном
 assets/js/app.js        сборка страницы, фильтр, поле символов, портрет
 assets/js/pet.js        пиксельный паучок внизу страницы
 tools/prep_portrait.py  подготовка портрета из исходного фото
+tools/draw_pet.py       перерисовка кадров паучка
 404.html                страница на несуществующий адрес
 sitemap.xml             два адреса страницы для поисковика
 scripts/fetch_stats.py  запрос звёзд и выпусков к GitHub API
