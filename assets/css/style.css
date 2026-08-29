@@ -337,12 +337,9 @@ a:hover { color: var(--text); }
    задаётся числом, поэтому линия не разъедется при правке текста. Ширина
    следует за высотой по пропорции и заходит влево в зазор между колонками. */
 .hero__grid .portrait {
-  align-self: end;
+  align-self: stretch;
   justify-self: end;
-  /* Выше текстового блока: низ остаётся на линии кнопок, а верх поднимается
-     над надписью. Ширина следует за высотой, поэтому портрет заодно уходит
-     дальше влево. */
-  height: calc(100% + 4.5rem);
+  height: 100%;
   width: auto;
 }
 
@@ -425,7 +422,7 @@ a:hover { color: var(--text); }
   --my: 50%;
   position: relative;
   margin: 0;
-  aspect-ratio: 88 / 100;
+  aspect-ratio: 92 / 100;
 }
 
 .portrait__glyphs,
