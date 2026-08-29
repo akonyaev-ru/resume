@@ -6,11 +6,13 @@
   var CFG = window.CONFIG || {};
   var STATS = window.STATS || { repos: {} };
   var LESS_MOTION = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var FINE_POINTER = window.matchMedia('(hover: hover) and (pointer: fine)').matches;
 
-  var state = {
-    framing: readFraming(),
-    filter: null,
-  };
+  // Символы, которые сыплются за курсором и перемешивают скрытые контакты:
+  // синтаксис кода вперемешку с юридическими знаками.
+  var GLYPHS = '{}[]()<>/\\|;:=+-*#$%&!?^~01234567§№¶λ';
+
+  var state = { filter: null, filterLabel: null };
 
   /* --- мелкие помощники -------------------------------------------------- */
 
@@ -22,7 +24,6 @@
         if (val === null || val === undefined || val === false) return;
         if (key === 'class') node.className = val;
         else if (key === 'text') node.textContent = val;
-        else if (key === 'html') node.innerHTML = val;
         else if (key.slice(0, 2) === 'on') node.addEventListener(key.slice(2), val);
         else node.setAttribute(key, val === true ? '' : val);
       });
@@ -36,16 +37,9 @@
   function $(sel) { return document.querySelector(sel); }
   function $$(sel) { return Array.prototype.slice.call(document.querySelectorAll(sel)); }
 
-  function readFraming() {
-    var fromUrl = new URLSearchParams(location.search).get('v');
-    if (fromUrl && R.framings[fromUrl]) return fromUrl;
-    var saved = null;
-    try { saved = localStorage.getItem('cv:framing'); } catch (e) { /* приватный режим */ }
-    if (saved && R.framings[saved]) return saved;
-    return CFG.defaultFraming || Object.keys(R.framings)[0];
+  function randomGlyph() {
+    return GLYPHS.charAt(Math.floor(Math.random() * GLYPHS.length));
   }
-
-  function framing() { return R.framings[state.framing]; }
 
   function section(id, title, kids) {
     return el('section', { class: 'section', id: id }, [
@@ -78,10 +72,6 @@
           })),
         el('div', { class: 'topbar__tools' }, [
           el('button', {
-            class: 'btn', id: 'theme-btn', type: 'button',
-            title: 'Оформление: авто, светлое, тёмное',
-          }),
-          el('button', {
             class: 'btn', type: 'button', text: 'PDF',
             title: 'Открыть окно печати — сохраните в PDF',
             onclick: function () { window.print(); },
@@ -91,72 +81,51 @@
     ]);
   }
 
-  /* --- экран знакомства -------------------------------------------------- */
+  /* --- первый экран ------------------------------------------------------ */
+
+  /* Термины из roleAccent подсвечиваются акцентом прямо в заголовке. */
+  function roleNode(text, accents) {
+    var host = el('h1', { class: 'hero__role' });
+    var rest = text;
+
+    (accents || []).forEach(function (term) {
+      var at = rest.indexOf(term);
+      if (at === -1) return;
+      if (at > 0) host.appendChild(document.createTextNode(rest.slice(0, at)));
+      host.appendChild(el('em', { text: term }));
+      rest = rest.slice(at + term.length);
+    });
+
+    if (rest) host.appendChild(document.createTextNode(rest));
+    return host;
+  }
 
   function buildHero() {
     var p = R.person;
 
-    var roleText = el('span', { class: 'redact', id: 'role-text', text: framing().title });
-    var lede = el('p', { class: 'hero__lede', id: 'hero-lede', text: framing().lede });
-    var hint = el('p', { class: 'framing__hint', id: 'framing-hint', text: framing().switchHint });
-
-    var switcher = el('div', {
-      class: 'framing', id: 'framing', role: 'group',
-      'aria-label': 'Версия резюме',
-    }, Object.keys(R.framings).map(function (key) {
-      return el('button', {
-        class: 'framing__btn',
-        type: 'button',
-        'data-framing': key,
-        'aria-pressed': String(key === state.framing),
-        text: R.framings[key].switchLabel,
-        onclick: function () { setFraming(key); },
-      });
-    }));
-
-    var actions = el('div', { class: 'hero__actions' }, [
-      el('a', {
-        class: 'btn btn--primary', href: p.contacts.telegram.href,
-        target: '_blank', rel: 'noopener', text: 'Написать в Telegram',
-      }),
-      el('a', {
-        class: 'btn btn--ghost', href: p.contacts.github.href,
-        target: '_blank', rel: 'noopener', text: 'GitHub',
-      }),
-    ]);
-
     var left = el('div', {}, [
       el('p', { class: 'eyebrow', text: 'Резюме · обновлено ' + p.updated }),
-      el('h1', { class: 'hero__name', text: p.name }),
-      el('p', { class: 'hero__role' }, [roleText]),
-      lede,
-      switcher,
-      hint,
-      actions,
+      el('p', { class: 'hero__name', text: p.name }),
+      roleNode(p.role, p.roleAccent),
+      el('p', { class: 'hero__lede', text: p.lede }),
+      el('div', { class: 'hero__specs' }, p.specializations.map(function (s) {
+        return el('span', { class: 'spec', text: s });
+      })),
+      el('div', { class: 'hero__actions' }, [
+        el('a', {
+          class: 'btn btn--primary', href: p.contacts.telegram.href,
+          target: '_blank', rel: 'noopener', text: 'Написать в Telegram',
+        }),
+        el('a', {
+          class: 'btn btn--ghost', href: p.contacts.github.href,
+          target: '_blank', rel: 'noopener', text: 'GitHub',
+        }),
+      ]),
     ]);
 
     return el('section', { class: 'hero' }, [
       el('div', { class: 'wrap hero__grid' }, [left, buildFactsheet()]),
     ]);
-  }
-
-  function contactValue(contact, hidden) {
-    if (!hidden) {
-      return el('a', { href: contact.href, target: '_blank', rel: 'noopener', text: contact.label });
-    }
-    var bar = el('span', { class: 'redact', text: contact.label });
-    var btn = el('button', {
-      class: 'reveal', type: 'button', 'aria-label': 'Показать: ' + contact.label,
-      onclick: function () {
-        bar.style.setProperty('--rd-origin', 'right center');
-        bar.classList.add('is-open');
-        window.setTimeout(function () {
-          var link = el('a', { href: contact.href, target: '_blank', rel: 'noopener', text: contact.label });
-          if (btn.parentNode) btn.parentNode.replaceChild(link, btn);
-        }, LESS_MOTION ? 0 : 620);
-      },
-    }, [bar]);
-    return btn;
   }
 
   function buildFactsheet() {
@@ -175,8 +144,8 @@
 
     if (CFG.showSalary) rows.splice(4, 0, ['Ожидание', el('span', { text: p.salary })]);
 
-    // Без класса enter: анкета — часть первого экрана, на узком телефоне
-    // она уезжает под сгиб и появлялась бы после пустого места.
+    // Без класса enter: анкета — часть первого экрана, на телефоне она уезжает
+    // под сгиб, и появление по прокрутке оставляло бы на её месте пустое поле.
     return el('aside', { class: 'factsheet' }, [
       el('div', { class: 'factsheet__head' }, [
         el('span', { text: 'Анкета' }),
@@ -191,39 +160,94 @@
     ]);
   }
 
+  function link(contact) {
+    return el('a', { href: contact.href, target: '_blank', rel: 'noopener', text: contact.label });
+  }
+
+  function scramble(text) {
+    return text.replace(/\S/g, randomGlyph);
+  }
+
+  /* Скрытый контакт: символы перемешаны, по клику собираются в настоящий. */
+  function contactValue(contact, hidden) {
+    if (!hidden) return link(contact);
+
+    var btn = el('button', {
+      class: 'reveal',
+      type: 'button',
+      'aria-label': 'Показать контакт',
+      text: scramble(contact.label),
+    });
+
+    btn.addEventListener('click', function () {
+      if (btn.classList.contains('is-open')) return;
+      btn.classList.add('is-open');
+      decode(btn, contact.label, function () {
+        if (btn.parentNode) btn.parentNode.replaceChild(link(contact), btn);
+      });
+    });
+
+    return btn;
+  }
+
+  /* Буквы встают на место слева направо, остальные продолжают мельтешить. */
+  function decode(node, target, done) {
+    if (LESS_MOTION) {
+      node.textContent = target;
+      done();
+      return;
+    }
+
+    var perChar = 45;
+    var start = null;
+
+    function frame(now) {
+      if (start === null) start = now;
+      var locked = Math.floor((now - start) / perChar);
+      var out = '';
+
+      for (var i = 0; i < target.length; i += 1) {
+        var ch = target.charAt(i);
+        if (i < locked || ch === ' ') out += ch;
+        else out += randomGlyph();
+      }
+
+      node.textContent = out;
+
+      if (locked < target.length) window.requestAnimationFrame(frame);
+      else window.setTimeout(done, 260);
+    }
+
+    window.requestAnimationFrame(frame);
+  }
+
   /* --- результаты -------------------------------------------------------- */
 
   function buildMetrics() {
     var grid = el('div', { class: 'metrics enter' }, R.metrics.map(function (m) {
-      var value = el('span', {
-        class: 'metric__value',
-        'data-value': String(m.value),
-        'data-prefix': m.prefix || '',
-        'data-suffix': m.suffix || '',
-        text: (m.prefix || '') + '0' + (m.suffix || ''),
-      });
       return el('div', { class: 'metric' + (m.accent ? ' metric--accent' : '') }, [
-        value,
+        el('span', {
+          class: 'metric__value',
+          'data-value': String(m.value),
+          'data-prefix': m.prefix || '',
+          'data-suffix': m.suffix || '',
+          text: (m.prefix || '') + '0' + (m.suffix || ''),
+        }),
         el('span', { class: 'metric__caption', text: m.caption }),
         el('span', { class: 'metric__source', text: m.source }),
       ]);
     }));
+
     return section('results', 'Что изменилось после внедрений', [grid]);
   }
 
   /* --- подход ------------------------------------------------------------ */
 
   function buildApproach() {
-    var about = el('p', { class: 'approach__text', id: 'about-text', text: framing().about });
-    var quote = el('blockquote', { class: 'pullquote', id: 'pullquote', text: framing().pullquote });
-    var specs = el('div', { class: 'spec-list', id: 'specs' }, framing().specializations.map(function (s) {
-      return el('span', { class: 'spec', text: s });
-    }));
-
     return section('approach', 'Подход', [
       el('div', { class: 'approach enter' }, [
-        el('div', {}, [about, specs]),
-        quote,
+        el('p', { class: 'approach__text', text: R.person.about }),
+        el('blockquote', { class: 'pullquote', text: R.person.pullquote }),
       ]),
     ]);
   }
@@ -231,46 +255,28 @@
   /* --- опыт -------------------------------------------------------------- */
 
   function buildJobs() {
-    var list = el('div', { class: 'jobs', id: 'jobs' }, R.experience.map(function (job) {
-      var meta = el('div', { class: 'job__meta' }, [
-        el('span', { class: 'job__period', text: job.period }),
-        el('span', { class: 'job__duration', text: job.duration }),
-        job.current ? el('span', { class: 'job__now', text: 'сейчас' }) : null,
-      ]);
-
-      var bullets = el('ul', { class: 'job__bullets', 'data-bullets': job.company });
-
+    var list = el('div', { class: 'jobs' }, R.experience.map(function (job) {
       return el('article', { class: 'job enter' }, [
-        meta,
+        el('div', { class: 'job__meta' }, [
+          el('span', { class: 'job__period', text: job.period }),
+          el('span', { class: 'job__duration', text: job.duration }),
+          job.current ? el('span', { class: 'job__now', text: 'сейчас' }) : null,
+        ]),
         el('div', {}, [
           el('h3', { class: 'job__company', text: job.company }),
           el('p', { class: 'job__role', text: job.role }),
-          bullets,
+          el('ul', { class: 'job__bullets' }, job.bullets.map(function (bullet) {
+            return el('li', {
+              class: 'bullet',
+              'data-tags': (bullet.tags || []).join(' '),
+              text: bullet.text,
+            });
+          })),
         ]),
       ]);
     }));
 
-    renderBullets(list);
     return section('experience', 'Опыт работы', [list]);
-  }
-
-  function renderBullets(root) {
-    R.experience.forEach(function (job) {
-      var host = root.querySelector('[data-bullets="' + job.company + '"]');
-      if (!host) return;
-      host.textContent = '';
-      var order = (job.order && job.order[state.framing]) || job.bullets.map(function (b) { return b.id; });
-      order.forEach(function (id) {
-        var bullet = job.bullets.filter(function (b) { return b.id === id; })[0];
-        if (!bullet) return;
-        host.appendChild(el('li', {
-          class: 'bullet',
-          'data-tags': (bullet.tags || []).join(' '),
-          text: bullet[state.framing],
-        }));
-      });
-    });
-    applyFilter();
   }
 
   /* --- проекты ----------------------------------------------------------- */
@@ -278,15 +284,10 @@
   function buildProjects() {
     var grid = el('div', { class: 'projects enter' }, R.projects.map(function (pr) {
       var stars = STATS.repos && STATS.repos[pr.repo];
-      return el('article', {
-        class: 'project',
-        'data-tags': (pr.tags || []).join(' '),
-      }, [
+      return el('article', { class: 'project', 'data-tags': (pr.tags || []).join(' ') }, [
         el('div', { class: 'project__top' }, [
           el('h3', { class: 'project__name', text: pr.name }),
-          typeof stars === 'number'
-            ? el('span', { class: 'project__stars', text: '★ ' + stars })
-            : null,
+          typeof stars === 'number' ? el('span', { class: 'project__stars', text: '★ ' + stars }) : null,
         ]),
         el('p', { class: 'project__tagline', text: pr.tagline }),
         el('p', { class: 'project__text', text: pr.description }),
@@ -301,7 +302,10 @@
     }));
 
     return section('projects', 'Собственные продукты', [
-      el('p', { class: 'skills__hint', text: 'Обе программы выросли из рабочих задач: сначала нужны были мне, потом — команде.' }),
+      el('p', {
+        class: 'section__note',
+        text: 'Обе программы выросли из рабочих задач: сначала нужны были мне, потом — команде.',
+      }),
       grid,
     ]);
   }
@@ -309,47 +313,33 @@
   /* --- навыки ------------------------------------------------------------ */
 
   function buildSkills() {
-    var groups = el('div', { class: 'skill-groups enter', id: 'skill-groups' });
-    var status = el('div', { class: 'filter-status', id: 'filter-status' });
-
-    var wrapper = section('skills', 'Навыки', [
-      el('p', {
-        class: 'skills__hint',
-        text: 'Навык с точкой — кликабельный: страница оставит на виду те задачи, где он применялся.',
-      }),
-      groups,
-      status,
-    ]);
-
-    renderSkills(groups);
-    return wrapper;
-  }
-
-  function renderSkills(root) {
-    root.textContent = '';
-    R.skillGroups.forEach(function (group) {
-      var skills = group.skills.filter(function (s) {
-        return !s.in || s.in.indexOf(state.framing) !== -1;
-      });
-      if (!skills.length) return;
-
-      root.appendChild(el('div', { class: 'skill-group' }, [
+    var groups = el('div', { class: 'skill-groups enter' }, R.skillGroups.map(function (group) {
+      return el('div', {}, [
         el('h3', { class: 'skill-group__title', text: group.title }),
-        el('div', { class: 'chips' }, skills.map(function (skill) {
+        el('div', { class: 'chips' }, group.skills.map(function (skill) {
           if (!skill.filter) return el('span', { class: 'chip', text: skill.name });
           return el('button', {
             class: 'chip',
             type: 'button',
             'data-filter': skill.filter,
-            'aria-pressed': String(state.filter === skill.filter),
+            'aria-pressed': 'false',
             text: skill.name,
             onclick: function () {
               setFilter(state.filter === skill.filter ? null : skill.filter, skill.name);
             },
           });
         })),
-      ]));
-    });
+      ]);
+    }));
+
+    return section('skills', 'Навыки', [
+      el('p', {
+        class: 'section__note',
+        text: 'Навык с точкой — кликабельный: страница оставит на виду те задачи и проекты, где он применялся.',
+      }),
+      groups,
+      el('div', { class: 'filter-status', id: 'filter-status' }),
+    ]);
   }
 
   function setFilter(tag, label) {
@@ -378,8 +368,8 @@
     var hits = $$('.bullet.is-hit').length + $$('.project.is-hit').length;
     status.appendChild(el('span', {
       text: hits
-        ? 'Показано, где применялось: ' + state.filterLabel + ' — ' +
-          hits + ' ' + plural(hits, ['совпадение', 'совпадения', 'совпадений'])
+        ? state.filterLabel + ' — ' + hits + ' ' +
+          plural(hits, ['совпадение', 'совпадения', 'совпадений'])
         : 'В опыте нет задач с этим навыком',
     }));
     status.appendChild(el('button', {
@@ -398,10 +388,14 @@
 
   /* --- образование ------------------------------------------------------- */
 
+  function records(title, items, render) {
+    return el('div', {}, [
+      el('h3', { class: 'skill-group__title', text: title }),
+    ].concat(items.map(render)));
+  }
+
   function buildEducation() {
-    var edu = el('div', {}, [
-      el('h3', { class: 'skill-group__title', text: 'Образование' }),
-    ].concat(R.education.map(function (rec) {
+    var edu = records('Образование', R.education, function (rec) {
       return el('div', { class: 'record' }, [
         el('span', { class: 'record__year', text: rec.year }),
         el('div', {}, [
@@ -409,11 +403,9 @@
           el('p', { class: 'record__place', text: rec.place }),
         ]),
       ]);
-    })));
+    });
 
-    var courses = el('div', {}, [
-      el('h3', { class: 'skill-group__title', text: 'Повышение квалификации' }),
-    ].concat(R.courses.map(function (rec) {
+    var courses = records('Повышение квалификации', R.courses, function (rec) {
       return el('div', { class: 'record' }, [
         el('span', { class: 'record__year', text: rec.year }),
         el('div', {}, [
@@ -421,13 +413,13 @@
           el('p', { class: 'record__place', text: rec.place }),
         ]),
       ]);
-    })).concat([
-      el('div', { class: 'record' }, [
-        el('span', { class: 'record__year', text: 'Языки' }),
-        el('div', {}, R.languages.map(function (lang) {
-          return el('p', { class: 'record__place', text: lang.name + ' — ' + lang.level });
-        })),
-      ]),
+    });
+
+    courses.appendChild(el('div', { class: 'record' }, [
+      el('span', { class: 'record__year', text: 'Языки' }),
+      el('div', {}, R.languages.map(function (lang) {
+        return el('p', { class: 'record__place', text: lang.name + ' — ' + lang.level });
+      })),
     ]));
 
     return section('education', 'Образование', [
@@ -452,15 +444,16 @@
             class: 'btn btn--primary', href: p.contacts.telegram.href,
             target: '_blank', rel: 'noopener', text: 'Telegram ' + p.contacts.telegram.label,
           }),
-          el('a', {
-            class: 'btn btn--ghost', href: p.contacts.email.href, text: 'Написать на почту',
-          }),
+          el('a', { class: 'btn btn--ghost', href: p.contacts.email.href, text: 'Написать на почту' }),
           el('button', {
             class: 'btn btn--ghost', type: 'button', text: 'Сохранить в PDF',
             onclick: function () { window.print(); },
           }),
         ]),
-        el('p', { class: 'print-only fact__val', text: p.contacts.email.label + ' · ' + p.contacts.phone.label + ' · ' + p.contacts.telegram.label }),
+        el('p', {
+          class: 'print-only fact__val',
+          text: p.contacts.email.label + ' · ' + p.contacts.phone.label + ' · ' + p.contacts.telegram.label,
+        }),
       ]),
     ]);
   }
@@ -470,92 +463,103 @@
       el('div', { class: 'wrap footer__inner' }, [
         el('span', { text: R.person.name + ' · ' + R.person.city }),
         el('span', {}, [
-          el('a', { href: R.person.contacts.github.href, target: '_blank', rel: 'noopener', text: 'Исходный код страницы' }),
+          el('a', {
+            href: 'https://github.com/akonyaev-ru/resume', target: '_blank', rel: 'noopener',
+            text: 'Исходный код страницы',
+          }),
         ]),
         el('span', { text: 'Обновлено ' + R.person.updated }),
       ]),
     ]);
   }
 
-  /* --- переключение рамки ------------------------------------------------ */
+  /* --- символы за курсором ----------------------------------------------- */
 
-  function setFraming(key) {
-    if (key === state.framing || !R.framings[key]) return;
-    state.framing = key;
+  /* Курсор оставляет за собой всплывающие символы: код вперемешку с
+     юридическими знаками. Живёт на своём canvas, кадры считаются только пока
+     есть что рисовать. */
+  function initTrail() {
+    if (LESS_MOTION || !FINE_POINTER) return;
 
-    try { localStorage.setItem('cv:framing', key); } catch (e) { /* приватный режим */ }
-    try {
-      var url = new URL(location.href);
-      url.searchParams.set('v', key);
-      history.replaceState(null, '', url);
-    } catch (e) { /* страница открыта во встроенном окне без своей истории */ }
+    var canvas = $('#trail');
+    var ctx = canvas.getContext('2d');
+    var items = [];
+    var running = false;
+    var lastX = null;
+    var lastY = null;
 
-    $$('#framing .framing__btn').forEach(function (btn) {
-      btn.setAttribute('aria-pressed', String(btn.getAttribute('data-framing') === key));
-    });
+    var COLORS = ['#7c7cff', '#7c7cff', '#7c7cff', '#3ddc97', '#ffb454'];
+    var LIFE = 950;   // сколько живёт символ, мс
+    var STEP = 17;    // через сколько пикселей движения рождается следующий
+    var MAX = 90;
 
-    var f = framing();
-    sweep($('#role-text'), f.title);
-
-    $('#hero-lede').textContent = f.lede;
-    $('#framing-hint').textContent = f.switchHint;
-    $('#about-text').textContent = f.about;
-    $('#pullquote').textContent = f.pullquote;
-
-    var specs = $('#specs');
-    specs.textContent = '';
-    f.specializations.forEach(function (s) {
-      specs.appendChild(el('span', { class: 'spec', text: s }));
-    });
-
-    renderBullets($('#jobs'));
-    renderSkills($('#skill-groups'));
-    setFilter(null, null);
-  }
-
-  /* Плашка проходит по строке слева направо и оставляет за собой новый текст. */
-  function sweep(node, text) {
-    if (!node) return;
-    if (LESS_MOTION) {
-      node.textContent = text;
-      node.classList.add('is-open');
-      return;
+    function resize() {
+      var dpr = Math.min(window.devicePixelRatio || 1, 2);
+      canvas.width = Math.floor(window.innerWidth * dpr);
+      canvas.height = Math.floor(window.innerHeight * dpr);
+      canvas.style.width = window.innerWidth + 'px';
+      canvas.style.height = window.innerHeight + 'px';
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     }
-    node.style.setProperty('--rd-origin', 'left center');
-    node.classList.remove('is-open');
-    window.setTimeout(function () {
-      node.textContent = text;
-      node.style.setProperty('--rd-origin', 'right center');
-      node.classList.add('is-open');
-    }, 620);
-  }
 
-  /* --- оформление -------------------------------------------------------- */
+    function spawn(x, y, spread) {
+      if (items.length >= MAX) items.shift();
+      items.push({
+        x: x + (Math.random() - 0.5) * spread,
+        y: y + (Math.random() - 0.5) * spread,
+        ch: randomGlyph(),
+        born: performance.now(),
+        drift: 14 + Math.random() * 22,
+        sway: (Math.random() - 0.5) * 16,
+        size: 12 + Math.random() * 5.5,
+        color: COLORS[Math.floor(Math.random() * COLORS.length)],
+      });
+      if (!running) {
+        running = true;
+        window.requestAnimationFrame(draw);
+      }
+    }
 
-  var THEMES = [
-    ['auto', 'Авто'],
-    ['light', 'Светлая'],
-    ['dark', 'Тёмная'],
-  ];
+    function draw(now) {
+      ctx.clearRect(0, 0, window.innerWidth, window.innerHeight);
 
-  function initTheme() {
-    var saved = 'auto';
-    try { saved = localStorage.getItem('cv:theme') || 'auto'; } catch (e) { /* приватный режим */ }
-    applyTheme(saved);
+      items = items.filter(function (item) { return now - item.born < LIFE; });
 
-    $('#theme-btn').addEventListener('click', function () {
-      var current = document.documentElement.getAttribute('data-theme') || 'auto';
-      var idx = THEMES.map(function (t) { return t[0]; }).indexOf(current);
-      applyTheme(THEMES[(idx + 1) % THEMES.length][0]);
-    });
-  }
+      items.forEach(function (item) {
+        var progress = (now - item.born) / LIFE;
+        var eased = 1 - Math.pow(1 - progress, 2);
+        ctx.globalAlpha = Math.max(0, 1 - progress) * 0.95;
+        ctx.fillStyle = item.color;
+        ctx.font = item.size + 'px "JetBrains Mono", ui-monospace, monospace';
+        ctx.fillText(item.ch, item.x + item.sway * eased, item.y - item.drift * eased);
+      });
 
-  function applyTheme(name) {
-    if (name === 'auto') document.documentElement.removeAttribute('data-theme');
-    else document.documentElement.setAttribute('data-theme', name);
-    try { localStorage.setItem('cv:theme', name); } catch (e) { /* приватный режим */ }
-    var label = THEMES.filter(function (t) { return t[0] === name; })[0];
-    $('#theme-btn').textContent = label ? label[1] : 'Авто';
+      ctx.globalAlpha = 1;
+
+      if (items.length) {
+        window.requestAnimationFrame(draw);
+      } else {
+        running = false;
+      }
+    }
+
+    window.addEventListener('resize', resize);
+    resize();
+
+    window.addEventListener('mousemove', function (event) {
+      if (lastX !== null) {
+        var dx = event.clientX - lastX;
+        var dy = event.clientY - lastY;
+        if (dx * dx + dy * dy < STEP * STEP) return;
+      }
+      lastX = event.clientX;
+      lastY = event.clientY;
+      spawn(event.clientX, event.clientY, 10);
+    }, { passive: true });
+
+    window.addEventListener('mousedown', function (event) {
+      for (var i = 0; i < 7; i += 1) spawn(event.clientX, event.clientY, 46);
+    }, { passive: true });
   }
 
   /* --- появление и счётчики ---------------------------------------------- */
@@ -563,7 +567,7 @@
   function initObservers() {
     if (!('IntersectionObserver' in window)) {
       $$('.enter').forEach(function (n) { n.classList.add('is-in'); });
-      $$('.metric__value').forEach(function (n) { countTo(n, 1); });
+      $$('.metric__value').forEach(countTo);
       return;
     }
 
@@ -572,9 +576,7 @@
         if (!entry.isIntersecting) return;
         entry.target.classList.add('is-in');
         appear.unobserve(entry.target);
-        entry.target.querySelectorAll('.metric__value').forEach(function (value) {
-          countTo(value);
-        });
+        entry.target.querySelectorAll('.metric__value').forEach(countTo);
       });
     }, { rootMargin: '0px 0px -12% 0px', threshold: 0.05 });
 
@@ -583,8 +585,8 @@
     var spy = new IntersectionObserver(function (entries) {
       entries.forEach(function (entry) {
         if (!entry.isIntersecting) return;
-        $$('[data-nav]').forEach(function (link) {
-          link.classList.toggle('is-active', link.getAttribute('data-nav') === entry.target.id);
+        $$('[data-nav]').forEach(function (a) {
+          a.classList.toggle('is-active', a.getAttribute('data-nav') === entry.target.id);
         });
       });
     }, { rootMargin: '-45% 0px -50% 0px' });
@@ -605,7 +607,7 @@
       return;
     }
 
-    var duration = 900;
+    var duration = 950;
     var start = null;
 
     function frame(now) {
@@ -624,8 +626,7 @@
   function init() {
     var app = $('#app');
     app.appendChild(buildTopbar());
-
-    var main = el('main', { id: 'main' }, [
+    app.appendChild(el('main', { id: 'main' }, [
       buildHero(),
       buildMetrics(),
       buildApproach(),
@@ -634,21 +635,11 @@
       buildSkills(),
       buildEducation(),
       buildContact(),
-    ]);
-
-    app.appendChild(main);
+    ]));
     app.appendChild(buildFooter());
 
-    initTheme();
     initObservers();
-
-    var role = $('#role-text');
-    if (LESS_MOTION) {
-      role.classList.add('is-open');
-    } else {
-      role.style.setProperty('--rd-origin', 'right center');
-      window.setTimeout(function () { role.classList.add('is-open'); }, 420);
-    }
+    initTrail();
   }
 
   if (document.readyState === 'loading') {
