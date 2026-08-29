@@ -32,6 +32,7 @@ MODEL = Path.home() / ".u2net" / "u2net_human_seg.onnx"
 
 TARGET_W = 760          # ширина итогового файла, px (показывается вдвое меньше)
 ASPECT = 0.8            # ширина к высоте: портретный кадр 4:5
+HEAD_RATIO = 2.2        # высота кадра в высотах головы
 SHADOW = (0x1b, 0x22, 0x30)   # куда уходят тени — синевато-тёмный из палитры
 HIGHLIGHT = (0xe9, 0xec, 0xf4)  # куда уходят света
 FADE = 0.13             # доля высоты снизу, которая растворяется в фоне
@@ -71,46 +72,45 @@ def cutout(path: Path) -> tuple[np.ndarray, np.ndarray]:
     return gray, np.clip(mask, 0, 1)
 
 
-def crop(gray: np.ndarray, mask: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
-    rows = np.where(mask.max(axis=1) > 0.04)[0]
-    cols = np.where(mask.max(axis=0) > 0.04)[0]
-    if not len(rows) or not len(cols):
-        return gray, mask
-
-    pad_y = int(gray.shape[0] * 0.015)
-    pad_x = int(gray.shape[1] * 0.015)
-    y0 = max(0, rows[0] - pad_y)
-    y1 = min(gray.shape[0], rows[-1] + pad_y)
-    x0 = max(0, cols[0] - pad_x)
-    x1 = min(gray.shape[1], cols[-1] + pad_x)
-    return gray[y0:y1, x0:x1], mask[y0:y1, x0:x1]
-
-
 def reframe(gray: np.ndarray, mask: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
-    """Портретный кадр 4:5, привязанный к голове.
+    """Кадр 4:5 по голове и плечам.
 
-    Квадрат из исходника показывал слишком много свитера: лицо получалось
-    мелким, а срезанные краем кадра плечи бросались в глаза. Кадр по голове
-    читается как обычный портрет, а не как вырезанная фигура без плеч.
+    Размер головы определяется по маске: плечи — первая строка, где силуэт
+    резко расширяется. От этого и считается кадр, поэтому скрипт одинаково
+    работает и с тесным портретом, и со снимком по пояс.
     """
     height, width = gray.shape
     solid = mask > 0.5
+    widths = solid.sum(axis=1)
 
-    rows = np.where(solid.any(axis=1))[0]
-    top = int(rows[0]) if len(rows) else 0
+    rows = np.where(widths > 0)[0]
+    if not len(rows):
+        return gray, mask
 
-    band = solid[top:top + max(1, int(height * 0.35))]
-    xs = np.where(band.any(axis=0))[0]
-    face_x = int((xs[0] + xs[-1]) / 2) if len(xs) else width // 2
+    top = int(rows[0])
+    bottom = int(rows[-1])
+    subject = bottom - top + 1
 
-    new_h = height
+    head_w = max(1, int(widths[top:top + max(1, int(subject * 0.12))].max()))
+    shoulder = top + int(subject * 0.35)
+    for row in range(top + max(1, int(subject * 0.05)), bottom + 1):
+        if widths[row] > head_w * 1.6:
+            shoulder = row
+            break
+
+    head_h = max(1, shoulder - top)
+    new_h = int(min(height, head_h * HEAD_RATIO))
     new_w = int(round(new_h * ASPECT))
     if new_w > width:
         new_w = width
         new_h = int(round(new_w / ASPECT))
 
-    x0 = int(np.clip(face_x - new_w // 2, 0, width - new_w))
-    y0 = int(np.clip(top - int(new_h * 0.04), 0, height - new_h))
+    band = solid[top:shoulder]
+    xs = np.where(band.any(axis=0))[0]
+    face_x = int((xs[0] + xs[-1]) / 2) if len(xs) else width // 2
+
+    y0 = int(np.clip(top - head_h * 0.42, 0, max(0, height - new_h)))
+    x0 = int(np.clip(face_x - new_w // 2, 0, max(0, width - new_w)))
     return gray[y0:y0 + new_h, x0:x0 + new_w], mask[y0:y0 + new_h, x0:x0 + new_w]
 
 
@@ -135,21 +135,23 @@ def main() -> int:
     if not source.exists():
         raise SystemExit(f"Не найден файл {source}")
 
-    gray, mask = reframe(*crop(*cutout(source)))
+    gray, mask = reframe(*cutout(source))
 
-    height = round(gray.shape[0] * TARGET_W / gray.shape[1])
-    gray = cv2.resize(gray, (TARGET_W, height), interpolation=cv2.INTER_AREA)
-    mask = cv2.resize(mask, (TARGET_W, height), interpolation=cv2.INTER_AREA)
+    # Вверх не растягиваем: мыла на портрете быть не должно.
+    target_w = min(TARGET_W, gray.shape[1])
+    height = round(gray.shape[0] * target_w / gray.shape[1])
+    gray = cv2.resize(gray, (target_w, height), interpolation=cv2.INTER_AREA)
+    mask = cv2.resize(mask, (target_w, height), interpolation=cv2.INTER_AREA)
 
     # Плечи упираются в края кадра, поэтому низ и бока растворяются — иначе
     # силуэт обрывался бы ровными линиями прямо посреди страницы.
     fade_rows = max(1, int(height * FADE))
     mask[height - fade_rows:, :] *= (np.linspace(1.0, 0.0, fade_rows) ** 1.5)[:, None]
 
-    fade_cols = max(1, int(TARGET_W * SIDE_FADE))
+    fade_cols = max(1, int(target_w * SIDE_FADE))
     side = (np.linspace(0.0, 1.0, fade_cols) ** 1.2)
     mask[:, :fade_cols] *= side[None, :]
-    mask[:, TARGET_W - fade_cols:] *= side[::-1][None, :]
+    mask[:, target_w - fade_cols:] *= side[::-1][None, :]
 
     top_rows = max(1, int(height * TOP_FADE))
     mask[:top_rows, :] *= (np.linspace(0.0, 1.0, top_rows) ** 1.4)[:, None]
@@ -160,7 +162,7 @@ def main() -> int:
     Image.fromarray(rgba, mode="RGBA").save(OUT, "WEBP", quality=88, method=6)
 
     sys.stdout.reconfigure(encoding="utf-8")
-    print(f"{OUT.relative_to(ROOT)} - {TARGET_W}x{height}, {OUT.stat().st_size / 1024:.0f} KB")
+    print(f"{OUT.relative_to(ROOT)} - {target_w}x{height}, {OUT.stat().st_size / 1024:.0f} KB")
     return 0
 
 

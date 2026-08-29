@@ -189,10 +189,9 @@
     ]);
 
     var portrait = p.photo ? el('figure', { class: 'portrait' }, [
-      el('img', {
-        src: p.photo, alt: t(p.name), width: '760', height: '950',
-        decoding: 'async',
-      }),
+      // Размеры не проставляются числами: файл пересобирается скриптом и может
+      // поменяться в пикселях. Пропорция 4:5 задана в стилях — она постоянна.
+      el('img', { src: p.photo, alt: t(p.name), decoding: 'async' }),
     ]) : null;
 
     return el('section', { class: 'hero' }, [
