@@ -924,10 +924,54 @@
     var FLICKER_MS = 130;      // как часто пересобираются случайные символы
     var FLICKER_COUNT = 5;
 
-    var DROP_MIN_MS = 900;     // пауза между струйками в полях страницы
-    var DROP_MAX_MS = 2600;
-    var DROP_MAX = 3;          // сколько струек живёт одновременно
-    var DROP_SPEED = 24;       // ячеек в секунду
+    var BUG_FIRST_MS = 9000;   // первый паучок приходит быстрее прочих
+    var BUG_MIN_MS = 26000;    // пауза между появлениями    // пауза между появлениями паучка
+    var BUG_MAX_MS = 58000;
+    var BUG_FALL = 7;          // ячеек в секунду вниз
+    var BUG_CLIMB = 11;        // и обратно наверх
+    var BUG_FLEE = 34;         // если курсор подошёл вплотную
+    var BUG_HANG_MS = 2400;    // сколько висит, прежде чем уйти
+    var BUG_SCARE = 150;       // на каком расстоянии замечает курсор, px
+    var BUG_STEP_MS = 240;     // как часто перебирает лапками
+
+    var BUG_W = 5;             // паучок пять ячеек в ширину и столько же в высоту
+    var BUG_H = 5;
+
+    /* Голова `o`, брюшко `#` в боках `( )`, вокруг восемь лапок. В двух фазах
+       пары лапок меняются местами — передние вытягиваются, задние подбираются,
+       и наоборот: выходит перебор. Пробел значит «ячейку не трогаем», поэтому
+       сквозь паучка видно поле. */
+    var BUG_FRAMES = [
+      [
+        '\\', ' ', '|', ' ', '/',
+        ' ', '\\', 'o', '/', ' ',
+        ' ', '(', '#', ')', ' ',
+        ' ', '/', ' ', '\\', ' ',
+        '/', ' ', ' ', ' ', '\\',
+      ],
+      [
+        ' ', '\\', '|', '/', ' ',
+        '\\', ' ', 'o', ' ', '/',
+        ' ', '(', '#', ')', ' ',
+        '/', ' ', ' ', ' ', '\\',
+        ' ', '/', ' ', '\\', ' ',
+      ],
+    ];
+
+    /* Тело светится ярче лапок: иначе на фоне поля паучок не читается. */
+    function bugHeat(char) {
+      if (char === 'o' || char === '#') return 1;
+      if (char === '(' || char === ')') return 0.86;
+      return 0.74;
+    }
+
+    /* Брошенная ячейка возвращается полю. Знаки лапок и нити в алфавите поля
+       уже есть — их можно оставить, они догорят следом за движением. А `o`
+       головы там нет: единственная буква среди символов бросалась бы в глаза,
+       поэтому её меняем на случайный знак. */
+    function releaseCell(index) {
+      if (chars[index] === 'o') chars[index] = randomGlyph();
+    }
 
     var cols = 0;
     var rows = 0;
@@ -936,7 +980,7 @@
     var hot = [];              // индексы ячеек, где свет ещё есть
     var lit = null;            // флаг «уже в списке», чтобы не заводить дубли
     var margins = [];          // столбцы за пределами колонки с текстом
-    var drops = [];
+    var bug = null;
     var lastPoint = null;
     var lastFrame = 0;
     var running = false;
@@ -961,22 +1005,22 @@
       heat = new Float32Array(cols * rows);
       lit = new Uint8Array(cols * rows);
       hot = [];
-      drops = [];
+      bug = null;
 
       lastPoint = null;
       measureMargins();
       paintAll();
     }
 
-    /* Струйки идут только по полям страницы — там, где нет текста. На узком
-       экране полей не остаётся, и дождя просто не будет. */
+    /* Поля страницы — столбцы, где нет текста. По ним спускается паучок; на
+       узком экране полей не остаётся, и его там не бывает. */
     function measureMargins() {
       margins = [];
       var wrap = $('.wrap');
       if (!wrap) return;
 
       var box = wrap.getBoundingClientRect();
-      var pad = CELL_W * 2;
+      var pad = CELL_W;
 
       for (var col = 0; col < cols; col += 1) {
         var x = col * CELL_W + CELL_W / 2;
@@ -1035,46 +1079,130 @@
       }
     }
 
-    /* Струйка: голова спускается по столбцу, зажигает ячейку и пересобирает в
-       ней знак. Хвост рисовать не нужно — его делает то же затухание, что и у
-       следа за курсором. */
-    function spawnDrop() {
-      if (!margins.length || drops.length >= DROP_MAX || document.hidden) return;
+    /* Паучок спускается на нити в поле страницы, висит и уходит обратно.
+       Ему нужно пять столбцов подряд без текста, поэтому на узком экране, где
+       полей не остаётся, его не бывает. */
+    function bugColumn() {
+      var half = (BUG_W - 1) / 2;
+      var candidates = [];
 
-      drops.push({
-        col: margins[Math.floor(Math.random() * margins.length)],
-        row: -1 - Math.random() * 8,
-        speed: DROP_SPEED * (0.55 + Math.random()),
-        head: -1,
-      });
+      for (var i = half; i < margins.length - half; i += 1) {
+        var solid = true;
+        for (var k = 1; k <= half; k += 1) {
+          if (margins[i - k] !== margins[i] - k || margins[i + k] !== margins[i] + k) solid = false;
+        }
+        if (solid) candidates.push(margins[i]);
+      }
+
+      return candidates.length ? candidates[Math.floor(Math.random() * candidates.length)] : -1;
+    }
+
+    function spawnBug() {
+      if (bug || document.hidden || rows < 10) return;
+
+      var col = bugColumn();
+      if (col < 0) return;
+
+      bug = {
+        col: col,
+        row: -BUG_H,
+        depth: 3 + Math.random() * (rows * 0.5),
+        state: 'fall',
+        until: 0,
+        phase: 0,
+        stepAt: 0,
+        cells: [],
+      };
 
       wake();
     }
 
-    function advanceDrops(step) {
-      for (var i = drops.length - 1; i >= 0; i -= 1) {
-        var drop = drops[i];
-        drop.row += (drop.speed * step) / 1000;
+    /* Знаки в занятых ячейках подменяются на лапки и тело, тепло держится
+       каждый кадр: `touch` только поднимает его, а гаснет оно само. */
+    function paintBug() {
+      var top = Math.round(bug.row);
+      var legs = BUG_FRAMES[bug.phase];
+      var next = [];
+      var index;
+      var row;
 
-        var row = Math.floor(drop.row);
-        if (row >= rows) {
-          drops.splice(i, 1);
-          continue;
-        }
-        if (row < 0 || row === drop.head) continue;
-
-        drop.head = row;
-        var index = row * cols + drop.col;
-        chars[index] = randomGlyph();
-        touch(index, 1);
+      // Нить — от верхнего края до паучка.
+      for (row = 0; row < top; row += 1) {
+        index = row * cols + bug.col;
+        chars[index] = '|';
+        touch(index, 0.3);
+        next.push(index);
       }
+
+      for (var r = 0; r < BUG_H; r += 1) {
+        row = top + r;
+        if (row < 0 || row >= rows) continue;
+
+        for (var c = 0; c < BUG_W; c += 1) {
+          var char = legs[r * BUG_W + c];
+          if (char === ' ') continue;
+
+          index = row * cols + bug.col - (BUG_W - 1) / 2 + c;
+          chars[index] = char;
+          touch(index, bugHeat(char));
+          next.push(index);
+        }
+      }
+
+      var stays = {};
+      for (var i = 0; i < next.length; i += 1) stays[next[i]] = 1;
+      for (i = 0; i < bug.cells.length; i += 1) {
+        if (!stays[bug.cells[i]]) releaseCell(bug.cells[i]);
+      }
+
+      bug.cells = next;
+    }
+
+
+
+    function advanceBug(step, now) {
+      if (!bug) return;
+
+      if (bug.state === 'fall') {
+        bug.row += (BUG_FALL * step) / 1000;
+        if (bug.row >= bug.depth) {
+          bug.row = bug.depth;
+          bug.state = 'hang';
+          bug.until = now + BUG_HANG_MS;
+        }
+      } else if (bug.state === 'hang') {
+        if (now >= bug.until) bug.state = 'climb';
+      } else {
+        bug.row -= ((bug.state === 'flee' ? BUG_FLEE : BUG_CLIMB) * step) / 1000;
+        if (bug.row < -BUG_H) {
+          for (var i = 0; i < bug.cells.length; i += 1) releaseCell(bug.cells[i]);
+          bug = null;
+          return;
+        }
+      }
+
+      if (now - bug.stepAt > BUG_STEP_MS) {
+        bug.phase = bug.phase ? 0 : 1;
+        bug.stepAt = now;
+      }
+
+      paintBug();
+    }
+
+    /* Курсор подошёл вплотную — паучок удирает наверх. */
+    function scareBug(x, y) {
+      if (!bug || bug.state === 'flee') return;
+
+      var bx = bug.col * CELL_W + CELL_W / 2;
+      var by = (bug.row + BUG_H / 2) * CELL_H;
+      if (Math.abs(x - bx) < BUG_SCARE && Math.abs(y - by) < BUG_SCARE) bug.state = 'flee';
     }
 
     function frame(now) {
       var step = lastFrame ? Math.min(now - lastFrame, 64) : 16.7;
       lastFrame = now;
 
-      advanceDrops(step);
+      advanceBug(step, now);
 
       var fade = Math.pow(DECAY, step / 16.7);
       var kept = [];
@@ -1101,7 +1229,7 @@
       hot = kept;
       ctx.globalAlpha = 1;
 
-      if (hot.length || drops.length) window.requestAnimationFrame(frame);
+      if (hot.length || bug) window.requestAnimationFrame(frame);
       else running = false;
     }
 
@@ -1126,19 +1254,19 @@
 
         lastPoint = { x: x, y: y };
         warm(x, y);
+        scareBug(x, y);
       }, { passive: true });
     }
 
     if (LESS_MOTION) return;
 
-    /* Струйки запускаются по таймеру, а не в кадре: между ними поле засыпает,
-       и кадры тогда не считаются вовсе. */
-    (function scheduleDrop() {
+    (function scheduleBug(first) {
       window.setTimeout(function () {
-        spawnDrop();
-        scheduleDrop();
-      }, DROP_MIN_MS + Math.random() * (DROP_MAX_MS - DROP_MIN_MS));
-    })();
+        spawnBug();
+        scheduleBug(false);
+      }, first ? BUG_FIRST_MS * (0.6 + Math.random() * 0.8)
+        : BUG_MIN_MS + Math.random() * (BUG_MAX_MS - BUG_MIN_MS));
+    })(true);
 
     /* Медленное мерцание: несколько случайных символов пересобираются и
        перерисовываются поштучно. */
