@@ -332,8 +332,16 @@ a:hover { color: var(--text); }
   align-items: start;
 }
 
-/* Портрет выравнивается по середине строки. */
-.hero__grid .portrait { align-self: center; }
+/* Портрет ростом во весь текстовый блок: низ ложится на одну линию с нижним
+   краем кнопок, верх — с началом надписи. Высота берётся у строки сетки, а не
+   задаётся числом, поэтому линия не разъедется при правке текста. Ширина
+   следует за высотой по пропорции и заходит влево в зазор между колонками. */
+.hero__grid .portrait {
+  align-self: stretch;
+  justify-self: end;
+  height: 100%;
+  width: auto;
+}
 
 @media (max-width: 920px) {
   .hero__grid { grid-template-columns: minmax(0, 1fr); }
@@ -342,6 +350,8 @@ a:hover { color: var(--text); }
   .hero__grid .portrait {
     order: -1;
     align-self: start;
+    justify-self: start;
+    height: auto;
     width: min(15rem, 58%);
   }
 }
