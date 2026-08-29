@@ -451,11 +451,11 @@ a:hover { color: var(--text); }
 
 /* Анкета лентой под первым экраном */
 
-/* Колонки заданы явно: при автоподборе шесть пунктов вставали как 5 + 1 и
-   последний висел в отдельном ряду. */
+/* Колонки заданы явно и по числу пунктов: при автоподборе последний висел в
+   отдельном ряду. Пунктов пять — город, формат, переезд, опыт, почта. */
 .facts {
   display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 1.35rem 2rem;
   margin-block-start: clamp(2rem, 4vw, 3rem);
   padding-block-start: clamp(1.25rem, 3vw, 1.75rem);

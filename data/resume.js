@@ -8,9 +8,8 @@
  */
 
 window.CONFIG = {
-  // Показывать зарплатное ожидание в анкете.
-  showSalary: true,
-  // Язык по умолчанию: 'ru' или 'en'. Ссылка ?lang=en открывает вторую версию.
+  // Язык по умолчанию: 'ru' или 'en'. Английская версия страницы лежит по
+  // отдельному адресу `en.html`; ссылка `?lang=en` тоже продолжает работать.
   defaultLang: 'ru',
 };
 
@@ -30,7 +29,6 @@ window.RESUME = {
     factFormat: { ru: 'Формат', en: 'Format' },
     factRelocation: { ru: 'Переезд', en: 'Relocation' },
     factExperience: { ru: 'Опыт', en: 'Experience' },
-    factSalary: { ru: 'Ожидание', en: 'Expectation' },
     factEmail: { ru: 'Почта', en: 'Email' },
     years: { ru: 'лет', en: 'years old' },
     resultsTitle: { ru: 'Что изменилось после внедрений', en: 'What changed after the rollouts' },
@@ -94,7 +92,6 @@ window.RESUME = {
       ru: 'Без переезда, редкие командировки',
       en: 'No relocation, occasional trips',
     },
-    salary: { ru: '180 000 ₽ на руки', en: '180,000 ₽ net' },
     specializations: {
       ru: ['Бизнес-аналитик', 'Юрист', 'Менеджер продукта'],
       en: ['Business analyst', 'Lawyer', 'Product manager'],

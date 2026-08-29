@@ -39,6 +39,11 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      # Английская версия — отдельный файл со своими мета-тегами: поисковик и
+      # превью ссылки не выполняют скрипт и русского заголовка не увидят.
+      - name: Собрать английскую копию страницы
+        run: python tools/build_en.py
+
       - name: Собрать однофайловую версию
         run: python tools/build_single.py
 

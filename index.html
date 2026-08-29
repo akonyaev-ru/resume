@@ -9,10 +9,21 @@
   <meta name="color-scheme" content="dark" />
   <meta name="theme-color" content="#080a10" />
 
+  <!-- Английская версия — отдельная страница `en.html`, её собирает
+       tools/build_en.py. Раньше версии различались только параметром ?lang=en,
+       и поисковик с превью ссылки видели русские заголовок и описание в обеих. -->
+  <link rel="canonical" href="https://akonyaev-ru.github.io/resume/" />
+  <link rel="alternate" hreflang="ru" href="https://akonyaev-ru.github.io/resume/" />
+  <link rel="alternate" hreflang="en" href="https://akonyaev-ru.github.io/resume/en.html" />
+  <link rel="alternate" hreflang="x-default" href="https://akonyaev-ru.github.io/resume/" />
+
   <meta property="og:type" content="profile" />
   <meta property="og:title" content="Резюме Алексея Коняева" />
   <meta property="og:description" content="Специалист по LegalOPS и AI-разработке: автоматизация юридических и операционных процессов, внедрение ИИ." />
+  <meta property="og:url" content="https://akonyaev-ru.github.io/resume/" />
   <meta property="og:locale" content="ru_RU" />
+  <meta property="og:locale:alternate" content="en_US" />
+  <meta name="twitter:card" content="summary" />
 
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />

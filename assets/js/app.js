@@ -28,6 +28,11 @@
     var fromUrl = new URLSearchParams(location.search).get('lang');
     if (fromUrl && LANGS.indexOf(fromUrl) !== -1) return fromUrl;
 
+    // У языковой копии страницы язык записан в разметке и весит больше
+    // сохранённого выбора: по этому адресу пришли именно за ним.
+    var pinned = metaContent('cv:lang');
+    if (pinned && LANGS.indexOf(pinned) !== -1) return pinned;
+
     var saved = null;
     try { saved = localStorage.getItem('cv:lang'); } catch (e) { /* приватный режим */ }
     if (saved && LANGS.indexOf(saved) !== -1) return saved;
@@ -50,11 +55,37 @@
     return t(R.ui[key]);
   }
 
+  function metaContent(name) {
+    var node = document.querySelector('meta[name="' + name + '"]');
+    return node && node.getAttribute('content');
+  }
+
+  /* Языковых копий страницы две — русская `index.html` и английская `en.html`,
+     у каждой свои мета-теги. Ссылки друг на друга лежат в
+     <link rel="alternate">, оттуда их и берёт переключатель. */
+  function langPage(lang) {
+    // Одиночный файл (dist/resume.html) уходит по почте и открывается с диска:
+    // уводить его на сайт нельзя, язык там переключается на месте.
+    if (location.protocol !== 'http:' && location.protocol !== 'https:') return null;
+
+    var link = document.querySelector('link[rel="alternate"][hreflang="' + lang + '"]');
+    if (!link) return null;
+
+    try {
+      var url = new URL(link.getAttribute('href'), location.href);
+      return url.origin === location.origin ? url.href : null;
+    } catch (e) { return null; }
+  }
+
   function setLang(lang) {
     if (lang === LANG || LANGS.indexOf(lang) === -1) return;
-    LANG = lang;
 
     try { localStorage.setItem('cv:lang', lang); } catch (e) { /* приватный режим */ }
+
+    var page = langPage(lang);
+    if (page) { location.href = page; return; }
+
+    LANG = lang;
     try {
       var url = new URL(location.href);
       url.searchParams.set('lang', lang);
@@ -214,8 +245,6 @@
       [u('factRelocation'), t(p.relocation)],
       [u('factExperience'), t(p.experienceTotal)],
     ];
-
-    if (CFG.showSalary) rows.push([u('factSalary'), t(p.salary)]);
 
     return el('div', { class: 'wrap facts' }, rows.map(function (row) {
       return el('div', { class: 'fact' }, [
