@@ -327,14 +327,14 @@ a:hover { color: var(--text); }
 
 .hero__grid {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 20rem;
+  grid-template-columns: minmax(0, 1fr) 22rem;
   gap: clamp(1.5rem, 4vw, 3.5rem);
   align-items: start;
 }
 
-/* Бейдж прижат к низу строки: так он заканчивается вровень с кнопками, а не
-   висит над пустотой. */
-.hero__grid .badge { align-self: end; }
+/* Круглый бейдж выравнивается по середине строки: прижатый к низу, он
+   оставлял дыру над собой. */
+.hero__grid .badge { align-self: center; }
 
 @media (max-width: 920px) {
   .hero__grid { grid-template-columns: minmax(0, 1fr); }
@@ -431,14 +431,11 @@ a:hover { color: var(--text); }
   background: radial-gradient(52% 52% at 52% 46%, rgba(124, 124, 255, 0.22), transparent 70%);
 }
 
-/* Кант вырубки — три вложенные коробки с одним контуром: тёмный ободок,
-   светлый ободок, содержимое. Рамкой его не сделать, clip-path режет и её. */
-.badge__die,
-.badge__ring,
-.badge__inner { clip-path: url(#badge-shield); }
-
+/* Круглый медальон: тёмный ободок снаружи, светлый кант, содержимое внутри. */
 .badge__die {
-  aspect-ratio: 4 / 5;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  border: 3px solid #05070c;
   padding: 3px;
   background: #05070c;
   filter: drop-shadow(0 18px 30px rgba(0, 0, 0, 0.7));
@@ -452,12 +449,15 @@ a:hover { color: var(--text); }
 .badge__ring {
   height: 100%;
   padding: 3px;
+  border-radius: 50%;
   background: linear-gradient(150deg, #f2f5ff, var(--edge) 45%, #8d95ad);
 }
 
 .badge__inner {
   position: relative;
   height: 100%;
+  border-radius: 50%;
+  overflow: hidden;
 }
 
 /* Пока курсор на бейдже, наклон должен успевать за ним; отпустили — плавный
@@ -492,15 +492,16 @@ a:hover { color: var(--text); }
 
 .badge.is-live .badge__foil { opacity: 0.92; }
 
-/* Фигура вписывается целиком с полями: object-fit: cover срезал плечи, а
-   наклейка с обрезанным по краям человеком выглядит браком печати. */
+/* Фигура целиком внутри круга. Размер подобран так, чтобы плечи — самое
+   широкое место силуэта — не доставали до окружности: на высоте низа
+   фотографии круг ещё шире её самой. */
 .badge__photo {
   position: absolute;
-  inset: 4% 6% 6%;
-  width: 88%;
-  height: 90%;
-  object-fit: contain;
-  object-position: 50% 0;
+  inset-block-start: 10%;
+  inset-inline-start: 50%;
+  transform: translateX(-50%);
+  height: 72%;
+  width: auto;
 }
 
 /* Блик — белое пятно под самым курсором, как отсвет на плёнке. */

@@ -32,8 +32,8 @@ OUT = ROOT / "assets" / "img" / "portrait.webp"
 MODEL = Path.home() / ".u2net" / "u2net_human_seg.onnx"
 
 TARGET_W = 760          # ширина итогового файла, px (показывается вдвое меньше)
-ASPECT = 0.8            # ширина к высоте: портретный кадр 4:5
-HEAD_RATIO = 2.2        # высота кадра в высотах головы
+ASPECT = 0.92           # ширина к высоте: кадр почти квадратный — под круг
+HEAD_RATIO = 2.05       # высота кадра в высотах головы
 SHADOW = (0x1b, 0x22, 0x30)   # куда уходят тени — синевато-тёмный из палитры
 HIGHLIGHT = (0xe9, 0xec, 0xf4)  # куда уходят света
 # Растворяется только низ, и совсем немного: там силуэт обрезан краем кадра.
@@ -161,10 +161,19 @@ def main() -> int:
         rows = max(1, int(height * TOP_FADE))
         mask[:rows, :] *= (np.linspace(0.0, 1.0, rows) ** 1.4)[:, None]
 
-    rgba = np.dstack([duotone(gray), (mask * 255).astype(np.uint8)])
+    alpha = (mask * 255).astype(np.uint8)
+    # Почти прозрачное дожимаем до нуля: лоссовое сжатие размазывает такую
+    # альфу, и на светлом фоне проступает прямоугольник картинки.
+    alpha[alpha < 8] = 0
+
+    rgba = np.dstack([duotone(gray), alpha])
 
     OUT.parent.mkdir(parents=True, exist_ok=True)
-    Image.fromarray(rgba, mode="RGBA").save(OUT, "WEBP", quality=88, method=6)
+    # Цвет жмём с потерями, прозрачность — нет. Иначе на светлом фоне
+    # проступает прямоугольник картинки: лоссовая альфа шумит по всему кадру.
+    Image.fromarray(rgba, mode="RGBA").save(
+        OUT, "WEBP", quality=90, alpha_quality=100, method=6,
+    )
 
     sys.stdout.reconfigure(encoding="utf-8")
     print(f"{OUT.relative_to(ROOT)} - {target_w}x{height}, {OUT.stat().st_size / 1024:.0f} KB")
