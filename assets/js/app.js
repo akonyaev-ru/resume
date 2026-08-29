@@ -482,9 +482,11 @@
     state.framing = key;
 
     try { localStorage.setItem('cv:framing', key); } catch (e) { /* приватный режим */ }
-    var url = new URL(location.href);
-    url.searchParams.set('v', key);
-    history.replaceState(null, '', url);
+    try {
+      var url = new URL(location.href);
+      url.searchParams.set('v', key);
+      history.replaceState(null, '', url);
+    } catch (e) { /* страница открыта во встроенном окне без своей истории */ }
 
     $$('#framing .framing__btn').forEach(function (btn) {
       btn.setAttribute('aria-pressed', String(btn.getAttribute('data-framing') === key));
