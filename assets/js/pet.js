@@ -13,8 +13,6 @@
   var FINE_POINTER = window.matchMedia('(hover: hover) and (pointer: fine)').matches;
 
   var PIXEL = 3;             // сторона «пикселя» рисунка, px
-  var ART_W = 20;            // ширина рисунка: существо и место под ноутбук
-  var ART_H = 11;
 
   var SPEED = 24;            // как быстро идёт, px в секунду
   var WALK_MS = 170;         // смена кадра шага
@@ -36,191 +34,206 @@
 
   /* --- кадры ------------------------------------------------------------- */
 
-  /* Точка — пусто, буква — цвет из COLORS. Существо занимает левую часть
-     строки, ноутбук появляется справа в кадрах раскрытия и работы.
-     Кадры перерисовывает tools/draw_pet.py — руками их не правят. */
+  /* Точка — пусто, буква — цвет из COLORS. Два слоя: существо шириной ровно
+     в себя (при развороте зеркалится внутри своей рамки и не съезжает) и
+     ноутбук, который не зеркалится никогда. Кадры перерисовывает
+     tools/draw_pet.py — руками их не правят. */
   var ART = {
     idle: [[
-        '.gggggggggg.........',
-        'gggggggggggg........',
-        'gggggggggggg........',
-        'ggwwggggwwgg........',
-        'ggwpggggwpgg........',
-        'ggwwggggwwgg........',
-        'gggggggggggg........',
-        'gggggggggggg........',
-        '.gggggggggg.........',
-        '.gg.gg.gg.gg........',
-        '.gg.gg.gg.gg........',
+        '.gggggggggg.',
+        'gggggggggggg',
+        'gggggggggggg',
+        'ggwwggggwwgg',
+        'ggwpggggwpgg',
+        'ggwwggggwwgg',
+        'gggggggggggg',
+        'gggggggggggg',
+        '.gggggggggg.',
+        '.gg.gg.gg.gg',
+        '.gg.gg.gg.gg',
       ], [
-        '....................',
-        '.gggggggggg.........',
-        'gggggggggggg........',
-        'gggggggggggg........',
-        'ggwwggggwwgg........',
-        'ggwpggggwpgg........',
-        'ggwwggggwwgg........',
-        'gggggggggggg........',
-        'gggggggggggg........',
-        '.gggggggggg.........',
-        '.gg.gg.gg.gg........',
+        '............',
+        '.gggggggggg.',
+        'gggggggggggg',
+        'gggggggggggg',
+        'ggwwggggwwgg',
+        'ggwpggggwpgg',
+        'ggwwggggwwgg',
+        'gggggggggggg',
+        'gggggggggggg',
+        '.gggggggggg.',
+        '.gg.gg.gg.gg',
       ]],
     blink: [[
-        '.gggggggggg.........',
-        'gggggggggggg........',
-        'gggggggggggg........',
-        'gggggggggggg........',
-        'ggppggggppgg........',
-        'gggggggggggg........',
-        'gggggggggggg........',
-        'gggggggggggg........',
-        '.gggggggggg.........',
-        '.gg.gg.gg.gg........',
-        '.gg.gg.gg.gg........',
+        '.gggggggggg.',
+        'gggggggggggg',
+        'gggggggggggg',
+        'gggggggggggg',
+        'ggppggggppgg',
+        'gggggggggggg',
+        'gggggggggggg',
+        'gggggggggggg',
+        '.gggggggggg.',
+        '.gg.gg.gg.gg',
+        '.gg.gg.gg.gg',
       ]],
     walk: [[
-        '.gggggggggg.........',
-        'gggggggggggg........',
-        'gggggggggggg........',
-        'ggwwggggwwgg........',
-        'ggwpggggwpgg........',
-        'ggwwggggwwgg........',
-        'gggggggggggg........',
-        'gggggggggggg........',
-        '.gggggggggg.........',
-        'gg..gg.gg.gg........',
-        '....gg....gg........',
+        '.gggggggggg.',
+        'gggggggggggg',
+        'gggggggggggg',
+        'ggwwggggwwgg',
+        'ggwpggggwpgg',
+        'ggwwggggwwgg',
+        'gggggggggggg',
+        'gggggggggggg',
+        '.gggggggggg.',
+        'gg..gg.gg.gg',
+        '....gg....gg',
       ], [
-        'gggggggggggg........',
-        'gggggggggggg........',
-        'ggwwggggwwgg........',
-        'ggwpggggwpgg........',
-        'ggwwggggwwgg........',
-        'gggggggggggg........',
-        'gggggggggggg........',
-        '.gggggggggg.........',
-        '.gg.gg.gg.gg........',
-        '.gg.gg.gg.gg........',
-        '....................',
+        'gggggggggggg',
+        'gggggggggggg',
+        'ggwwggggwwgg',
+        'ggwpggggwpgg',
+        'ggwwggggwwgg',
+        'gggggggggggg',
+        'gggggggggggg',
+        '.gggggggggg.',
+        '.gg.gg.gg.gg',
+        '.gg.gg.gg.gg',
+        '............',
       ], [
-        '.gggggggggg.........',
-        'gggggggggggg........',
-        'gggggggggggg........',
-        'ggwwggggwwgg........',
-        'ggwpggggwpgg........',
-        'ggwwggggwwgg........',
-        'gggggggggggg........',
-        'gggggggggggg........',
-        '.gggggggggg.........',
-        '.gg..gg.gggg........',
-        '.gg.....gg..........',
+        '.gggggggggg.',
+        'gggggggggggg',
+        'gggggggggggg',
+        'ggwwggggwwgg',
+        'ggwpggggwpgg',
+        'ggwwggggwwgg',
+        'gggggggggggg',
+        'gggggggggggg',
+        '.gggggggggg.',
+        '.gg..gg.gggg',
+        '.gg.....gg..',
       ], [
-        '.gggggggggg.........',
-        'gggggggggggg........',
-        'gggggggggggg........',
-        'ggwwggggwwgg........',
-        'ggwpggggwpgg........',
-        'ggwwggggwwgg........',
-        'gggggggggggg........',
-        'gggggggggggg........',
-        '.gggggggggg.........',
-        '.gg.gg.gg.gg........',
-        '.gg.gg.gg.gg........',
+        '.gggggggggg.',
+        'gggggggggggg',
+        'gggggggggggg',
+        'ggwwggggwwgg',
+        'ggwpggggwpgg',
+        'ggwwggggwwgg',
+        'gggggggggggg',
+        'gggggggggggg',
+        '.gggggggggg.',
+        '.gg.gg.gg.gg',
+        '.gg.gg.gg.gg',
       ]],
     hop: [[
-        'gggggggggggg........',
-        'ggwwggggwwgg........',
-        'ggwpggggwpgg........',
-        'ggwwggggwwgg........',
-        'gggggggggggg........',
-        'gggggggggggg........',
-        '.gggggggggg.........',
-        'g..gg.gggg..........',
-        'g..gg.gggg..........',
-        '....................',
-        '....................',
-      ]],
-    open: [[
-        '.gggggggggg.........',
-        'gggggggggggg........',
-        'gggggggggggg........',
-        'ggwwggggwwgg........',
-        'ggwpggggwpgg........',
-        'ggwwggggwwgg........',
-        'gggggggggggg........',
-        'gggggggggggg........',
-        '.gggggggggg.........',
-        '.gg.gg.gg.gg.kkkkkkk',
-        '.gg.gg.gg.gg.kkkkkkk',
-      ], [
-        '.gggggggggg.........',
-        'gggggggggggg........',
-        'gggggggggggg........',
-        'ggwwggggwwgg........',
-        'ggwpggggwpgg........',
-        'ggwwggggwwgg........',
-        'gggggggggggg........',
-        'gggggggggggg..kk....',
-        '.gggggggggg.....kk..',
-        '.gg.gg.gg.gg......kk',
-        '.gg.gg.gg.gg.kkkkkkk',
-      ], [
-        '.gggggggggg.........',
-        'gggggggggggg........',
-        'gggggggggggg........',
-        'ggwwggggwwgg........',
-        'ggwpggggwpgg....k...',
-        'ggwwggggwwgg.....k..',
-        'gggggggggggg.....k..',
-        'gggggggggggg......k.',
-        '.gggggggggg.......k.',
-        '.gg.gg.gg.gg.......k',
-        '.gg.gg.gg.gg.kkkkkkk',
-      ], [
-        '.gggggggggg.........',
-        'gggggggggggg........',
-        'gggggggggggg........',
-        'ggwwggggwwgg........',
-        'ggwpggggwpgg......kk',
-        'ggwwggggwwgg......kk',
-        'gggggggggggg......kk',
-        'gggggggggggg......kk',
-        '.gggggggggg.......kk',
-        '.gg.gg.gg.gg......kk',
-        '.gg.gg.gg.gg.kkkkkkk',
+        'gggggggggggg',
+        'ggwwggggwwgg',
+        'ggwpggggwpgg',
+        'ggwwggggwwgg',
+        'gggggggggggg',
+        'gggggggggggg',
+        '.gggggggggg.',
+        '...gg.gggg..',
+        '...gg.gggg..',
+        '............',
+        '............',
       ]],
     type: [[
-        '.gggggggggg.........',
-        'gggggggggggg........',
-        'gggggggggggg........',
-        'ggwwggggwwgg........',
-        'ggwpggggwpgg......kk',
-        'ggwwggggwwgg......kk',
-        'gggggggggggg......kk',
-        'gggggggggggg......kk',
-        '.gggggggggg.gg....kk',
-        '.gg.gg.gg.gg......kk',
-        '.gg.gg.gg.gg.kkkkkkk',
+        '.gggggggggg.',
+        'gggggggggggg',
+        'gggggggggggg',
+        'ggwwggggwwgg',
+        'ggwpggggwpgg',
+        'ggwwggggwwgg',
+        'gggggggggggg',
+        'gggggggggggg',
+        '.ggggggggggg',
+        '.gg.gg.gg.gg',
+        '.gg.gg.gg.gg',
       ], [
-        '....................',
-        '.gggggggggg.........',
-        'gggggggggggg........',
-        'gggggggggggg........',
-        'ggwwggggwwgg......kk',
-        'ggwpggggwpgg......kk',
-        'ggwwggggwwgg......kk',
-        'gggggggggggg......kk',
-        'gggggggggggg......kk',
-        '.gggggggggg.gg....kk',
-        '.gg.gg.gg.gg.kkkkkkk',
+        '............',
+        '.gggggggggg.',
+        'gggggggggggg',
+        'gggggggggggg',
+        'ggwwggggwwgg',
+        'ggwpggggwpgg',
+        'ggwwggggwwgg',
+        'gggggggggggg',
+        'gggggggggggg',
+        '.ggggggggggg',
+        '.gg.gg.gg.gg',
       ]],
   };
 
+  // Крышка: лежит, поднимается, поднимается выше, стоит с наклоном.
+  var LAPTOP = [
+    [
+        '........',
+        '........',
+        '........',
+        '........',
+        '........',
+        '........',
+        '........',
+        '........',
+        '........',
+        'kkkkkkk.',
+        'kkkkkkk.',
+      ],
+    [
+        '........',
+        '........',
+        '........',
+        '........',
+        '........',
+        '........',
+        '........',
+        '.kk.....',
+        '...kk...',
+        '.....kk.',
+        'kkkkkkk.',
+      ],
+    [
+        '........',
+        '........',
+        '........',
+        '........',
+        '...k....',
+        '....k...',
+        '....k...',
+        '.....k..',
+        '.....k..',
+        '......k.',
+        'kkkkkkk.',
+      ],
+    [
+        '........',
+        '........',
+        '....kk..',
+        '....kk..',
+        '.....kk.',
+        '.....kk.',
+        '.....kk.',
+        '.....kk.',
+        '......kk',
+        '......kk',
+        'kkkkkkk.',
+      ],
+  ];
+
   /* --- сборка кадров ----------------------------------------------------- */
 
+  // Размеры берутся из самих кадров, чтобы не разъезжаться с рисовалкой.
+  var BODY_W = ART.idle[0][0].length;
+  var LAP_W = LAPTOP[0][0].length;
+  var ART_H = ART.idle[0].length;
+  var OPEN_LAST = LAPTOP.length - 1;
+
   function render(art, flip) {
+    var width = art[0].length;
     var canvas = document.createElement('canvas');
-    canvas.width = ART_W * PIXEL;
+    canvas.width = width * PIXEL;
     canvas.height = ART_H * PIXEL;
 
     var ctx = canvas.getContext('2d');
@@ -230,7 +243,7 @@
         if (!color) continue;
 
         ctx.fillStyle = color;
-        ctx.fillRect((flip ? ART_W - 1 - x : x) * PIXEL, y * PIXEL, PIXEL, PIXEL);
+        ctx.fillRect((flip ? width - 1 - x : x) * PIXEL, y * PIXEL, PIXEL, PIXEL);
       }
     }
 
@@ -244,11 +257,15 @@
     });
   });
 
+  // Ноутбук зеркалить нельзя: он должен стоять на месте и открываться в одну
+  // сторону, как бы существо ни разворачивалось.
+  var laptops = LAPTOP.map(function (art) { return render(art, false); });
+
   /* --- паучок ------------------------------------------------------------ */
 
   var canvas = document.createElement('canvas');
   canvas.className = 'pet';
-  canvas.width = ART_W * PIXEL;
+  canvas.width = (BODY_W + LAP_W) * PIXEL;
   canvas.height = ART_H * PIXEL;
   canvas.setAttribute('aria-hidden', 'true');
   canvas.title = 'Погладить';
@@ -276,10 +293,14 @@
     canvas.style.transform = 'translateX(' + Math.round(pet.x) + 'px)';
   }
 
-  function draw(name, index) {
+  /* Существо зеркалится внутри своей рамки — поэтому при развороте остаётся на
+     месте, а не перепрыгивает. Ноутбук рисуется вторым слоем справа и всегда в
+     одну сторону. */
+  function draw(name, index, lap) {
     var set = sprites[name][index % sprites[name].length];
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.drawImage(pet.dir < 0 ? set.left : set.right, 0, 0);
+    if (lap !== null && lap !== undefined) ctx.drawImage(laptops[lap], BODY_W * PIXEL, 0);
   }
 
   function enter(state, now, until) {
@@ -326,7 +347,7 @@
       pet.frameAt = now;
       pet.frame += 1;
 
-      if (pet.frame >= sprites.open.length) {
+      if (pet.frame > OPEN_LAST) {
         if (pet.state === 'open') enter('type', now, now + 8000 + Math.random() * 9000);
         else decide(now);
       }
@@ -339,27 +360,28 @@
       return;
     }
 
+
     if (now >= pet.until) decide(now);
   }
 
   function pick(now) {
     if (pet.state === 'walk') {
       if (now - pet.frameAt > WALK_MS) { pet.frame += 1; pet.frameAt = now; }
-      return draw('walk', pet.frame);
+      return draw('walk', pet.frame, null);
     }
 
-    if (pet.state === 'open') return draw('open', Math.min(pet.frame, 3));
-    if (pet.state === 'close') return draw('open', Math.max(0, 3 - pet.frame));
-    if (pet.state === 'type') return draw('type', pet.frame);
-    if (pet.state === 'hop') return draw('hop', 0);
+    if (pet.state === 'open') return draw('idle', 0, Math.min(pet.frame, OPEN_LAST));
+    if (pet.state === 'close') return draw('idle', 0, Math.max(0, OPEN_LAST - pet.frame));
+    if (pet.state === 'type') return draw('type', pet.frame, OPEN_LAST);
+    if (pet.state === 'hop') return draw('hop', 0, null);
 
     if (now - pet.blinkAt > BLINK_EVERY) {
       if (now - pet.blinkAt > BLINK_EVERY + BLINK_MS) pet.blinkAt = now;
-      return draw('blink', 0);
+      return draw('blink', 0, null);
     }
 
     // Стоя существо дышит: два кадра сменяются медленно и сами по себе.
-    return draw('idle', Math.floor(now / BREATH_MS));
+    return draw('idle', Math.floor(now / BREATH_MS), null);
   }
 
   function frame(now) {
@@ -404,7 +426,7 @@
      тогда, когда курсор действительно на существе. */
   function hover(x, y) {
     var box = canvas.getBoundingClientRect();
-    var on = x > box.left && x < box.left + PIXEL * 19 &&
+    var on = x > box.left && x < box.left + PIXEL * BODY_W &&
       y > box.top + PIXEL * 3 && y < box.bottom;
 
     canvas.style.pointerEvents = on ? 'auto' : 'none';
@@ -420,11 +442,11 @@
   place();
 
   if (LESS_MOTION) {
-    draw('open', 3);
+    draw('idle', 0, OPEN_LAST);
     return;
   }
 
-  draw('idle', 0);
+  draw('idle', 0, null);
   wake();
 
   canvas.addEventListener('click', poke);

@@ -1,23 +1,25 @@
 # -*- coding: utf-8 -*-
-"""Рисует кадры существа и переписывает ими таблицу ART в assets/js/pet.js.
+"""Рисует кадры существа и ноутбука и переписывает ими таблицы в pet.js.
 
     python tools/draw_pet.py
 
 Существо простое: блочное тело, два светлых глаза со зрачками, четыре лапки —
-ровно столько деталей, сколько читается в 12 клетках. Скрипт делает из одной
-карты все кадры: шаг, дыхание, моргание, прыжок, раскрытие ноутбука и работу за
-ним. Логику в `pet.js` он не трогает — только блок кадров между служебными
-строками «кадры» и «сборка кадров».
+ровно столько деталей, сколько читается в двенадцати клетках.
 
-Обводки нет: тёмная страница сама работает контуром.
+Кадры разложены на два слоя. Существо — свой слой шириной ровно в него самого:
+при развороте оно зеркалится внутри своей же рамки и потому остаётся на месте.
+Ноутбук — отдельный слой справа, он не зеркалится никогда: стоит, где поставили,
+и крышка всегда откидывается в одну сторону.
+
+Логику в `pet.js` скрипт не трогает — только блоки кадров между служебными
+строками.
 """
 
 from __future__ import annotations
 
 from pathlib import Path
 
-# Тело без лап: g — корпус, w — белок глаза, p — зрачок. Смотрит вправо, туда
-# же, куда ставится ноутбук.
+# Тело без лап: g — корпус, w — белок глаза, p — зрачок. Смотрит вправо.
 BODY = [
     '.gggggggggg.',
     'gggggggggggg',
@@ -30,8 +32,8 @@ BODY = [
     '.gggggggggg.',
 ]
 
-BODY_W = len(BODY[0])
-W = 20               # 12 клеток существу, дальше место под ноутбук
+BODY_W = len(BODY[0])       # ширина слоя существа
+LAP_W = 8                   # ширина слоя ноутбука
 H = 11
 GROUND = H - 1
 LEGS_TOP = len(BODY)
@@ -41,18 +43,18 @@ LEGS = {
     'stand': ((1, 2), (4, 5), (7, 8), (10, 11)),
     'walkA': ((0, 1), (4, 5), (7, 8), (10, 11)),
     'walkB': ((1, 2), (5, 6), (8, 9), (10, 11)),
-    'tuck': ((3, 4), (6, 7), (8, 9), (0, 0)),
+    'tuck': ((3, 4), (6, 7), (8, 9), (-1, -1)),
 }
 
 
-def blank():
-    return [['.'] * W for _ in range(H)]
+def blank(width):
+    return [['.'] * width for _ in range(H)]
 
 
 def rect(g, x0, y0, x1, y1, ch):
     for y in range(y0, y1 + 1):
         for x in range(x0, x1 + 1):
-            if 0 <= y < H and 0 <= x < W:
+            if 0 <= y < H and 0 <= x < len(g[0]):
                 g[y][x] = ch
 
 
@@ -64,7 +66,7 @@ def line(g, x0, y0, x1, y1, ch):
     err = dx - dy
 
     while True:
-        if 0 <= y0 < H and 0 <= x0 < W:
+        if 0 <= y0 < H and 0 <= x0 < len(g[0]):
             g[y0][x0] = ch
         if x0 == x1 and y0 == y1:
             break
@@ -77,10 +79,10 @@ def line(g, x0, y0, x1, y1, ch):
             y0 += sy
 
 
-def body(legs='stand', eyes=True, lift=0, crouch=0, step=0):
+def body(legs='stand', eyes=True, lift=0, crouch=0, step=0, paw=None):
     """legs — как стоят лапы; lift — подскок целиком; crouch — присесть на
-    клетку; step — какая пара лап оторвана от земли."""
-    g = blank()
+    клетку; step — какая пара лап оторвана; paw — лапа тянется к клавишам."""
+    g = blank(BODY_W)
     shift = crouch - lift
 
     for y, row in enumerate(BODY):
@@ -93,60 +95,52 @@ def body(legs='stand', eyes=True, lift=0, crouch=0, step=0):
 
     top = LEGS_TOP + shift
     for i, (x0, x1) in enumerate(LEGS[legs]):
-        if x1 < x0:
+        if x1 < x0 or x0 < 0:
             continue
         short = 1 if step and (i % 2 == (step - 1)) else 0
         rect(g, x0, top, x1, GROUND - lift - short, 'g')
 
     if not eyes:
         for y in range(H):
-            for x in range(W):
+            for x in range(BODY_W):
                 if g[y][x] in 'wp':
                     g[y][x] = 'g'
         # Прикрытые глаза — две короткие тёмные чёрточки.
         rect(g, 2, 4 + shift, 3, 4 + shift, 'p')
         rect(g, 8, 4 + shift, 9, 4 + shift, 'p')
 
+    # Лапа на клавишах: тянется вправо, к соседнему слою с ноутбуком.
+    if paw is not None:
+        y = GROUND - 2 if paw else GROUND - 1
+        rect(g, BODY_W - 2, y, BODY_W - 1, y, 'g')
+
     return g
 
 
 def laptop(stage):
-    """Две серые полоски: клавиатура лежит, крышка поднимается.
+    """Две серые полоски: клавиатура лежит, крышка поднимается и в раскрытом
+    виде стоит с наклоном назад, как у настоящего ноутбука.
     stage: 0 — закрыт, 1 и 2 — раскрывается, 3 — открыт."""
-    g = blank()
+    g = blank(LAP_W)
+    hinge = 6
 
-    rect(g, 13, GROUND, 19, GROUND, 'k')       # клавиатура
+    rect(g, 0, GROUND, hinge, GROUND, 'k')          # клавиатура
 
     if stage == 0:
-        rect(g, 13, GROUND - 1, 19, GROUND - 1, 'k')
+        rect(g, 0, GROUND - 1, hinge, GROUND - 1, 'k')
     elif stage == 1:
-        line(g, 19, GROUND - 1, 14, GROUND - 3, 'k')
+        line(g, hinge, GROUND - 1, 1, GROUND - 3, 'k')
     elif stage == 2:
-        line(g, 19, GROUND - 1, 16, GROUND - 6, 'k')
+        line(g, hinge, GROUND - 1, 3, GROUND - 6, 'k')
     else:
-        rect(g, 18, GROUND - 6, 19, GROUND - 1, 'k')
+        # Крышка в две клетки толщиной, отклонена назад на две клетки.
+        line(g, hinge, GROUND - 1, hinge - 2, GROUND - 8, 'k')
+        line(g, hinge + 1, GROUND - 1, hinge - 1, GROUND - 8, 'k')
 
     return g
 
 
-def paws(g, up):
-    """Передняя лапа тянется к клавишам и постукивает по ним."""
-    g = [row[:] for row in g]
-    y = GROUND - 2 if up else GROUND - 1
-    rect(g, 12, y, 13, y, 'g')
-    return g
-
-
-def merge(a, b):
-    g = [row[:] for row in a]
-    for y in range(H):
-        for x in range(W):
-            if b[y][x] != '.':
-                g[y][x] = b[y][x]
-    return g
-
-
-FRAMES = [
+BODY_FRAMES = [
     # Стоя существо дышит: тело оседает на клетку, лапы остаются на месте.
     ('idle', [lambda: body(), lambda: body(crouch=1)]),
     ('blink', [lambda: body(eyes=False)]),
@@ -157,38 +151,39 @@ FRAMES = [
         lambda: body(legs='stand'),
     ]),
     ('hop', [lambda: body(legs='tuck', lift=2)]),
-    ('open', [
-        lambda: merge(body(), laptop(0)),
-        lambda: merge(body(), laptop(1)),
-        lambda: merge(body(), laptop(2)),
-        lambda: merge(body(), laptop(3)),
-    ]),
-    ('type', [
-        lambda: paws(merge(body(), laptop(3)), True),
-        lambda: paws(merge(body(crouch=1), laptop(3)), False),
-    ]),
+    ('type', [lambda: body(paw=True), lambda: body(crouch=1, paw=False)]),
 ]
+
+LAP_FRAMES = [laptop(0), laptop(1), laptop(2), laptop(3)]
 
 HEAD = '  /* --- кадры ------------------------------------------------------------- */'
 TAIL = '  /* --- сборка кадров ----------------------------------------------------- */'
 
 NOTE = (
-    '  /* Точка — пусто, буква — цвет из COLORS. Существо занимает левую часть\n'
-    '     строки, ноутбук появляется справа в кадрах раскрытия и работы.\n'
-    '     Кадры перерисовывает tools/draw_pet.py — руками их не правят. */\n'
+    '  /* Точка — пусто, буква — цвет из COLORS. Два слоя: существо шириной ровно\n'
+    '     в себя (при развороте зеркалится внутри своей рамки и не съезжает) и\n'
+    '     ноутбук, который не зеркалится никогда. Кадры перерисовывает\n'
+    '     tools/draw_pet.py — руками их не правят. */\n'
 )
+
+
+def grid_js(grid) -> str:
+    rows = ["        '" + ''.join(row) + "'," for row in grid]
+    return '[\n' + '\n'.join(rows) + '\n      ]'
 
 
 def art() -> str:
     parts = []
-    for name, makers in FRAMES:
-        grids = []
-        for make in makers:
-            rows = ["        '" + ''.join(row) + "'," for row in make()]
-            grids.append('[\n' + '\n'.join(rows) + '\n      ]')
-        parts.append('    ' + name + ': [' + ', '.join(grids) + '],')
+    for name, makers in BODY_FRAMES:
+        grids = ', '.join(grid_js(make()) for make in makers)
+        parts.append('    ' + name + ': [' + grids + '],')
 
-    return HEAD + '\n\n' + NOTE + '  var ART = {\n' + '\n'.join(parts) + '\n  };\n\n'
+    laps = ',\n    '.join(grid_js(g) for g in LAP_FRAMES)
+
+    return (HEAD + '\n\n' + NOTE
+            + '  var ART = {\n' + '\n'.join(parts) + '\n  };\n\n'
+            + '  // Крышка: лежит, поднимается, поднимается выше, стоит с наклоном.\n'
+            + '  var LAPTOP = [\n    ' + laps + ',\n  ];\n\n')
 
 
 def main() -> int:
@@ -206,7 +201,7 @@ def main() -> int:
     end = text.index(TAIL)
     path.write_text(text[:start] + art() + text[end:], encoding='utf-8', newline='\n')
 
-    print(f'{path.name}: кадры перерисованы, {W}x{H} клеток')
+    print(f'{path.name}: кадры перерисованы, существо {BODY_W}x{H}, ноутбук {LAP_W}x{H}')
     return 0
 
 
