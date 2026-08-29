@@ -8,8 +8,8 @@
   var LESS_MOTION = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   var FINE_POINTER = window.matchMedia('(hover: hover) and (pointer: fine)').matches;
 
-  // Символы, которые сыплются за курсором и перемешивают скрытые контакты:
-  // синтаксис кода вперемешку с юридическими знаками.
+  // Из чего собирается фоновое поле: синтаксис кода вперемешку с юридическими
+  // знаками — обе половины профиля разом.
   var GLYPHS = '{}[]()<>/\\|;:=+-*#$%&!?^~01234567§№¶λ';
 
   var state = { filter: null, filterLabel: null };
@@ -70,13 +70,6 @@
           NAV.map(function (item) {
             return el('a', { href: '#' + item[0], text: item[1], 'data-nav': item[0] });
           })),
-        el('div', { class: 'topbar__tools' }, [
-          el('button', {
-            class: 'btn', type: 'button', text: 'PDF',
-            title: 'Открыть окно печати — сохраните в PDF',
-            onclick: function () { window.print(); },
-          }),
-        ]),
       ]),
     ]);
   }
@@ -387,9 +380,9 @@
             target: '_blank', rel: 'noopener', text: p.contacts.telegram.label,
           }),
           el('a', { class: 'btn btn--ghost', href: p.contacts.email.href, text: 'Написать на почту' }),
-          el('button', {
-            class: 'btn btn--ghost', type: 'button', text: 'Сохранить в PDF',
-            onclick: function () { window.print(); },
+          el('a', {
+            class: 'btn btn--ghost', href: p.contacts.github.href,
+            target: '_blank', rel: 'noopener', text: 'GitHub',
           }),
         ]),
         el('p', {
@@ -416,93 +409,164 @@
     ]);
   }
 
-  /* --- символы за курсором ----------------------------------------------- */
+  /* --- поле символов ------------------------------------------------------ */
 
-  /* Курсор оставляет за собой всплывающие символы: код вперемешку с
-     юридическими знаками. Живёт на своём canvas, кадры считаются только пока
-     есть что рисовать. */
-  function initTrail() {
-    if (LESS_MOTION || !FINE_POINTER) return;
+  /* Фон страницы — сплошная сетка моноширинных знаков: синтаксис кода вперемешку
+     с юридическими символами. Сама по себе она едва различима; курсор освещает
+     вокруг себя круг, где символы разгораются от индиго к мятному, а часть из
+     них пересобирается. Без мыши поле живёт медленным мерцанием.
 
-    var canvas = $('#trail');
+     Рисуется целиком только при сборке и изменении размера окна. На каждый кадр
+     перерисовывается лишь квадрат вокруг курсора — иначе четыре с лишним тысячи
+     символов пришлось бы выводить по шестьдесят раз в секунду. */
+  function initField() {
+    var canvas = $('#field');
+    if (!canvas) return;
+
     var ctx = canvas.getContext('2d');
-    var items = [];
-    var running = false;
-    var lastX = null;
-    var lastY = null;
 
-    var COLORS = ['#7c7cff', '#7c7cff', '#7c7cff', '#3ddc97', '#ffb454'];
-    var LIFE = 950;   // сколько живёт символ, мс
-    var STEP = 17;    // через сколько пикселей движения рождается следующий
-    var MAX = 90;
+    var CELL_W = 15;
+    var CELL_H = 19;
+    var FONT = 12;
+    var RADIUS = 172;          // радиус освещённого круга, px
+    var BASE = '#8791ab';      // цвет спящего символа
+    var BASE_ALPHA = 0.085;
+    var ACCENT = '#7c7cff';
+    var MINT = '#3ddc97';
+    var FLICKER_MS = 130;      // как часто пересобираются случайные символы
+    var FLICKER_COUNT = 5;
 
-    function resize() {
+    var cols = 0;
+    var rows = 0;
+    var chars = [];
+    var spot = null;
+    var lastBox = null;
+    var pending = false;
+
+    function build() {
       var dpr = Math.min(window.devicePixelRatio || 1, 2);
-      canvas.width = Math.floor(window.innerWidth * dpr);
-      canvas.height = Math.floor(window.innerHeight * dpr);
-      canvas.style.width = window.innerWidth + 'px';
-      canvas.style.height = window.innerHeight + 'px';
+      var width = window.innerWidth;
+      var height = window.innerHeight;
+
+      canvas.width = Math.floor(width * dpr);
+      canvas.height = Math.floor(height * dpr);
+      canvas.style.width = width + 'px';
+      canvas.style.height = height + 'px';
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.font = FONT + 'px "JetBrains Mono", ui-monospace, monospace';
+      ctx.textBaseline = 'top';
+
+      cols = Math.ceil(width / CELL_W);
+      rows = Math.ceil(height / CELL_H);
+      chars = new Array(cols * rows);
+      for (var i = 0; i < chars.length; i += 1) chars[i] = randomGlyph();
+
+      lastBox = null;
+      paintAll();
     }
 
-    function spawn(x, y, spread) {
-      if (items.length >= MAX) items.shift();
-      items.push({
-        x: x + (Math.random() - 0.5) * spread,
-        y: y + (Math.random() - 0.5) * spread,
-        ch: randomGlyph(),
-        born: performance.now(),
-        drift: 14 + Math.random() * 22,
-        sway: (Math.random() - 0.5) * 16,
-        size: 12 + Math.random() * 5.5,
-        color: COLORS[Math.floor(Math.random() * COLORS.length)],
-      });
-      if (!running) {
-        running = true;
-        window.requestAnimationFrame(draw);
-      }
+    function paintCell(col, row, alpha, color) {
+      ctx.globalAlpha = alpha;
+      ctx.fillStyle = color;
+      ctx.fillText(chars[row * cols + col], col * CELL_W + 2, row * CELL_H + 3);
     }
 
-    function draw(now) {
+    function paintAll() {
       ctx.clearRect(0, 0, window.innerWidth, window.innerHeight);
+      for (var row = 0; row < rows; row += 1) {
+        for (var col = 0; col < cols; col += 1) paintCell(col, row, BASE_ALPHA, BASE);
+      }
+      ctx.globalAlpha = 1;
+    }
 
-      items = items.filter(function (item) { return now - item.born < LIFE; });
+    /* Квадрат ячеек вокруг точки — область, которую нужно перерисовать. */
+    function boxAt(point) {
+      return {
+        c0: Math.max(0, Math.floor((point.x - RADIUS) / CELL_W)),
+        c1: Math.min(cols - 1, Math.ceil((point.x + RADIUS) / CELL_W)),
+        r0: Math.max(0, Math.floor((point.y - RADIUS) / CELL_H)),
+        r1: Math.min(rows - 1, Math.ceil((point.y + RADIUS) / CELL_H)),
+      };
+    }
 
-      items.forEach(function (item) {
-        var progress = (now - item.born) / LIFE;
-        var eased = 1 - Math.pow(1 - progress, 2);
-        ctx.globalAlpha = Math.max(0, 1 - progress) * 0.8;
-        ctx.fillStyle = item.color;
-        ctx.font = item.size + 'px "JetBrains Mono", ui-monospace, monospace';
-        ctx.fillText(item.ch, item.x + item.sway * eased, item.y - item.drift * eased);
-      });
+    function merge(a, b) {
+      if (!a) return b;
+      if (!b) return a;
+      return {
+        c0: Math.min(a.c0, b.c0), c1: Math.max(a.c1, b.c1),
+        r0: Math.min(a.r0, b.r0), r1: Math.max(a.r1, b.r1),
+      };
+    }
+
+    function paintSpot() {
+      pending = false;
+
+      var box = merge(lastBox, spot ? boxAt(spot) : null);
+      if (!box) return;
+
+      ctx.clearRect(box.c0 * CELL_W, box.r0 * CELL_H,
+        (box.c1 - box.c0 + 1) * CELL_W, (box.r1 - box.r0 + 1) * CELL_H);
+
+      for (var row = box.r0; row <= box.r1; row += 1) {
+        for (var col = box.c0; col <= box.c1; col += 1) {
+          var alpha = BASE_ALPHA;
+          var color = BASE;
+
+          if (spot) {
+            var dx = col * CELL_W + CELL_W / 2 - spot.x;
+            var dy = row * CELL_H + CELL_H / 2 - spot.y;
+            var near = 1 - Math.sqrt(dx * dx + dy * dy) / RADIUS;
+            if (near > 0) {
+              alpha = BASE_ALPHA + near * near * 1;
+              color = near > 0.78 ? MINT : ACCENT;
+            }
+          }
+
+          paintCell(col, row, alpha, color);
+        }
+      }
 
       ctx.globalAlpha = 1;
-
-      if (items.length) {
-        window.requestAnimationFrame(draw);
-      } else {
-        running = false;
-      }
+      lastBox = spot ? boxAt(spot) : null;
     }
 
-    window.addEventListener('resize', resize);
-    resize();
+    function request() {
+      if (pending) return;
+      pending = true;
+      window.requestAnimationFrame(paintSpot);
+    }
+
+    build();
+    window.addEventListener('resize', build);
+
+    if (!FINE_POINTER) return;
 
     window.addEventListener('mousemove', function (event) {
-      if (lastX !== null) {
-        var dx = event.clientX - lastX;
-        var dy = event.clientY - lastY;
-        if (dx * dx + dy * dy < STEP * STEP) return;
-      }
-      lastX = event.clientX;
-      lastY = event.clientY;
-      spawn(event.clientX, event.clientY, 10);
+      spot = { x: event.clientX, y: event.clientY };
+      request();
     }, { passive: true });
 
-    window.addEventListener('mousedown', function (event) {
-      for (var i = 0; i < 7; i += 1) spawn(event.clientX, event.clientY, 46);
-    }, { passive: true });
+    document.addEventListener('mouseleave', function () {
+      spot = null;
+      request();
+    });
+
+    if (LESS_MOTION) return;
+
+    /* Медленное мерцание: несколько случайных символов пересобираются и
+       перерисовываются поштучно. */
+    window.setInterval(function () {
+      if (document.hidden || !chars.length) return;
+      for (var i = 0; i < FLICKER_COUNT; i += 1) {
+        var index = Math.floor(Math.random() * chars.length);
+        var row = Math.floor(index / cols);
+        var col = index % cols;
+        chars[index] = randomGlyph();
+        ctx.clearRect(col * CELL_W, row * CELL_H, CELL_W, CELL_H);
+        paintCell(col, row, BASE_ALPHA, BASE);
+      }
+      ctx.globalAlpha = 1;
+    }, FLICKER_MS);
   }
 
   /* --- появление и счётчики ---------------------------------------------- */
@@ -582,7 +646,7 @@
     app.appendChild(buildFooter());
 
     initObservers();
-    initTrail();
+    initField();
   }
 
   if (document.readyState === 'loading') {

@@ -2,14 +2,16 @@
    Резюме — Алексей Коняев
 
    Оформление одно, тёмное: страница выглядит как рабочая среда, а не как
-   документ. Сине-чёрное полотно с точечной сеткой, индиговый акцент на всём
-   интерактивном, мятный — только на числах результата, янтарный — ровно один
-   раз. Кислотного неона нет намеренно.
+   документ. Вместо однотонного фона — поле моноширинных символов на canvas
+   (`#field`, рисуется в app.js), курсор освещает его вокруг себя. Индиговый
+   акцент на всём интерактивном, мятный — только на числах результата, янтарный
+   — ровно один раз. Кислотного неона нет намеренно.
 
    Шрифты  Unbounded (заголовки и числа), Golos Text (текст),
-           JetBrains Mono (данные, метки, символы за курсором)
+           JetBrains Mono (данные, метки, поле символов)
    Сетка   колонка 68rem, у опыта левое поле под мета-данные
-   Печать  отдельная светлая вёрстка — резюме должно нормально уходить в PDF
+   Печать  светлые правила оставлены на случайный Ctrl+P; кнопки «Сохранить в
+           PDF» на странице нет
    ========================================================================= */
 
 /* --- Токены ------------------------------------------------------------- */
@@ -20,7 +22,6 @@
   --panel-2: #141926;
   --line: #1e2534;
   --line-soft: #161c28;
-  --dot: #1a2130;
 
   --text: #e7eaf2;
   --text-dim: #b4bbcd;
@@ -79,28 +80,14 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-/* Точечная сетка — тихий инженерный фон, не отвлекает от текста. */
-body::before {
-  content: '';
-  position: fixed;
-  inset: 0;
-  z-index: 0;
-  pointer-events: none;
-  background-image: radial-gradient(circle at 1px 1px, var(--dot) 1px, transparent 0);
-  background-size: 34px 34px;
-  mask-image: linear-gradient(to bottom, #000 0%, #000 60%, transparent 100%);
-  -webkit-mask-image: linear-gradient(to bottom, #000 0%, #000 60%, transparent 100%);
-}
-
 #app {
   position: relative;
   z-index: 1;
 }
 
-/* Символы, которые сыплются за курсором. Слой лежит на фоне — над точечной
-   сеткой, но под всем содержимым (#app выше по z-index), поэтому текст и
-   панели перекрывают его, а не наоборот. */
-#trail {
+/* Поле символов вместо однотонного фона. Лежит под всем содержимым (#app выше
+   по z-index), поэтому панели и текст его перекрывают. */
+#field {
   position: fixed;
   inset: 0;
   z-index: 0;
@@ -207,14 +194,6 @@ a:hover { color: var(--text); }
   color: var(--text);
   border-bottom-color: var(--accent);
 }
-
-.topbar__tools {
-  display: flex;
-  gap: 0.4rem;
-  margin-inline-start: auto;
-}
-
-.topbar__nav + .topbar__tools { margin-inline-start: 1.35rem; }
 
 @media (max-width: 880px) {
   .topbar__nav { display: none; }
@@ -914,7 +893,6 @@ button.chip[aria-pressed='true']::after { background: #fff; }
     --panel-2: #fff;
     --line: #bbb;
     --line-soft: #ddd;
-    --dot: transparent;
     --text: #000;
     --text-dim: #1a1a1a;
     --muted: #555;
@@ -927,14 +905,14 @@ button.chip[aria-pressed='true']::after { background: #fff; }
   @page { margin: 14mm; }
 
   body { font-size: 10.5pt; background: #fff; }
-  body::before, .hero::before, .contact::before { display: none !important; }
+  .hero::before, .contact::before { display: none !important; }
 
   .topbar,
   .hero__actions,
   .contact__actions,
   .section__note,
   .filter-status,
-  #trail,
+  #field,
   .skip { display: none !important; }
 
   button.chip::after { display: none; }
