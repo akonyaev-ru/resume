@@ -924,12 +924,19 @@
     var FLICKER_MS = 130;      // как часто пересобираются случайные символы
     var FLICKER_COUNT = 5;
 
+    var DROP_MIN_MS = 900;     // пауза между струйками в полях страницы
+    var DROP_MAX_MS = 2600;
+    var DROP_MAX = 3;          // сколько струек живёт одновременно
+    var DROP_SPEED = 24;       // ячеек в секунду
+
     var cols = 0;
     var rows = 0;
     var chars = [];
     var heat = null;           // сколько «света» осталось в каждой ячейке
     var hot = [];              // индексы ячеек, где свет ещё есть
     var lit = null;            // флаг «уже в списке», чтобы не заводить дубли
+    var margins = [];          // столбцы за пределами колонки с текстом
+    var drops = [];
     var lastPoint = null;
     var lastFrame = 0;
     var running = false;
@@ -954,9 +961,27 @@
       heat = new Float32Array(cols * rows);
       lit = new Uint8Array(cols * rows);
       hot = [];
+      drops = [];
 
       lastPoint = null;
+      measureMargins();
       paintAll();
+    }
+
+    /* Струйки идут только по полям страницы — там, где нет текста. На узком
+       экране полей не остаётся, и дождя просто не будет. */
+    function measureMargins() {
+      margins = [];
+      var wrap = $('.wrap');
+      if (!wrap) return;
+
+      var box = wrap.getBoundingClientRect();
+      var pad = CELL_W * 2;
+
+      for (var col = 0; col < cols; col += 1) {
+        var x = col * CELL_W + CELL_W / 2;
+        if (x < box.left - pad || x > box.right + pad) margins.push(col);
+      }
     }
 
     function paintCell(col, row, alpha, color) {
@@ -1010,9 +1035,46 @@
       }
     }
 
+    /* Струйка: голова спускается по столбцу, зажигает ячейку и пересобирает в
+       ней знак. Хвост рисовать не нужно — его делает то же затухание, что и у
+       следа за курсором. */
+    function spawnDrop() {
+      if (!margins.length || drops.length >= DROP_MAX || document.hidden) return;
+
+      drops.push({
+        col: margins[Math.floor(Math.random() * margins.length)],
+        row: -1 - Math.random() * 8,
+        speed: DROP_SPEED * (0.55 + Math.random()),
+        head: -1,
+      });
+
+      wake();
+    }
+
+    function advanceDrops(step) {
+      for (var i = drops.length - 1; i >= 0; i -= 1) {
+        var drop = drops[i];
+        drop.row += (drop.speed * step) / 1000;
+
+        var row = Math.floor(drop.row);
+        if (row >= rows) {
+          drops.splice(i, 1);
+          continue;
+        }
+        if (row < 0 || row === drop.head) continue;
+
+        drop.head = row;
+        var index = row * cols + drop.col;
+        chars[index] = randomGlyph();
+        touch(index, 1);
+      }
+    }
+
     function frame(now) {
       var step = lastFrame ? Math.min(now - lastFrame, 64) : 16.7;
       lastFrame = now;
+
+      advanceDrops(step);
 
       var fade = Math.pow(DECAY, step / 16.7);
       var kept = [];
@@ -1039,7 +1101,7 @@
       hot = kept;
       ctx.globalAlpha = 1;
 
-      if (hot.length) window.requestAnimationFrame(frame);
+      if (hot.length || drops.length) window.requestAnimationFrame(frame);
       else running = false;
     }
 
@@ -1068,6 +1130,15 @@
     }
 
     if (LESS_MOTION) return;
+
+    /* Струйки запускаются по таймеру, а не в кадре: между ними поле засыпает,
+       и кадры тогда не считаются вовсе. */
+    (function scheduleDrop() {
+      window.setTimeout(function () {
+        spawnDrop();
+        scheduleDrop();
+      }, DROP_MIN_MS + Math.random() * (DROP_MAX_MS - DROP_MIN_MS));
+    })();
 
     /* Медленное мерцание: несколько случайных символов пересобираются и
        перерисовываются поштучно. */
