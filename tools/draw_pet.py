@@ -1,51 +1,48 @@
 # -*- coding: utf-8 -*-
-"""Рисует кадры дракончика и переписывает ими таблицу ART в assets/js/pet.js.
+"""Рисует кадры существа и переписывает ими таблицу ART в assets/js/pet.js.
 
     python tools/draw_pet.py
 
-Сам дракончик — рисунок владельца, обведённый по клеткам: карта `RAW` ниже,
-буква на клетку. Скрипт делает из неё кадры: шаг, дыхание, моргание, прыжок,
-раскрытие ноутбука и работу за ним. Логику в `pet.js` он не трогает — только
-блок кадров между служебными строками «кадры» и «сборка кадров».
+Существо простое: блочное тело, два светлых глаза со зрачками, четыре лапки —
+ровно столько деталей, сколько читается в 12 клетках. Скрипт делает из одной
+карты все кадры: шаг, дыхание, моргание, прыжок, раскрытие ноутбука и работу за
+ним. Логику в `pet.js` он не трогает — только блок кадров между служебными
+строками «кадры» и «сборка кадров».
 
-Цвета по просьбе владельца: тело фиолетовое, рога, пузико и кончик хвоста —
-жёлтые. Обводки нет: тёмная страница сама работает контуром, как чёрный контур
-в исходном рисунке.
+Обводки нет: тёмная страница сама работает контуром.
 """
 
 from __future__ import annotations
 
 from pathlib import Path
 
-# Дракончик смотрит влево — как нарисован. Кадры разворачиваются при сборке,
-# поэтому здесь он один раз зеркалится: рисунок по умолчанию смотрит вправо,
-# туда же, куда ставится ноутбук.
-RAW = [
-    '.....gg..ggg..',
-    '....ggg..ggg..',
-    '...gggggggggg.',
-    '..ggggggggggg.',
-    '..gggggggggggg',
-    '..ggggeggggggg',
-    '..ggggeggggggg',
-    '.gggggggggggg.',
-    '.geggggggggg..',
-    '.gggggggggg...',
-    '..mmmmmgggg...',
-    '.....gggggggg.',
-    '.....gggggg.gg',
-    '....ggggggg..g',
-    '....ggggggg..g',
-    '....gg..gg....',
-    '....gg..gg....',
+# Тело без лап: g — корпус, w — белок глаза, p — зрачок. Смотрит вправо, туда
+# же, куда ставится ноутбук.
+BODY = [
+    '.gggggggggg.',
+    'gggggggggggg',
+    'gggggggggggg',
+    'ggwwggggwwgg',
+    'ggwpggggwpgg',
+    'ggwwggggwwgg',
+    'gggggggggggg',
+    'gggggggggggg',
+    '.gggggggggg.',
 ]
 
-BODY = [row[::-1] for row in RAW]
-
-W = 22               # 14 клеток дракончику, дальше место под ноутбук
-H = len(BODY)
+BODY_W = len(BODY[0])
+W = 20               # 12 клеток существу, дальше место под ноутбук
+H = 11
 GROUND = H - 1
-LEGS_ROWS = (15, 16)
+LEGS_TOP = len(BODY)
+
+# Четыре лапки: пары «через одну» переставляются в шаге.
+LEGS = {
+    'stand': ((1, 2), (4, 5), (7, 8), (10, 11)),
+    'walkA': ((0, 1), (4, 5), (7, 8), (10, 11)),
+    'walkB': ((1, 2), (5, 6), (8, 9), (10, 11)),
+    'tuck': ((3, 4), (6, 7), (8, 9), (0, 0)),
+}
 
 
 def blank():
@@ -80,64 +77,35 @@ def line(g, x0, y0, x1, y1, ch):
             y0 += sy
 
 
-def paint_zones(rows):
-    """Рога, пузико и кончик хвоста — жёлтые. Красится один раз по исходной
-    карте: если красить после сдвигов, жёлтым затекает голова."""
-    g = [list(r) for r in rows]
-
-    for x in range(len(g[0])):
-        for y in (0, 1):
-            if g[y][x] == 'g':
-                g[y][x] = 'y'
-
-    for y in range(11, 15):
-        for x in range(5, 9):
-            if g[y][x] == 'g':
-                g[y][x] = 'y'
-
-    for y, x in ((12, 1), (13, 0), (14, 0)):
-        if g[y][x] == 'g':
-            g[y][x] = 'y'
-
-    return g
-
-
-COLORED = paint_zones(BODY)
-
-
-def body(legs='stand', eyes=True, lift=0, crouch=0):
+def body(legs='stand', eyes=True, lift=0, crouch=0, step=0):
     """legs — как стоят лапы; lift — подскок целиком; crouch — присесть на
-    клетку (тело ниже, лапы короче, ступни на месте)."""
+    клетку; step — какая пара лап оторвана от земли."""
     g = blank()
     shift = crouch - lift
 
-    for y, row in enumerate(COLORED):
-        if y in LEGS_ROWS:
+    for y, row in enumerate(BODY):
+        ny = y + shift
+        if not 0 <= ny < H:
             continue
         for x, ch in enumerate(row):
-            ny = y + shift
-            if ch != '.' and 0 <= ny < H:
+            if ch != '.':
                 g[ny][x] = ch
 
-    pairs = {
-        'stand': ((4, 5), (8, 9)),
-        'walkA': ((3, 4), (8, 9)),
-        'walkB': ((5, 6), (9, 10)),
-        'tuck': ((5, 6), (7, 8)),
-    }[legs]
-
-    top = LEGS_ROWS[0] + shift
-    bottom = GROUND - lift
-    for x0, x1 in pairs:
-        if top <= bottom:
-            rect(g, x0, top, x1, bottom, 'g')
+    top = LEGS_TOP + shift
+    for i, (x0, x1) in enumerate(LEGS[legs]):
+        if x1 < x0:
+            continue
+        short = 1 if step and (i % 2 == (step - 1)) else 0
+        rect(g, x0, top, x1, GROUND - lift - short, 'g')
 
     if not eyes:
         for y in range(H):
             for x in range(W):
-                if g[y][x] == 'e':
+                if g[y][x] in 'wp':
                     g[y][x] = 'g'
-        rect(g, 7, 6 + shift, 8, 6 + shift, 'e')
+        # Прикрытые глаза — две короткие тёмные чёрточки.
+        rect(g, 2, 4 + shift, 3, 4 + shift, 'p')
+        rect(g, 8, 4 + shift, 9, 4 + shift, 'p')
 
     return g
 
@@ -147,26 +115,25 @@ def laptop(stage):
     stage: 0 — закрыт, 1 и 2 — раскрывается, 3 — открыт."""
     g = blank()
 
-    rect(g, 15, 16, 21, 16, 'k')       # клавиатура
+    rect(g, 13, GROUND, 19, GROUND, 'k')       # клавиатура
 
     if stage == 0:
-        rect(g, 15, 15, 21, 15, 'k')   # крышка лежит сверху
+        rect(g, 13, GROUND - 1, 19, GROUND - 1, 'k')
     elif stage == 1:
-        line(g, 21, 15, 16, 13, 'k')
+        line(g, 19, GROUND - 1, 14, GROUND - 3, 'k')
     elif stage == 2:
-        line(g, 21, 15, 18, 10, 'k')
+        line(g, 19, GROUND - 1, 16, GROUND - 6, 'k')
     else:
-        rect(g, 20, 10, 21, 15, 'k')   # крышка стоит
+        rect(g, 18, GROUND - 6, 19, GROUND - 1, 'k')
 
     return g
 
 
 def paws(g, up):
-    """Передние лапы на клавишах: приподнимаются по очереди."""
+    """Передняя лапа тянется к клавишам и постукивает по ним."""
     g = [row[:] for row in g]
-    y = 14 if up else 15
-    rect(g, 13, y, 15, y, 'g')
-    rect(g, 15, y, 15, 15, 'g')
+    y = GROUND - 2 if up else GROUND - 1
+    rect(g, 12, y, 13, y, 'g')
     return g
 
 
@@ -180,13 +147,13 @@ def merge(a, b):
 
 
 FRAMES = [
-    # Стоя дракончик дышит: раз в несколько кадров тело оседает на клетку.
+    # Стоя существо дышит: тело оседает на клетку, лапы остаются на месте.
     ('idle', [lambda: body(), lambda: body(crouch=1)]),
     ('blink', [lambda: body(eyes=False)]),
     ('walk', [
-        lambda: body(legs='walkA'),
+        lambda: body(legs='walkA', step=1),
         lambda: body(legs='stand', lift=1),
-        lambda: body(legs='walkB'),
+        lambda: body(legs='walkB', step=2),
         lambda: body(legs='stand'),
     ]),
     ('hop', [lambda: body(legs='tuck', lift=2)]),
@@ -206,7 +173,7 @@ HEAD = '  /* --- кадры ----------------------------------------------------
 TAIL = '  /* --- сборка кадров ----------------------------------------------------- */'
 
 NOTE = (
-    '  /* Точка — пусто, буква — цвет из COLORS. Дракончик занимает левую часть\n'
+    '  /* Точка — пусто, буква — цвет из COLORS. Существо занимает левую часть\n'
     '     строки, ноутбук появляется справа в кадрах раскрытия и работы.\n'
     '     Кадры перерисовывает tools/draw_pet.py — руками их не правят. */\n'
 )
@@ -225,9 +192,9 @@ def art() -> str:
 
 
 def main() -> int:
-    for i, row in enumerate(RAW):
-        if len(row) != 14:
-            raise SystemExit(f'Строка {i} рисунка длиной {len(row)}, а нужно 14')
+    for i, row in enumerate(BODY):
+        if len(row) != BODY_W:
+            raise SystemExit(f'Строка {i} рисунка длиной {len(row)}, а нужно {BODY_W}')
 
     path = Path(__file__).resolve().parent.parent / 'assets' / 'js' / 'pet.js'
     text = path.read_text(encoding='utf-8')

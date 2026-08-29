@@ -1,11 +1,11 @@
-/* Пиксельный дракончик, который живёт внизу страницы: ходит вдоль нижнего края,
+/* Пиксельное существо, которое живёт внизу страницы: ходит вдоль нижнего края,
    раскрывает ноутбук и печатает, а на курсор и щелчок отзывается.
 
    Рисунок настоящий пиксельный: таблица ниже, где буква — цвет, точка — пустое
    место. Кадры нарисованы фигурами (см. историю коммитов) и вставлены
    готовыми; каждый один раз собирается в отдельный холст, дальше только
    копируется — перерисовывать сотни квадратиков в кадре незачем. При
-   `prefers-reduced-motion` дракончик просто сидит за раскрытым ноутбуком. */
+   `prefers-reduced-motion` существо просто сидит за раскрытым ноутбуком. */
 (function () {
   'use strict';
 
@@ -13,8 +13,8 @@
   var FINE_POINTER = window.matchMedia('(hover: hover) and (pointer: fine)').matches;
 
   var PIXEL = 3;             // сторона «пикселя» рисунка, px
-  var ART_W = 22;            // ширина рисунка: дракончик и место под ноутбук
-  var ART_H = 17;
+  var ART_W = 20;            // ширина рисунка: существо и место под ноутбук
+  var ART_H = 11;
 
   var SPEED = 24;            // как быстро идёт, px в секунду
   var WALK_MS = 170;         // смена кадра шага
@@ -29,275 +29,190 @@
 
   var COLORS = {
     g: '#7c7cff',            // тело
-    y: '#ffb454',            // рога, пузико и кончик хвоста
-    e: '#12141c',            // глаз и ноздря
-    m: '#12141c',            // рот
+    w: '#e7eaf2',            // белки глаз
+    p: '#12141c',            // зрачки
     k: '#838da4',            // ноутбук
   };
 
   /* --- кадры ------------------------------------------------------------- */
 
-  /* Точка — пусто, буква — цвет из COLORS. Дракончик занимает левую часть
+  /* Точка — пусто, буква — цвет из COLORS. Существо занимает левую часть
      строки, ноутбук появляется справа в кадрах раскрытия и работы.
      Кадры перерисовывает tools/draw_pet.py — руками их не правят. */
   var ART = {
     idle: [[
-        '..yyy..yy.............',
-        '..yyy..yyy............',
-        '.gggggggggg...........',
-        '.ggggggggggg..........',
-        'gggggggggggg..........',
-        'gggggggegggg..........',
-        'gggggggegggg..........',
-        '.gggggggggggg.........',
-        '..gggggggggeg.........',
-        '...gggggggggg.........',
-        '...ggggmmmmm..........',
-        '.ggggyyyy.............',
-        'gy.ggyyyy.............',
-        'y..ggyyyyg............',
-        'y..ggyyyyg............',
-        '....gg..gg............',
-        '....gg..gg............',
+        '.gggggggggg.........',
+        'gggggggggggg........',
+        'gggggggggggg........',
+        'ggwwggggwwgg........',
+        'ggwpggggwpgg........',
+        'ggwwggggwwgg........',
+        'gggggggggggg........',
+        'gggggggggggg........',
+        '.gggggggggg.........',
+        '.gg.gg.gg.gg........',
+        '.gg.gg.gg.gg........',
       ], [
-        '......................',
-        '..yyy..yy.............',
-        '..yyy..yyy............',
-        '.gggggggggg...........',
-        '.ggggggggggg..........',
-        'gggggggggggg..........',
-        'gggggggegggg..........',
-        'gggggggegggg..........',
-        '.gggggggggggg.........',
-        '..gggggggggeg.........',
-        '...gggggggggg.........',
-        '...ggggmmmmm..........',
-        '.ggggyyyy.............',
-        'gy.ggyyyy.............',
-        'y..ggyyyyg............',
-        'y..ggyyyyg............',
-        '....gg..gg............',
+        '....................',
+        '.gggggggggg.........',
+        'gggggggggggg........',
+        'gggggggggggg........',
+        'ggwwggggwwgg........',
+        'ggwpggggwpgg........',
+        'ggwwggggwwgg........',
+        'gggggggggggg........',
+        'gggggggggggg........',
+        '.gggggggggg.........',
+        '.gg.gg.gg.gg........',
       ]],
     blink: [[
-        '..yyy..yy.............',
-        '..yyy..yyy............',
-        '.gggggggggg...........',
-        '.ggggggggggg..........',
-        'gggggggggggg..........',
-        'gggggggggggg..........',
-        'gggggggeeggg..........',
-        '.gggggggggggg.........',
-        '..ggggggggggg.........',
-        '...gggggggggg.........',
-        '...ggggmmmmm..........',
-        '.ggggyyyy.............',
-        'gy.ggyyyy.............',
-        'y..ggyyyyg............',
-        'y..ggyyyyg............',
-        '....gg..gg............',
-        '....gg..gg............',
+        '.gggggggggg.........',
+        'gggggggggggg........',
+        'gggggggggggg........',
+        'gggggggggggg........',
+        'ggppggggppgg........',
+        'gggggggggggg........',
+        'gggggggggggg........',
+        'gggggggggggg........',
+        '.gggggggggg.........',
+        '.gg.gg.gg.gg........',
+        '.gg.gg.gg.gg........',
       ]],
     walk: [[
-        '..yyy..yy.............',
-        '..yyy..yyy............',
-        '.gggggggggg...........',
-        '.ggggggggggg..........',
-        'gggggggggggg..........',
-        'gggggggegggg..........',
-        'gggggggegggg..........',
-        '.gggggggggggg.........',
-        '..gggggggggeg.........',
-        '...gggggggggg.........',
-        '...ggggmmmmm..........',
-        '.ggggyyyy.............',
-        'gy.ggyyyy.............',
-        'y..ggyyyyg............',
-        'y..ggyyyyg............',
-        '...gg...gg............',
-        '...gg...gg............',
+        '.gggggggggg.........',
+        'gggggggggggg........',
+        'gggggggggggg........',
+        'ggwwggggwwgg........',
+        'ggwpggggwpgg........',
+        'ggwwggggwwgg........',
+        'gggggggggggg........',
+        'gggggggggggg........',
+        '.gggggggggg.........',
+        'gg..gg.gg.gg........',
+        '....gg....gg........',
       ], [
-        '..yyy..yyy............',
-        '.gggggggggg...........',
-        '.ggggggggggg..........',
-        'gggggggggggg..........',
-        'gggggggegggg..........',
-        'gggggggegggg..........',
-        '.gggggggggggg.........',
-        '..gggggggggeg.........',
-        '...gggggggggg.........',
-        '...ggggmmmmm..........',
-        '.ggggyyyy.............',
-        'gy.ggyyyy.............',
-        'y..ggyyyyg............',
-        'y..ggyyyyg............',
-        '....gg..gg............',
-        '....gg..gg............',
-        '......................',
+        'gggggggggggg........',
+        'gggggggggggg........',
+        'ggwwggggwwgg........',
+        'ggwpggggwpgg........',
+        'ggwwggggwwgg........',
+        'gggggggggggg........',
+        'gggggggggggg........',
+        '.gggggggggg.........',
+        '.gg.gg.gg.gg........',
+        '.gg.gg.gg.gg........',
+        '....................',
       ], [
-        '..yyy..yy.............',
-        '..yyy..yyy............',
-        '.gggggggggg...........',
-        '.ggggggggggg..........',
-        'gggggggggggg..........',
-        'gggggggegggg..........',
-        'gggggggegggg..........',
-        '.gggggggggggg.........',
-        '..gggggggggeg.........',
-        '...gggggggggg.........',
-        '...ggggmmmmm..........',
-        '.ggggyyyy.............',
-        'gy.ggyyyy.............',
-        'y..ggyyyyg............',
-        'y..ggyyyyg............',
-        '.....gg..gg...........',
-        '.....gg..gg...........',
+        '.gggggggggg.........',
+        'gggggggggggg........',
+        'gggggggggggg........',
+        'ggwwggggwwgg........',
+        'ggwpggggwpgg........',
+        'ggwwggggwwgg........',
+        'gggggggggggg........',
+        'gggggggggggg........',
+        '.gggggggggg.........',
+        '.gg..gg.gggg........',
+        '.gg.....gg..........',
       ], [
-        '..yyy..yy.............',
-        '..yyy..yyy............',
-        '.gggggggggg...........',
-        '.ggggggggggg..........',
-        'gggggggggggg..........',
-        'gggggggegggg..........',
-        'gggggggegggg..........',
-        '.gggggggggggg.........',
-        '..gggggggggeg.........',
-        '...gggggggggg.........',
-        '...ggggmmmmm..........',
-        '.ggggyyyy.............',
-        'gy.ggyyyy.............',
-        'y..ggyyyyg............',
-        'y..ggyyyyg............',
-        '....gg..gg............',
-        '....gg..gg............',
+        '.gggggggggg.........',
+        'gggggggggggg........',
+        'gggggggggggg........',
+        'ggwwggggwwgg........',
+        'ggwpggggwpgg........',
+        'ggwwggggwwgg........',
+        'gggggggggggg........',
+        'gggggggggggg........',
+        '.gggggggggg.........',
+        '.gg.gg.gg.gg........',
+        '.gg.gg.gg.gg........',
       ]],
     hop: [[
-        '.gggggggggg...........',
-        '.ggggggggggg..........',
-        'gggggggggggg..........',
-        'gggggggegggg..........',
-        'gggggggegggg..........',
-        '.gggggggggggg.........',
-        '..gggggggggeg.........',
-        '...gggggggggg.........',
-        '...ggggmmmmm..........',
-        '.ggggyyyy.............',
-        'gy.ggyyyy.............',
-        'y..ggyyyyg............',
-        'y..ggyyyyg............',
-        '.....gggg.............',
-        '.....gggg.............',
-        '......................',
-        '......................',
+        'gggggggggggg........',
+        'ggwwggggwwgg........',
+        'ggwpggggwpgg........',
+        'ggwwggggwwgg........',
+        'gggggggggggg........',
+        'gggggggggggg........',
+        '.gggggggggg.........',
+        'g..gg.gggg..........',
+        'g..gg.gggg..........',
+        '....................',
+        '....................',
       ]],
     open: [[
-        '..yyy..yy.............',
-        '..yyy..yyy............',
-        '.gggggggggg...........',
-        '.ggggggggggg..........',
-        'gggggggggggg..........',
-        'gggggggegggg..........',
-        'gggggggegggg..........',
-        '.gggggggggggg.........',
-        '..gggggggggeg.........',
-        '...gggggggggg.........',
-        '...ggggmmmmm..........',
-        '.ggggyyyy.............',
-        'gy.ggyyyy.............',
-        'y..ggyyyyg............',
-        'y..ggyyyyg............',
-        '....gg..gg.....kkkkkkk',
-        '....gg..gg.....kkkkkkk',
+        '.gggggggggg.........',
+        'gggggggggggg........',
+        'gggggggggggg........',
+        'ggwwggggwwgg........',
+        'ggwpggggwpgg........',
+        'ggwwggggwwgg........',
+        'gggggggggggg........',
+        'gggggggggggg........',
+        '.gggggggggg.........',
+        '.gg.gg.gg.gg.kkkkkkk',
+        '.gg.gg.gg.gg.kkkkkkk',
       ], [
-        '..yyy..yy.............',
-        '..yyy..yyy............',
-        '.gggggggggg...........',
-        '.ggggggggggg..........',
-        'gggggggggggg..........',
-        'gggggggegggg..........',
-        'gggggggegggg..........',
-        '.gggggggggggg.........',
-        '..gggggggggeg.........',
-        '...gggggggggg.........',
-        '...ggggmmmmm..........',
-        '.ggggyyyy.............',
-        'gy.ggyyyy.............',
-        'y..ggyyyyg......kk....',
-        'y..ggyyyyg........kk..',
-        '....gg..gg..........kk',
-        '....gg..gg.....kkkkkkk',
+        '.gggggggggg.........',
+        'gggggggggggg........',
+        'gggggggggggg........',
+        'ggwwggggwwgg........',
+        'ggwpggggwpgg........',
+        'ggwwggggwwgg........',
+        'gggggggggggg........',
+        'gggggggggggg..kk....',
+        '.gggggggggg.....kk..',
+        '.gg.gg.gg.gg......kk',
+        '.gg.gg.gg.gg.kkkkkkk',
       ], [
-        '..yyy..yy.............',
-        '..yyy..yyy............',
-        '.gggggggggg...........',
-        '.ggggggggggg..........',
-        'gggggggggggg..........',
-        'gggggggegggg..........',
-        'gggggggegggg..........',
-        '.gggggggggggg.........',
-        '..gggggggggeg.........',
-        '...gggggggggg.........',
-        '...ggggmmmmm......k...',
-        '.ggggyyyy..........k..',
-        'gy.ggyyyy..........k..',
-        'y..ggyyyyg..........k.',
-        'y..ggyyyyg..........k.',
-        '....gg..gg...........k',
-        '....gg..gg.....kkkkkkk',
+        '.gggggggggg.........',
+        'gggggggggggg........',
+        'gggggggggggg........',
+        'ggwwggggwwgg........',
+        'ggwpggggwpgg....k...',
+        'ggwwggggwwgg.....k..',
+        'gggggggggggg.....k..',
+        'gggggggggggg......k.',
+        '.gggggggggg.......k.',
+        '.gg.gg.gg.gg.......k',
+        '.gg.gg.gg.gg.kkkkkkk',
       ], [
-        '..yyy..yy.............',
-        '..yyy..yyy............',
-        '.gggggggggg...........',
-        '.ggggggggggg..........',
-        'gggggggggggg..........',
-        'gggggggegggg..........',
-        'gggggggegggg..........',
-        '.gggggggggggg.........',
-        '..gggggggggeg.........',
-        '...gggggggggg.........',
-        '...ggggmmmmm........kk',
-        '.ggggyyyy...........kk',
-        'gy.ggyyyy...........kk',
-        'y..ggyyyyg..........kk',
-        'y..ggyyyyg..........kk',
-        '....gg..gg..........kk',
-        '....gg..gg.....kkkkkkk',
+        '.gggggggggg.........',
+        'gggggggggggg........',
+        'gggggggggggg........',
+        'ggwwggggwwgg........',
+        'ggwpggggwpgg......kk',
+        'ggwwggggwwgg......kk',
+        'gggggggggggg......kk',
+        'gggggggggggg......kk',
+        '.gggggggggg.......kk',
+        '.gg.gg.gg.gg......kk',
+        '.gg.gg.gg.gg.kkkkkkk',
       ]],
     type: [[
-        '..yyy..yy.............',
-        '..yyy..yyy............',
-        '.gggggggggg...........',
-        '.ggggggggggg..........',
-        'gggggggggggg..........',
-        'gggggggegggg..........',
-        'gggggggegggg..........',
-        '.gggggggggggg.........',
-        '..gggggggggeg.........',
-        '...gggggggggg.........',
-        '...ggggmmmmm........kk',
-        '.ggggyyyy...........kk',
-        'gy.ggyyyy...........kk',
-        'y..ggyyyyg..........kk',
-        'y..ggyyyyg...ggg....kk',
-        '....gg..gg.....g....kk',
-        '....gg..gg.....kkkkkkk',
+        '.gggggggggg.........',
+        'gggggggggggg........',
+        'gggggggggggg........',
+        'ggwwggggwwgg........',
+        'ggwpggggwpgg......kk',
+        'ggwwggggwwgg......kk',
+        'gggggggggggg......kk',
+        'gggggggggggg......kk',
+        '.gggggggggg.gg....kk',
+        '.gg.gg.gg.gg......kk',
+        '.gg.gg.gg.gg.kkkkkkk',
       ], [
-        '......................',
-        '..yyy..yy.............',
-        '..yyy..yyy............',
-        '.gggggggggg...........',
-        '.ggggggggggg..........',
-        'gggggggggggg..........',
-        'gggggggegggg..........',
-        'gggggggegggg..........',
-        '.gggggggggggg.........',
-        '..gggggggggeg.........',
-        '...gggggggggg.......kk',
-        '...ggggmmmmm........kk',
-        '.ggggyyyy...........kk',
-        'gy.ggyyyy...........kk',
-        'y..ggyyyyg..........kk',
-        'y..ggyyyyg...ggg....kk',
-        '....gg..gg.....kkkkkkk',
+        '....................',
+        '.gggggggggg.........',
+        'gggggggggggg........',
+        'gggggggggggg........',
+        'ggwwggggwwgg......kk',
+        'ggwpggggwpgg......kk',
+        'ggwwggggwwgg......kk',
+        'gggggggggggg......kk',
+        'gggggggggggg......kk',
+        '.gggggggggg.gg....kk',
+        '.gg.gg.gg.gg.kkkkkkk',
       ]],
   };
 
@@ -336,7 +251,7 @@
   canvas.width = ART_W * PIXEL;
   canvas.height = ART_H * PIXEL;
   canvas.setAttribute('aria-hidden', 'true');
-  canvas.title = 'Погладить дракончика';
+  canvas.title = 'Погладить';
 
   var ctx = canvas.getContext('2d');
   var pet = {
@@ -375,7 +290,7 @@
   }
 
   /* Что делать дальше: пройтись, сесть за ноутбук или постоять. Ноутбук
-     дракончик ставит перед собой, поэтому работать садится мордой вправо. */
+     существо ставит перед собой, поэтому работать садится мордой вправо. */
   function decide(now) {
     var roll = Math.random();
 
@@ -443,7 +358,7 @@
       return draw('blink', 0);
     }
 
-    // Стоя дракончик дышит: два кадра сменяются медленно и сами по себе.
+    // Стоя существо дышит: два кадра сменяются медленно и сами по себе.
     return draw('idle', Math.floor(now / BREATH_MS));
   }
 
@@ -468,7 +383,7 @@
 
   /* --- разговор с человеком ---------------------------------------------- */
 
-  /* Курсор подошёл близко — дракончик останавливается и поворачивается к нему.
+  /* Курсор подошёл близко — существо останавливается и поворачивается к нему.
      Убегать не надо: он любопытный, а не пугливый. За ноутбуком не отвлекается,
      иначе работа обрывалась бы на полуслове. */
   function watch(x, y) {
@@ -484,9 +399,9 @@
     if (pet.state === 'walk') enter('idle', performance.now(), performance.now() + 900);
   }
 
-  /* Холст шире дракончика — за ним место под ноутбук. Чтобы эта пустота не
+  /* Холст шире существа — за ним место под ноутбук. Чтобы эта пустота не
      съедала щелчки по странице, холст пропускает их сквозь себя и ловит только
-     тогда, когда курсор действительно на дракончике. */
+     тогда, когда курсор действительно на существе. */
   function hover(x, y) {
     var box = canvas.getBoundingClientRect();
     var on = x > box.left && x < box.left + PIXEL * 19 &&
@@ -526,6 +441,6 @@
     place();
   });
 
-  // Во вкладке в фоне кадры не считаются: вернулись — дракончик просыпается.
+  // Во вкладке в фоне кадры не считаются: вернулись — существо просыпается.
   document.addEventListener('visibilitychange', wake);
 })();
