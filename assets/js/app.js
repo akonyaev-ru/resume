@@ -114,7 +114,7 @@
       el('div', { class: 'hero__actions' }, [
         el('a', {
           class: 'btn btn--primary', href: p.contacts.telegram.href,
-          target: '_blank', rel: 'noopener', text: 'Написать в Telegram',
+          target: '_blank', rel: 'noopener', text: p.contacts.telegram.label,
         }),
         el('a', {
           class: 'btn btn--ghost', href: p.contacts.github.href,
@@ -130,16 +130,13 @@
 
   function buildFactsheet() {
     var p = R.person;
-    var hidden = CFG.hideContacts !== false;
 
     var rows = [
       ['Город', el('span', { text: p.city + ' · ' + p.age + ' лет' })],
       ['Формат', el('span', { text: p.schedule + ' · ' + p.employment.toLowerCase() })],
       ['Переезд', el('span', { text: p.relocation })],
       ['Опыт', el('span', { text: p.experienceTotal })],
-      ['Telegram', contactValue(p.contacts.telegram, false)],
-      ['Почта', contactValue(p.contacts.email, hidden)],
-      ['Телефон', contactValue(p.contacts.phone, hidden)],
+      ['Почта', link(p.contacts.email)],
     ];
 
     if (CFG.showSalary) rows.splice(4, 0, ['Ожидание', el('span', { text: p.salary })]);
@@ -164,63 +161,6 @@
     return el('a', { href: contact.href, target: '_blank', rel: 'noopener', text: contact.label });
   }
 
-  function scramble(text) {
-    return text.replace(/\S/g, randomGlyph);
-  }
-
-  /* Скрытый контакт: символы перемешаны, по клику собираются в настоящий. */
-  function contactValue(contact, hidden) {
-    if (!hidden) return link(contact);
-
-    var btn = el('button', {
-      class: 'reveal',
-      type: 'button',
-      'aria-label': 'Показать контакт',
-      text: scramble(contact.label),
-    });
-
-    btn.addEventListener('click', function () {
-      if (btn.classList.contains('is-open')) return;
-      btn.classList.add('is-open');
-      decode(btn, contact.label, function () {
-        if (btn.parentNode) btn.parentNode.replaceChild(link(contact), btn);
-      });
-    });
-
-    return btn;
-  }
-
-  /* Буквы встают на место слева направо, остальные продолжают мельтешить. */
-  function decode(node, target, done) {
-    if (LESS_MOTION) {
-      node.textContent = target;
-      done();
-      return;
-    }
-
-    var perChar = 45;
-    var start = null;
-
-    function frame(now) {
-      if (start === null) start = now;
-      var locked = Math.floor((now - start) / perChar);
-      var out = '';
-
-      for (var i = 0; i < target.length; i += 1) {
-        var ch = target.charAt(i);
-        if (i < locked || ch === ' ') out += ch;
-        else out += randomGlyph();
-      }
-
-      node.textContent = out;
-
-      if (locked < target.length) window.requestAnimationFrame(frame);
-      else window.setTimeout(done, 260);
-    }
-
-    window.requestAnimationFrame(frame);
-  }
-
   /* --- результаты -------------------------------------------------------- */
 
   function buildMetrics() {
@@ -234,11 +174,13 @@
           text: (m.prefix || '') + '0' + (m.suffix || ''),
         }),
         el('span', { class: 'metric__caption', text: m.caption }),
-        el('span', { class: 'metric__source', text: m.source }),
       ]);
     }));
 
-    return section('results', 'Что изменилось после внедрений', [grid]);
+    return section('results', 'Что изменилось после внедрений', [
+      el('p', { class: 'section__note', text: 'За полтора года на текущем месте работы.' }),
+      grid,
+    ]);
   }
 
   /* --- подход ------------------------------------------------------------ */
@@ -442,7 +384,7 @@
         el('div', { class: 'contact__actions' }, [
           el('a', {
             class: 'btn btn--primary', href: p.contacts.telegram.href,
-            target: '_blank', rel: 'noopener', text: 'Telegram ' + p.contacts.telegram.label,
+            target: '_blank', rel: 'noopener', text: p.contacts.telegram.label,
           }),
           el('a', { class: 'btn btn--ghost', href: p.contacts.email.href, text: 'Написать на почту' }),
           el('button', {
@@ -452,7 +394,8 @@
         ]),
         el('p', {
           class: 'print-only fact__val',
-          text: p.contacts.email.label + ' · ' + p.contacts.phone.label + ' · ' + p.contacts.telegram.label,
+          text: p.contacts.email.href.replace('mailto:', '') + ' · ' +
+            p.contacts.telegram.href.replace('https://', '') + ' · ' + p.contacts.github.label,
         }),
       ]),
     ]);
@@ -528,7 +471,7 @@
       items.forEach(function (item) {
         var progress = (now - item.born) / LIFE;
         var eased = 1 - Math.pow(1 - progress, 2);
-        ctx.globalAlpha = Math.max(0, 1 - progress) * 0.95;
+        ctx.globalAlpha = Math.max(0, 1 - progress) * 0.8;
         ctx.fillStyle = item.color;
         ctx.font = item.size + 'px "JetBrains Mono", ui-monospace, monospace';
         ctx.fillText(item.ch, item.x + item.sway * eased, item.y - item.drift * eased);

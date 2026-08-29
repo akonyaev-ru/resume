@@ -97,11 +97,13 @@ body::before {
   z-index: 1;
 }
 
-/* Символы, которые сыплются за курсором. Слой поверх всего, но сквозной. */
+/* Символы, которые сыплются за курсором. Слой лежит на фоне — над точечной
+   сеткой, но под всем содержимым (#app выше по z-index), поэтому текст и
+   панели перекрывают его, а не наоборот. */
 #trail {
   position: fixed;
   inset: 0;
-  z-index: 40;
+  z-index: 0;
   pointer-events: none;
 }
 
@@ -396,24 +398,6 @@ a:hover { color: var(--text); }
 .fact__val a { text-decoration: none; }
 .fact__val a:hover { text-decoration: underline; }
 
-/* Скрытый контакт: символы перемешаны, по клику собираются обратно. */
-.reveal {
-  font: inherit;
-  font-family: var(--font-mono);
-  font-size: var(--step--1);
-  color: var(--muted);
-  background: none;
-  border: 0;
-  padding: 0;
-  cursor: pointer;
-  text-align: left;
-  letter-spacing: 0.02em;
-  transition: color 0.15s ease;
-}
-
-.reveal:hover { color: var(--accent); }
-.reveal.is-open { color: var(--text); }
-
 /* --- Секции ------------------------------------------------------------- */
 
 .section {
@@ -457,36 +441,53 @@ a:hover { color: var(--text); }
 
 /* --- Результаты --------------------------------------------------------- */
 
-/* Ровно три колонки: метрик шесть, и при автоподборе в широком окне
-   получалось 4 + 2 с дырой в углу. */
+/* Четыре плашки в ряд, на узком — по две и по одной. */
 .metrics {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 1px;
-  background: var(--line);
-  border: 1px solid var(--line);
-  border-radius: 3px;
-  overflow: hidden;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 1rem;
 }
 
 @media (max-width: 900px) {
   .metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
-@media (max-width: 560px) {
+@media (max-width: 480px) {
   .metrics { grid-template-columns: minmax(0, 1fr); }
 }
 
 .metric {
+  position: relative;
   background: var(--panel);
-  padding: 1.5rem 1.25rem 1.25rem;
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  padding: 1.6rem 1.35rem 1.4rem;
   display: grid;
-  grid-template-rows: auto 1fr auto;
-  gap: 0.4rem;
-  transition: background 0.2s ease;
+  grid-template-rows: auto 1fr;
+  gap: 0.75rem;
+  overflow: hidden;
+  transition: background 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
 }
 
-.metric:hover { background: var(--panel-2); }
+/* Мятная черта над числом загорается по всей ширине при наведении. */
+.metric::before {
+  content: '';
+  position: absolute;
+  inset-block-start: 0;
+  inset-inline-start: 0;
+  width: 2.5rem;
+  height: 2px;
+  background: var(--mint);
+  transition: width 0.35s cubic-bezier(0.2, 0.7, 0.3, 1);
+}
+
+.metric:hover {
+  background: var(--panel-2);
+  border-color: color-mix(in srgb, var(--mint) 40%, var(--line));
+  transform: translateY(-2px);
+}
+
+.metric:hover::before { width: 100%; }
 
 .metric__value {
   font-family: var(--font-display);
@@ -505,14 +506,6 @@ a:hover { color: var(--text); }
   font-size: var(--step--1);
   color: var(--text-dim);
   max-width: 24ch;
-}
-
-.metric__source {
-  font-family: var(--font-mono);
-  font-size: var(--step--2);
-  letter-spacing: 0.06em;
-  color: var(--muted);
-  margin-block-start: 0.35rem;
 }
 
 /* --- Подход ------------------------------------------------------------- */

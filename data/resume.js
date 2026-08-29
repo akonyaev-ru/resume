@@ -6,9 +6,6 @@
 window.CONFIG = {
   // Показывать зарплатное ожидание в анкете.
   showSalary: true,
-  // Почта и телефон закрыты и раскрываются по клику, чтобы их не собирали
-  // автоматические сборщики адресов.
-  hideContacts: true,
 };
 
 window.RESUME = {
@@ -40,22 +37,20 @@ window.RESUME = {
       'реализовать её руками — от постановки задачи до пользовательского тестирования.',
     pullquote: 'Результат — не внедрённый инструмент, а процесс, который после меня работает без меня.',
     contacts: {
-      telegram: { label: '@konyaev929', href: 'https://t.me/konyaev929' },
+      telegram: { label: 'Написать в Telegram', href: 'https://t.me/konyaev929' },
       email: { label: 'inbox@akonyaev.ru', href: 'mailto:inbox@akonyaev.ru' },
-      phone: { label: '+7 929 990-29-29', href: 'tel:+79299902929' },
       github: { label: 'github.com/akonyaev-ru', href: 'https://github.com/akonyaev-ru' },
     },
   },
 
-  // Цифры ленты результатов. value анимируется от нуля, поэтому число отделено
-  // от префикса и суффикса.
+  // Результаты текущего места работы. Цифры ГалВента и Дом-Профи живут в
+  // разделе «Опыт» — в общей ленте они смешивали разные периоды.
+  // value анимируется от нуля, поэтому число отделено от префикса и суффикса.
   metrics: [
-    { value: 60, prefix: '−', suffix: '%', caption: 'SLA согласования договоров', source: 'Айковер ПРО' },
-    { value: 95, prefix: '−', suffix: '%', caption: 'времени на подготовку документов', source: 'Айковер ПРО' },
-    { value: 70, suffix: '%', caption: 'FTE высвобождено от рутины', source: 'Айковер ПРО' },
-    { value: 80, suffix: '%', caption: 'ручного ввода убрано из отчётности', source: 'Айковер ПРО' },
-    { value: 12, suffix: ' млн ₽', caption: 'взыскано, результативность 6 из 6', source: 'ГалВент' },
-    { value: 0, suffix: '', caption: 'замечаний проверки прокуратуры по 275-ФЗ', source: 'ГалВент', accent: true },
+    { value: 60, prefix: '−', suffix: '%', caption: 'SLA согласования договоров' },
+    { value: 95, prefix: '−', suffix: '%', caption: 'времени на подготовку документов' },
+    { value: 70, suffix: '%', caption: 'FTE высвобождено от рутины' },
+    { value: 80, suffix: '%', caption: 'ручного ввода убрано из отчётности' },
   ],
 
   experience: [
@@ -200,7 +195,7 @@ window.RESUME = {
       ],
     },
     {
-      title: 'Код и интеграции',
+      title: 'Разработка и интеграции',
       skills: [
         { name: 'Python', filter: 'python' },
         { name: 'API', filter: 'python' },
@@ -210,14 +205,15 @@ window.RESUME = {
       ],
     },
     {
-      title: 'Платформы',
+      title: 'Процессы и данные',
       skills: [
+        { name: 'Описание процессов AS IS / TO BE', filter: 'process' },
         { name: 'Битрикс24', filter: 'bitrix' },
         { name: 'BI-дашборды', filter: 'bi' },
+        { name: 'Электронный документооборот' },
         { name: 'Google Sheets' },
         { name: '1С: Предприятие' },
         { name: '1С: ERP' },
-        { name: 'КонсультантПлюс' },
       ],
     },
     {
@@ -227,8 +223,7 @@ window.RESUME = {
         { name: 'Претензионно-исковая работа', filter: 'litigation' },
         { name: 'Защита персональных данных · 152-ФЗ', filter: 'pdn' },
         { name: 'Гособоронзаказ · 275-ФЗ', filter: 'fz275' },
-        { name: 'Электронный документооборот' },
-        { name: 'Описание процессов AS IS / TO BE', filter: 'process' },
+        { name: 'КонсультантПлюс' },
       ],
     },
   ],
