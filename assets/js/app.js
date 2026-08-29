@@ -546,9 +546,13 @@
   /* --- реакция на курсор: магниты и блик ---------------------------------- */
 
   var magnets = [];
+  var portrait = null;
+  var portraitImage = null;
 
   function collectMagnets() {
     magnets = $$('.btn');
+    portrait = $('.portrait');
+    portraitImage = $('.portrait img');
   }
 
   /* Один обработчик движения мыши на две мелочи: кнопки рядом с курсором
@@ -571,6 +575,17 @@
         var box = card.getBoundingClientRect();
         card.style.setProperty('--mx', (event.clientX - box.left).toFixed(0) + 'px');
         card.style.setProperty('--my', (event.clientY - box.top).toFixed(0) + 'px');
+      }
+
+      // Портрет и свет за ним расходятся в разные стороны: фигура смещается
+      // навстречу курсору, ореол — от него. Разница хода и читается объёмом.
+      if (portraitImage) {
+        var nx = event.clientX / window.innerWidth - 0.5;
+        var ny = event.clientY / window.innerHeight - 0.5;
+        portraitImage.style.transform =
+          'translate(' + (-nx * 20).toFixed(1) + 'px, ' + (-ny * 14).toFixed(1) + 'px)';
+        portrait.style.transform =
+          'translate(' + (nx * 7).toFixed(1) + 'px, ' + (ny * 5).toFixed(1) + 'px)';
       }
 
       var rects = magnets.map(function (btn) { return btn.getBoundingClientRect(); });

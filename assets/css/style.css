@@ -410,14 +410,21 @@ a:hover { color: var(--text); }
   position: relative;
   margin: 0;
   isolation: isolate;
+  transition: transform 0.5s cubic-bezier(0.2, 0.7, 0.3, 1);
 }
 
+@media (prefers-reduced-motion: reduce) {
+  .portrait { transition: none; }
+}
+
+/* Подсветка позади силуэта: пятно шире портрета, чтобы фигура читалась как
+   стоящая перед полем символов, а не лежащая на нём. */
 .portrait::before {
   content: '';
   position: absolute;
-  inset: 4% 0 12%;
+  inset: 8% -12% 14%;
   z-index: -1;
-  background: radial-gradient(56% 56% at 52% 38%, rgba(124, 124, 255, 0.24), transparent 72%);
+  background: radial-gradient(52% 52% at 52% 44%, rgba(124, 124, 255, 0.2), transparent 70%);
 }
 
 .portrait img {
@@ -427,6 +434,20 @@ a:hover { color: var(--text); }
   /* Скрипт всегда отдаёт кадр 4:5 — место под картинку резервируется заранее,
      чтобы страница не дёргалась при её загрузке. */
   aspect-ratio: 4 / 5;
+  /* drop-shadow идёт точно по прозрачности, поэтому свет ложится по контуру
+     фигуры, а не по прямоугольнику картинки. Два слоя: широкий холодный ореол
+     и узкая тёмная подложка, которая отделяет силуэт от фона. */
+  filter:
+    drop-shadow(0 0 26px rgba(124, 124, 255, 0.3))
+    drop-shadow(0 6px 14px rgba(0, 0, 0, 0.55));
+  /* Плавность — для параллакса: сдвиг задаёт app.js, задержка делает движение
+     не дёрганым, а инерционным. */
+  transition: transform 0.4s cubic-bezier(0.2, 0.7, 0.3, 1);
+  will-change: transform;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .portrait img { transition: none; }
 }
 
 /* Анкета лентой под первым экраном */
