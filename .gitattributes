@@ -1,0 +1,9 @@
+# Статический сайт отдаётся линуксовым раннером GitHub Pages, поэтому
+# переводы строк везде LF — без перекодировки при выгрузке и без ложного
+# «изменён» в git status на диске Google Drive.
+* text=auto eol=lf
+
+*.png binary
+*.jpg binary
+*.ico binary
+*.pdf binary
