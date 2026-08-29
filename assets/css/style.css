@@ -215,7 +215,10 @@ a:hover { color: var(--text); }
   border-radius: 3px;
   padding: 0.45rem 0.75rem;
   cursor: pointer;
-  transition: border-color 0.15s ease, color 0.15s ease, background 0.15s ease;
+  /* transform — для магнита: кнопка тянется к курсору, сдвиг задаёт app.js.
+     Небольшая задержка тут и нужна, иначе движение выходит дёрганым. */
+  transition: border-color 0.15s ease, color 0.15s ease, background 0.15s ease,
+    transform 0.18s cubic-bezier(0.2, 0.7, 0.3, 1);
 }
 
 .btn:hover {
@@ -474,6 +477,40 @@ a:hover { color: var(--text); }
 
 .metric:hover::before { width: 100%; }
 
+/* Блик под курсором. Точку задаёт app.js через --mx / --my; пока мышь не
+   заходила на карточку, пятно лежит по центру и всё равно не видно — слой
+   проявляется только на :hover. */
+.metric::after,
+.project::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.25s ease;
+}
+
+.metric::after {
+  background: radial-gradient(220px circle at var(--mx, 50%) var(--my, 50%),
+    rgba(61, 220, 151, 0.11), transparent 62%);
+}
+
+.project::after {
+  background: radial-gradient(280px circle at var(--mx, 50%) var(--my, 50%),
+    rgba(124, 124, 255, 0.15), transparent 62%);
+}
+
+.metric:hover::after,
+.project:hover::after { opacity: 1; }
+
+/* Содержимое карточек должно лежать поверх блика. */
+.metric > *,
+.project > * {
+  position: relative;
+  z-index: 1;
+}
+
 .metric__value {
   font-family: var(--font-display);
   font-size: clamp(1.9rem, 1.2rem + 1.9vw, 2.5rem);
@@ -631,6 +668,7 @@ a:hover { color: var(--text); }
 }
 
 .project {
+  position: relative;
   display: grid;
   align-content: start;
   gap: 0.6rem;
@@ -638,6 +676,7 @@ a:hover { color: var(--text); }
   background: var(--panel);
   border: 1px solid var(--line);
   border-radius: 3px;
+  overflow: hidden;
   transition: border-color 0.18s ease, transform 0.18s ease, opacity 0.25s ease, background 0.18s ease;
 }
 
@@ -911,7 +950,10 @@ button.chip[aria-pressed='true']::after { background: #fff; }
   @page { margin: 14mm; }
 
   body { font-size: 10.5pt; background: #fff; }
-  .hero::before, .contact::before { display: none !important; }
+  .hero::before,
+  .contact::before,
+  .metric::after,
+  .project::after { display: none !important; }
 
   .topbar,
   .hero__actions,

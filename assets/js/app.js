@@ -306,7 +306,10 @@
     var status = $('#filter-status');
     if (!status) return;
     status.textContent = '';
-    if (!tag) return;
+    if (!tag) {
+      collectMagnets();
+      return;
+    }
 
     var hits = $$('.bullet.is-hit').length + $$('.project.is-hit').length;
     status.appendChild(el('span', {
@@ -319,6 +322,9 @@
       class: 'btn', type: 'button', text: 'Сбросить',
       onclick: function () { setFilter(null, null); },
     }));
+
+    // «Сбросить» появляется и исчезает — список магнитов пересобирается.
+    collectMagnets();
   }
 
   function plural(n, forms) {
@@ -415,6 +421,64 @@
         el('span', { text: 'Обновлено ' + R.person.updated }),
       ]),
     ]);
+  }
+
+  /* --- реакция на курсор: магниты и блик ---------------------------------- */
+
+  var magnets = [];
+
+  function collectMagnets() {
+    magnets = $$('.btn');
+  }
+
+  /* Один обработчик движения мыши на две мелочи: кнопки рядом с курсором
+     чуть тянутся к нему, а под курсором внутри карточки светится пятно.
+     Все прямоугольники читаются до записи стилей — иначе браузер пересчитывал
+     бы раскладку на каждой кнопке. */
+  function initPointerFx() {
+    if (!FINE_POINTER || LESS_MOTION) return;
+
+    var REACH = 55;      // на сколько пикселей за габариты кнопки достаёт магнит
+    // Доля расстояния, которую отрабатывает сдвиг. Больше 0.2 — и упор в MAX_X
+    // достигается почти сразу: кнопка не тянется, а прыгает в крайнее положение.
+    var PULL = 0.18;
+    var MAX_X = 8;
+    var MAX_Y = 6;
+
+    collectMagnets();
+
+    document.addEventListener('mousemove', function (event) {
+      var card = event.target.closest ? event.target.closest('.metric, .project') : null;
+      if (card) {
+        var box = card.getBoundingClientRect();
+        card.style.setProperty('--mx', (event.clientX - box.left).toFixed(0) + 'px');
+        card.style.setProperty('--my', (event.clientY - box.top).toFixed(0) + 'px');
+      }
+
+      var rects = magnets.map(function (btn) { return btn.getBoundingClientRect(); });
+
+      rects.forEach(function (rect, index) {
+        var dx = event.clientX - (rect.left + rect.width / 2);
+        var dy = event.clientY - (rect.top + rect.height / 2);
+        var reach = Math.max(rect.width, rect.height) / 2 + REACH;
+        var distance = Math.sqrt(dx * dx + dy * dy);
+        var button = magnets[index];
+
+        if (distance > reach) {
+          if (button.style.transform) button.style.transform = '';
+          return;
+        }
+
+        var force = (1 - distance / reach) * PULL;
+        var shiftX = Math.max(-MAX_X, Math.min(MAX_X, dx * force));
+        var shiftY = Math.max(-MAX_Y, Math.min(MAX_Y, dy * force));
+        button.style.transform = 'translate(' + shiftX.toFixed(1) + 'px, ' + shiftY.toFixed(1) + 'px)';
+      });
+    }, { passive: true });
+
+    document.addEventListener('mouseleave', function () {
+      magnets.forEach(function (button) { button.style.transform = ''; });
+    });
   }
 
   /* --- расшифровка заголовков --------------------------------------------- */
@@ -748,6 +812,7 @@
 
     initObservers();
     initTitleDecode();
+    initPointerFx();
     initField();
   }
 
