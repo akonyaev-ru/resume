@@ -188,24 +188,13 @@
       ]),
     ]);
 
-    // Слои бейджа снизу вверх: подложка, фольга, фотография, блик. Фольга
-    // лежит под фигурой и видна там, где у вырезанного портрета прозрачность.
-    // Три вложенных коробки с одним и тем же контуром дают кант вырубки:
-    // тёмный ободок, светлый ободок, содержимое. Слои внутри снизу вверх —
-    // подложка, фольга, фотография, блик.
-    var portrait = p.photo ? el('figure', { class: 'badge' }, [
-      el('div', { class: 'badge__die' }, [
-        el('div', { class: 'badge__ring' }, [
-          el('div', { class: 'badge__inner' }, [
-            el('div', { class: 'badge__layer badge__plate' }),
-            el('div', { class: 'badge__layer badge__foil' }),
-            el('img', {
-              class: 'badge__photo', src: p.photo, alt: t(p.name), decoding: 'async',
-            }),
-            el('div', { class: 'badge__layer badge__sheen' }),
-          ]),
-        ]),
-      ]),
+    // Портрет набирается знаками фонового поля на canvas, а сама фотография
+    // лежит сверху и проявляется только под курсором.
+    var portrait = p.photo ? el('figure', { class: 'portrait' }, [
+      el('canvas', { class: 'portrait__glyphs', 'aria-hidden': 'true' }),
+      el('img', {
+        class: 'portrait__photo', src: p.photo, alt: t(p.name), decoding: 'async',
+      }),
     ]) : null;
 
     return el('section', { class: 'hero' }, [
@@ -560,11 +549,11 @@
   /* --- реакция на курсор: магниты и блик ---------------------------------- */
 
   var magnets = [];
-  var badge = null;
+  var portrait = null;
 
   function collectMagnets() {
     magnets = $$('.btn');
-    badge = $('.badge');
+    portrait = $('.portrait');
   }
 
   /* Один обработчик движения мыши на две мелочи: кнопки рядом с курсором
@@ -589,7 +578,7 @@
         card.style.setProperty('--my', (event.clientY - box.top).toFixed(0) + 'px');
       }
 
-      if (badge) tiltBadge(event);
+      if (portrait) lightPortrait(event);
 
       var rects = magnets.map(function (btn) { return btn.getBoundingClientRect(); });
 
@@ -614,39 +603,186 @@
 
     document.addEventListener('mouseleave', function () {
       magnets.forEach(function (button) { button.style.transform = ''; });
-      restBadge();
+      if (portrait) portrait.classList.remove('is-live');
     });
   }
 
-  var TILT = 15;   // максимальный наклон бейджа, градусы
-
-  /* Бейдж наклоняется вслед за курсором, а фольга и блик съезжают по тем же
-     координатам — так наклейка ловит свет, как настоящая. */
-  function tiltBadge(event) {
-    var rect = badge.getBoundingClientRect();
+  /* Курсор над портретом сдвигает окно, в котором проступает фотография. */
+  function lightPortrait(event) {
+    var rect = portrait.getBoundingClientRect();
     var inside = event.clientX >= rect.left && event.clientX <= rect.right &&
       event.clientY >= rect.top && event.clientY <= rect.bottom;
 
     if (!inside) {
-      restBadge();
+      if (portrait.classList.contains('is-live')) portrait.classList.remove('is-live');
       return;
     }
 
-    var px = (event.clientX - rect.left) / rect.width;
-    var py = (event.clientY - rect.top) / rect.height;
-
-    badge.classList.add('is-live');
-    badge.style.setProperty('--px', px.toFixed(3));
-    badge.style.setProperty('--py', py.toFixed(3));
-    badge.style.setProperty('--tilt-x', ((0.5 - py) * TILT).toFixed(2));
-    badge.style.setProperty('--tilt-y', ((px - 0.5) * TILT).toFixed(2));
+    portrait.classList.add('is-live');
+    portrait.style.setProperty('--mx', (event.clientX - rect.left).toFixed(0) + 'px');
+    portrait.style.setProperty('--my', (event.clientY - rect.top).toFixed(0) + 'px');
   }
 
-  function restBadge() {
-    if (!badge || !badge.classList.contains('is-live')) return;
-    badge.classList.remove('is-live');
-    badge.style.setProperty('--tilt-x', '0');
-    badge.style.setProperty('--tilt-y', '0');
+  /* --- портрет из символов ------------------------------------------------ */
+
+  // Портрет пересобирается при каждой перерисовке страницы (например, при
+  // смене языка), а глобальные слушатели вешаются один раз — иначе они
+  // копились бы с каждым переключением.
+  var portraitRedraw = null;
+  var portraitFlicker = null;
+  var portraitBound = false;
+
+  /* Лицо набирается теми же знаками, что и фоновое поле: фотография ужимается
+     до одного пикселя на ячейку, и яркость каждого пикселя выбирает знак —
+     от самого лёгкого к самому плотному. Прозрачные места остаются пустыми,
+     поэтому силуэт рисуют сами символы. Сама фотография лежит сверху и
+     проявляется только в окне под курсором — за это отвечают стили. */
+  function initGlyphPortrait() {
+    var host = $('.portrait');
+    if (!host) return;
+
+    var canvas = host.querySelector('.portrait__glyphs');
+    var photo = host.querySelector('.portrait__photo');
+    var ctx = canvas.getContext('2d');
+
+    var CELL_W = 6;
+    var CELL_H = 8;
+    var FONT = 7.5;
+    var DIM = [74, 84, 116];     // цвет самой тёмной части лица
+    var BRIGHT = [233, 236, 244];
+    var FLICKER_MS = 220;
+    var FLICKER_COUNT = 3;
+
+    var ramp = '';
+    var cells = [];
+    var cols = 0;
+    var rows = 0;
+
+    /* Знаки выстраиваются по «плотности чернил»: каждый рисуется на крошечном
+       холсте, и считается, сколько он закрасил. Так порядок не нужно
+       подбирать руками, и он не поедет при смене шрифта. */
+    function buildRamp() {
+      var probe = document.createElement('canvas');
+      probe.width = 12;
+      probe.height = 16;
+      var pctx = probe.getContext('2d');
+      pctx.font = '11px "JetBrains Mono", ui-monospace, monospace';
+      pctx.textBaseline = 'top';
+
+      var scored = GLYPHS.split('').map(function (char) {
+        pctx.clearRect(0, 0, 12, 16);
+        pctx.fillStyle = '#fff';
+        pctx.fillText(char, 1, 1);
+        var pixels = pctx.getImageData(0, 0, 12, 16).data;
+        var ink = 0;
+        for (var i = 3; i < pixels.length; i += 4) ink += pixels[i];
+        return { char: char, ink: ink };
+      });
+
+      scored.sort(function (a, b) { return a.ink - b.ink; });
+      ramp = scored.map(function (s) { return s.char; }).join('');
+    }
+
+    function paintCell(cell) {
+      var mix = cell.lum;
+      ctx.fillStyle = 'rgb(' +
+        Math.round(DIM[0] + (BRIGHT[0] - DIM[0]) * mix) + ',' +
+        Math.round(DIM[1] + (BRIGHT[1] - DIM[1]) * mix) + ',' +
+        Math.round(DIM[2] + (BRIGHT[2] - DIM[2]) * mix) + ')';
+      ctx.globalAlpha = 0.5 + 0.5 * cell.lum;
+      ctx.fillText(cell.char, cell.col * CELL_W, cell.row * CELL_H);
+    }
+
+    function render() {
+      var width = host.clientWidth;
+      var height = host.clientHeight;
+      if (!width || !height || !photo.naturalWidth) return;
+
+      var dpr = Math.min(window.devicePixelRatio || 1, 2);
+      canvas.width = Math.floor(width * dpr);
+      canvas.height = Math.floor(height * dpr);
+      canvas.style.width = width + 'px';
+      canvas.style.height = height + 'px';
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.font = FONT + 'px "JetBrains Mono", ui-monospace, monospace';
+      ctx.textBaseline = 'top';
+
+      cols = Math.ceil(width / CELL_W);
+      rows = Math.ceil(height / CELL_H);
+
+      // Ужимаем фотографию до одного пикселя на ячейку: браузер сам усредняет
+      // область, вручную считать среднее не нужно.
+      var small = document.createElement('canvas');
+      small.width = cols;
+      small.height = rows;
+      var sctx = small.getContext('2d');
+      sctx.drawImage(photo, 0, 0, cols, rows);
+      var pixels = sctx.getImageData(0, 0, cols, rows).data;
+
+      cells = [];
+      ctx.clearRect(0, 0, width, height);
+
+      for (var row = 0; row < rows; row += 1) {
+        for (var col = 0; col < cols; col += 1) {
+          var at = (row * cols + col) * 4;
+          var alpha = pixels[at + 3] / 255;
+          if (alpha < 0.16) continue;
+
+          var lum = (pixels[at] * 0.299 + pixels[at + 1] * 0.587 + pixels[at + 2] * 0.114) / 255;
+          // Полутона приподняты: без этого лицо тонет, а знаки читаются только
+          // на бликах.
+          lum = Math.min(1, Math.pow(lum * alpha, 0.78) * 1.1);
+
+          var cell = {
+            col: col,
+            row: row,
+            lum: lum,
+            char: ramp.charAt(Math.round(lum * (ramp.length - 1))),
+          };
+          cells.push(cell);
+          paintCell(cell);
+        }
+      }
+
+      ctx.globalAlpha = 1;
+    }
+
+    /* Несколько знаков пересобираются в пределах своей яркости — портрет
+       дышит так же, как фоновое поле. */
+    function flicker() {
+      if (document.hidden || !cells.length) return;
+
+      for (var i = 0; i < FLICKER_COUNT; i += 1) {
+        var cell = cells[Math.floor(Math.random() * cells.length)];
+        var at = Math.round(cell.lum * (ramp.length - 1));
+        var shift = at + (Math.random() < 0.5 ? -1 : 1);
+        cell.char = ramp.charAt(Math.max(0, Math.min(ramp.length - 1, shift)));
+
+        ctx.clearRect(cell.col * CELL_W, cell.row * CELL_H, CELL_W, CELL_H);
+        paintCell(cell);
+      }
+
+      ctx.globalAlpha = 1;
+    }
+
+    buildRamp();
+    portraitRedraw = render;
+    portraitFlicker = flicker;
+
+    if (photo.complete && photo.naturalWidth) render();
+    else photo.addEventListener('load', render);
+
+    if (portraitBound) return;
+    portraitBound = true;
+
+    window.addEventListener('resize', function () {
+      if (portraitRedraw) portraitRedraw();
+    });
+
+    if (LESS_MOTION) return;
+    window.setInterval(function () {
+      if (portraitFlicker) portraitFlicker();
+    }, FLICKER_MS);
   }
 
   /* --- расшифровка заголовков --------------------------------------------- */
@@ -992,6 +1128,7 @@
 
     initObservers();
     initTitleDecode();
+    initGlyphPortrait();
     collectMagnets();
   }
 
