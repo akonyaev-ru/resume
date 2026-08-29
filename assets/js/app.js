@@ -175,7 +175,9 @@
 
     if (CFG.showSalary) rows.splice(4, 0, ['Ожидание', el('span', { text: p.salary })]);
 
-    return el('aside', { class: 'factsheet enter' }, [
+    // Без класса enter: анкета — часть первого экрана, на узком телефоне
+    // она уезжает под сгиб и появлялась бы после пустого места.
+    return el('aside', { class: 'factsheet' }, [
       el('div', { class: 'factsheet__head' }, [
         el('span', { text: 'Анкета' }),
         el('span', { text: p.updated }),
