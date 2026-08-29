@@ -867,11 +867,19 @@
     var FLICKER_MS = 130;      // как часто пересобираются случайные символы
     var FLICKER_COUNT = 5;
 
+    var DROP_MIN_MS = 900;     // пауза между струйками в полях страницы
+    var DROP_MAX_MS = 2600;
+    var DROP_MAX = 3;          // сколько струек живёт одновременно
+    var DROP_SPEED = 24;       // ячеек в секунду
+
     var cols = 0;
     var rows = 0;
     var chars = [];
     var heat = null;           // сколько «света» осталось в каждой ячейке
-    var lastBox = null;
+    var hot = [];              // индексы ячеек, где свет ещё есть
+    var lit = null;            // флаг «уже в списке», чтобы не заводить дубли
+    var margins = [];          // столбцы за пределами колонки с текстом
+    var drops = [];
     var lastPoint = null;
     var lastFrame = 0;
     var running = false;
@@ -894,10 +902,29 @@
       chars = new Array(cols * rows);
       for (var i = 0; i < chars.length; i += 1) chars[i] = randomGlyph();
       heat = new Float32Array(cols * rows);
+      lit = new Uint8Array(cols * rows);
+      hot = [];
+      drops = [];
 
-      lastBox = null;
       lastPoint = null;
+      measureMargins();
       paintAll();
+    }
+
+    /* Струйки идут только по полям страницы — там, где нет текста. На узком
+       экране полей не остаётся, и дождя просто не будет. */
+    function measureMargins() {
+      margins = [];
+      var wrap = $('.wrap');
+      if (!wrap) return;
+
+      var box = wrap.getBoundingClientRect();
+      var pad = CELL_W * 2;
+
+      for (var col = 0; col < cols; col += 1) {
+        var x = col * CELL_W + CELL_W / 2;
+        if (x < box.left - pad || x > box.right + pad) margins.push(col);
+      }
     }
 
     function paintCell(col, row, alpha, color) {
@@ -914,13 +941,23 @@
       ctx.globalAlpha = 1;
     }
 
-    function merge(a, b) {
-      if (!a) return b;
-      if (!b) return a;
-      return {
-        c0: Math.min(a.c0, b.c0), c1: Math.max(a.c1, b.c1),
-        r0: Math.min(a.r0, b.r0), r1: Math.max(a.r1, b.r1),
-      };
+    function wake() {
+      if (running) return;
+      running = true;
+      lastFrame = 0;
+      window.requestAnimationFrame(frame);
+    }
+
+    /* Ячейка получает свет и попадает в список горящих. Список нужен, чтобы в
+       кадре перерисовывать только их: раньше считался один общий прямоугольник,
+       и свет в разных углах экрана заставлял перерисовывать полполя. */
+    function touch(index, value) {
+      if (value > heat[index]) heat[index] = value;
+      if (!lit[index]) {
+        lit[index] = 1;
+        hot.push(index);
+      }
+      wake();
     }
 
     /* Курсор подогревает ячейки вокруг себя. Тепло не сбрасывается мгновенно, а
@@ -936,15 +973,43 @@
           var dx = col * CELL_W + CELL_W / 2 - x;
           var dy = row * CELL_H + CELL_H / 2 - y;
           var value = 1 - Math.sqrt(dx * dx + dy * dy) / RADIUS;
-          var index = row * cols + col;
-          if (value > heat[index]) heat[index] = value;
+          if (value > 0) touch(row * cols + col, value);
         }
       }
+    }
 
-      if (!running) {
-        running = true;
-        lastFrame = 0;
-        window.requestAnimationFrame(frame);
+    /* Струйка: голова спускается по столбцу, зажигает ячейку и пересобирает в
+       ней знак. Хвост рисовать не нужно — его делает то же затухание, что и у
+       следа за курсором. */
+    function spawnDrop() {
+      if (!margins.length || drops.length >= DROP_MAX || document.hidden) return;
+
+      drops.push({
+        col: margins[Math.floor(Math.random() * margins.length)],
+        row: -1 - Math.random() * 8,
+        speed: DROP_SPEED * (0.55 + Math.random()),
+        head: -1,
+      });
+
+      wake();
+    }
+
+    function advanceDrops(step) {
+      for (var i = drops.length - 1; i >= 0; i -= 1) {
+        var drop = drops[i];
+        drop.row += (drop.speed * step) / 1000;
+
+        var row = Math.floor(drop.row);
+        if (row >= rows) {
+          drops.splice(i, 1);
+          continue;
+        }
+        if (row < 0 || row === drop.head) continue;
+
+        drop.head = row;
+        var index = row * cols + drop.col;
+        chars[index] = randomGlyph();
+        touch(index, 1);
       }
     }
 
@@ -952,48 +1017,34 @@
       var step = lastFrame ? Math.min(now - lastFrame, 64) : 16.7;
       lastFrame = now;
 
+      advanceDrops(step);
+
       var fade = Math.pow(DECAY, step / 16.7);
-      var c0 = cols;
-      var c1 = -1;
-      var r0 = rows;
-      var r1 = -1;
+      var kept = [];
 
-      for (var i = 0; i < heat.length; i += 1) {
-        if (heat[i] <= 0) continue;
-        heat[i] *= fade;
-        if (heat[i] < THRESH) heat[i] = 0;
+      for (var i = 0; i < hot.length; i += 1) {
+        var index = hot[i];
+        var value = heat[index] * fade;
+        var row = (index / cols) | 0;
+        var col = index - row * cols;
 
-        // Погасшая в этом кадре ячейка тоже входит в область: её нужно
-        // перерисовать обратно в спящий цвет.
-        var row = (i / cols) | 0;
-        var col = i - row * cols;
-        if (col < c0) c0 = col;
-        if (col > c1) c1 = col;
-        if (row < r0) r0 = row;
-        if (row > r1) r1 = row;
-      }
+        ctx.clearRect(col * CELL_W, row * CELL_H, CELL_W, CELL_H);
 
-      var box = c1 >= 0 ? { c0: c0, c1: c1, r0: r0, r1: r1 } : null;
-      var area = merge(lastBox, box);
-
-      if (area) {
-        ctx.clearRect(area.c0 * CELL_W, area.r0 * CELL_H,
-          (area.c1 - area.c0 + 1) * CELL_W, (area.r1 - area.r0 + 1) * CELL_H);
-
-        for (var r = area.r0; r <= area.r1; r += 1) {
-          for (var c = area.c0; c <= area.c1; c += 1) {
-            var value = heat[r * cols + c];
-            if (value > 0) paintCell(c, r, BASE_ALPHA + value * value, value > 0.78 ? MINT : ACCENT);
-            else paintCell(c, r, BASE_ALPHA, BASE);
-          }
+        if (value < THRESH) {
+          heat[index] = 0;
+          lit[index] = 0;
+          paintCell(col, row, BASE_ALPHA, BASE);
+        } else {
+          heat[index] = value;
+          kept.push(index);
+          paintCell(col, row, BASE_ALPHA + value * value, value > 0.78 ? MINT : ACCENT);
         }
-
-        ctx.globalAlpha = 1;
       }
 
-      lastBox = box;
+      hot = kept;
+      ctx.globalAlpha = 1;
 
-      if (box) window.requestAnimationFrame(frame);
+      if (hot.length || drops.length) window.requestAnimationFrame(frame);
       else running = false;
     }
 
@@ -1022,6 +1073,15 @@
     }
 
     if (LESS_MOTION) return;
+
+    /* Струйки запускаются по таймеру, а не в кадре: между ними поле засыпает,
+       и кадры тогда не считаются вовсе. */
+    (function scheduleDrop() {
+      window.setTimeout(function () {
+        spawnDrop();
+        scheduleDrop();
+      }, DROP_MIN_MS + Math.random() * (DROP_MAX_MS - DROP_MIN_MS));
+    })();
 
     /* Медленное мерцание: несколько случайных символов пересобираются и
        перерисовываются поштучно. */
