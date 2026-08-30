@@ -1,12 +1,12 @@
 /* Двое пиксельных существ, которые живут внизу страницы. Отто ходит вдоль
-   нижнего края, раскрывает ноутбук и печатает; Оливия — розовая, с румянцем —
-   гуляет и танцует на месте. Время от времени они сходятся: прыгают друг перед
+   нижнего края, раскрывает ноутбук и печатает; Оливия — розовая — гуляет и
+   танцует на месте. Время от времени они сходятся: прыгают друг перед
    другом, а иногда она подходит и смотрит, как он работает. Оба отзываются на
-   курсор и щелчок, обоих можно схватить и зашвырнуть.
+   курсор и щелчок, обоих можно схватить и зашвырнуть — а если зашвырнуть
+   Оливию, приземление она встретит уже под ругань Отто.
 
    Рисунок настоящий пиксельный: таблицы ниже, где буква — цвет, точка — пустое
-   место. Кадры тела одни на двоих, различаются только палитрой: клетки румянца
-   помечены своей буквой, и у Отто она красится в цвет тела. Ноутбук — второй
+   место. Кадры тела одни на двоих, различаются только палитрой. Ноутбук — второй
    слой справа, он есть только у Отто. Каждый кадр один раз собирается в
    отдельный холст, дальше только копируется — перерисовывать сотни квадратиков
    в кадре незачем. При `prefers-reduced-motion` оба стоят на месте: Отто за
@@ -40,6 +40,7 @@
   var THROW_MAX = 1200;      // предел скорости броска, px/с
   var DRAG_PX = 3;           // с какого сдвига считаем, что это перетаскивание
   var LAND_MS = 200;         // сколько лежит осевшим после падения
+  var SWEAR_MS = 1900;       // сколько висит пузырь ругани
 
   var MEET_EVERY = 26000;    // не чаще, чем раз в столько, они сходятся
   var MEET_SPAN = 24000;     // плюс случайная добавка
@@ -54,10 +55,7 @@
   var LOOK_MS = 6500;        // сколько стоит и смотрит, как он работает
   var LOOK_KEEP = 30000;     // столько он не бросит работу, пока она идёт
 
-  /* Цвета у каждого свои, кадры общие. Буква `r` — румянец: у неё это розовые
-     прямоугольники под глазами, у Отто — тот же цвет, что и у тела, то есть
-     ничего не видно. Пропускать эти клетки, как незнакомый цвет, нельзя: у него
-     на их месте были бы две дыры в теле. */
+  /* Цвета у каждого свои, кадры общие. */
   var SKIN = {
     otto: {
       g: '#7c7cff',          // тело
@@ -73,19 +71,13 @@
       d: '#d9639f',
       w: '#e7eaf2',
       p: '#12141c',
-      r: '#ff5fa2',          // румянец
     },
   };
-
-  // У Отто румянца нет: там, где он у неё, у него просто тело. Цвет берётся
-  // ссылкой на его же — руками продублированный, он разъехался бы при первой
-  // смене окраски.
-  SKIN.otto.r = SKIN.otto.g;
 
   /* --- кадры ------------------------------------------------------------- */
 
   /* Точка — пусто, буква — цвет из палитры. Кадры тела одни на двоих:
-     клетки румянца помечены буквой `r`, и каждый берёт по ней своё.
+     Отто и Оливия отличаются только палитрой.
      Два слоя: существо шириной ровно в себя (при развороте зеркалится
      внутри своей рамки и не съезжает) и ноутбук, который не зеркалится
      никогда и есть только у Отто. Кадры перерисовывает
@@ -100,7 +92,7 @@
         'ggwwggggwwgg',
         'ggwpggggwpgg',
         'ggwwggggwwgg',
-        'ggrrggggrrgg',
+        'gggggggggggg',
         'dggggggggggd',
         '.dddddddddd.',
         '.dd.dd.dd.dd',
@@ -115,7 +107,7 @@
         'ggwwggggwwgg',
         'ggwpggggwpgg',
         'ggwwggggwwgg',
-        'ggrrggggrrgg',
+        'gggggggggggg',
         'dggggggggggd',
         '.dddddddddd.',
         '.dd.dd.dd.dd',
@@ -129,7 +121,7 @@
         'gggggggggggg',
         'ggppggggppgg',
         'gggggggggggg',
-        'ggrrggggrrgg',
+        'gggggggggggg',
         'dggggggggggd',
         '.dddddddddd.',
         '.dd.dd.dd.dd',
@@ -144,7 +136,7 @@
         'ggwwggggwwgg',
         'ggwpggggwpgg',
         'ggwwggggwwgg',
-        'ggrrggggrrgg',
+        'gggggggggggg',
         'dggggggggggd',
         '.dddddddddd.',
         'dd..dd.dd.dd',
@@ -157,7 +149,7 @@
         'ggwwggggwwgg',
         'ggwpggggwpgg',
         'ggwwggggwwgg',
-        'ggrrggggrrgg',
+        'gggggggggggg',
         'dggggggggggd',
         '.dddddddddd.',
         '.dd.dd.dd.dd',
@@ -172,7 +164,7 @@
         'ggwwggggwwgg',
         'ggwpggggwpgg',
         'ggwwggggwwgg',
-        'ggrrggggrrgg',
+        'gggggggggggg',
         'dggggggggggd',
         '.dddddddddd.',
         '.dd..dd.dddd',
@@ -186,7 +178,7 @@
         'ggwwggggwwgg',
         'ggwpggggwpgg',
         'ggwwggggwwgg',
-        'ggrrggggrrgg',
+        'gggggggggggg',
         'dggggggggggd',
         '.dddddddddd.',
         '.dd.dd.dd.dd',
@@ -199,7 +191,7 @@
         'ggwwggggwwgg',
         'ggwpggggwpgg',
         'ggwwggggwwgg',
-        'ggrrggggrrgg',
+        'gggggggggggg',
         'dggggggggggd',
         '.dddddddddd.',
         '...dd.dddd..',
@@ -217,7 +209,7 @@
         'ggwwggggwwgg',
         'ggwpggggwpgg',
         'ggwwggggwwgg',
-        'ggrrggggrrgg',
+        'gggggggggggg',
         'dggggggggggd',
         '.dddddddddd.',
         'dd.dd.dd.dd.',
@@ -229,7 +221,7 @@
         'ggwwggggwwgg',
         'ggwpggggwpgg',
         'ggwwggggwwgg',
-        'ggrrggggrrgg',
+        'gggggggggggg',
         'dggggggggggd',
         '.dddddddddd.',
         '.dd.dd.dd.dd',
@@ -245,7 +237,7 @@
         'ggwwggggwwgg',
         'ggwpggggwpgg',
         'ggwwggggwwgg',
-        'ggrrggggrrgg',
+        'gggggggggggg',
         'dggggggggggd',
         '.dddddddddd.',
         '.dd.dd.dd.dd',
@@ -257,7 +249,7 @@
         'ggwwggggwwgg',
         'ggwpggggwpgg',
         'ggwwggggwwgg',
-        'ggrrggggrrgg',
+        'gggggggggggg',
         'dggggggggggd',
         '.dddddddddd.',
         'dd.dd.dd.dd.',
@@ -272,7 +264,7 @@
         'ggwwggggwwgg',
         'ggwpggggwpgg',
         'ggwwggggwwgg',
-        'ggrrggggrrgg',
+        'gggggggggggg',
         'dggggggggggd',
         '.dddddddddd.',
         '.dd.dd.dd.dd',
@@ -286,7 +278,7 @@
         'ggwwggggwwgg',
         'ggwpggggwpgg',
         'ggwwggggwwgg',
-        'ggrrggggrrgg',
+        'gggggggggggg',
         'dggggggggggd',
         '.dddddddddd.',
         'dd..dd.dd.dd',
@@ -300,7 +292,7 @@
         'ggwwggggwwgg',
         'ggwpggggwpgg',
         'ggwwggggwwgg',
-        'ggrrggggrrgg',
+        'gggggggggggg',
         'dggggggggggd',
         '.dddddddddd.',
         '.dd.dd.dd.dd',
@@ -314,7 +306,7 @@
         'ggwwggggwwgg',
         'ggwpggggwpgg',
         'ggwwggggwwgg',
-        'ggrrggggrrgg',
+        'gggggggggggg',
         'dggggggggggd',
         '.dddddddddd.',
         '.dd..dd.dddd',
@@ -329,7 +321,7 @@
         'ggwwggggwwgg',
         'ggwpggggwpgg',
         'ggwwggggwwgg',
-        'ggrrggggrrgg',
+        'gggggggggggg',
         'dggggggggggd',
         '.dddddddddd.',
         'dd.dd.dd.dd.',
@@ -343,7 +335,7 @@
         'ggwwggggwwgg',
         'ggwpggggwpgg',
         'ggwwggggwwgg',
-        'ggrrggggrrgg',
+        'gggggggggggg',
         'dggggggggggd',
         '.dddddddddd.',
         '.dd.dd.dd.dd',
@@ -360,7 +352,7 @@
         'ggwwggggwwgg',
         'ggwpggggwpgg',
         'ggwwggggwwgg',
-        'ggrrggggrrgg',
+        'gggggggggggg',
         'dggggggggggd',
         '.dddddddddd.',
         'dd.dd..dd.dd',
@@ -469,12 +461,29 @@
       ],
   ];
 
+  // Пузырь ругани: белое облачко с тремя восклицательными.
+  var BUBBLE = [
+        '.wwwwwww.',
+        'wwpwpwpww',
+        'wwpwpwpww',
+        'wwwwwwwww',
+        'wwpwpwpww',
+        '.wwwwwww.',
+        '..ww.....',
+      ];
+
   /* --- сборка кадров ----------------------------------------------------- */
 
   // Размеры берутся из самих кадров, чтобы не разъезжаться с рисовалкой.
   var BODY_W = ART.idle[0][0].length;
   var PROP_W = LAPTOP[0][0].length;
   var ART_H = ART.idle[0].length;
+
+  /* Пузырь ругани всплывает над головой, поэтому холст выше рисунка на его
+     высоту. Размеры берутся из самого пузыря, чтобы не разъехаться с
+     рисовалкой. */
+  var BUBBLE_H = BUBBLE.length;
+  var BUBBLE_X = 2;          // на сколько клеток пузырь сдвинут вправо
 
   // На столько расходятся их `x`, когда они стоят бок о бок.
   var SPAN = BODY_W * PIXEL + MEET_GAP;
@@ -487,7 +496,7 @@
     var width = art[0].length;
     var canvas = document.createElement('canvas');
     canvas.width = width * PIXEL;
-    canvas.height = ART_H * PIXEL;
+    canvas.height = art.length * PIXEL;
 
     var ctx = canvas.getContext('2d');
     for (var y = 0; y < art.length; y += 1) {
@@ -531,6 +540,7 @@
     var prop = null;
     var busy = null;
     var openLast = 0;
+    var bubble = render(BUBBLE, false, spec.skin);
 
     if (spec.prop) {
       prop = spec.prop.open.map(function (art) { return render(art, false, spec.skin); });
@@ -542,7 +552,7 @@
     canvas.className = 'pet';
     // Холст шире рисунка только у того, кто носит с собой предмет.
     canvas.width = (BODY_W + (spec.prop ? PROP_W : 0)) * PIXEL;
-    canvas.height = ART_H * PIXEL;
+    canvas.height = (ART_H + BUBBLE_H) * PIXEL;
     canvas.setAttribute('aria-hidden', 'true');
     canvas.title = spec.title;
 
@@ -560,6 +570,7 @@
       frame: 0,
       frameAt: 0,
       blinkAt: 0,
+      swearUntil: 0,         // до какого времени висит пузырь ругани
       errand: null,          // куда позвал режиссёр встреч; null — занят собой
       facing: 1,             // и куда повернуться, когда дойдёт
       grab: null,
@@ -583,12 +594,21 @@
 
     /* Существо зеркалится внутри своей рамки — поэтому при развороте остаётся
        на месте, а не перепрыгивает. Ноутбук рисуется вторым слоем справа и
-       всегда в одну сторону. */
+       всегда в одну сторону, пузырь ругани — третьим, поверх всего. Само
+       существо стоит не у верхнего края холста, а ниже на высоту пузыря: холст
+       прижат к низу окна, и запас сверху ничего не сдвигает. */
     function draw(name, index, lap) {
       var set = sprites[name][index % sprites[name].length];
+      var top = BUBBLE_H * PIXEL;
+
       ctx.clearRect(0, 0, canvas.width, canvas.height);
-      ctx.drawImage(me.dir < 0 ? set.left : set.right, 0, 0);
-      if (lap) ctx.drawImage(lap, BODY_W * PIXEL, 0);
+      ctx.drawImage(me.dir < 0 ? set.left : set.right, 0, top);
+      if (lap) ctx.drawImage(lap, BODY_W * PIXEL, top);
+
+      if (me.swearUntil > performance.now() &&
+        me.state !== 'held' && me.state !== 'fly') {
+        ctx.drawImage(bubble, BUBBLE_X * PIXEL, 0);
+      }
     }
 
     function enter(state, now, until) {
@@ -835,6 +855,14 @@
       draw('idle', 0, open ? prop[openLast] : null);
     }
 
+    /* Ругань — не состояние, а наклейка поверх кадра: занятие она не обрывает,
+       и разворачиваться к обидчику он не станет. Иначе печатающий Отто
+       отвернулся бы от ноутбука, а тот слой не зеркалится. */
+    function swear(now) {
+      me.swearUntil = now + SWEAR_MS;
+      wake();
+    }
+
     /* Спрятанное стилями существо (узкий экран, печать) кадров не просит.
        Проверяется это не в кадре, а при изменении размера окна: чтение стиля
        заставляет браузер пересчитывать раскладку. `offsetParent` тут не
@@ -871,7 +899,7 @@
 
       var box = canvas.getBoundingClientRect();
       var on = x > box.left && x < box.left + PIXEL * BODY_W &&
-        y > box.top + PIXEL * (ART_TOP + 3) && y < box.bottom;
+        y > box.top + PIXEL * (BUBBLE_H + ART_TOP + 3) && y < box.bottom;
 
       canvas.style.pointerEvents = on ? 'auto' : 'none';
     }
@@ -961,6 +989,7 @@
     me.update = update;
     me.pick = pick;
     me.rest = rest;
+    me.swear = swear;
     me.checkHidden = checkHidden;
     me.watch = watch;
     me.hover = hover;
@@ -1043,6 +1072,15 @@
     return true;
   }
 
+  /* Оливию зашвырнули, и она приземлилась — Отто на это ругается. Ловим
+     переход из полёта в приземление: бросок кончается именно им. */
+  var wasFlying = false;
+
+  function watchFall(now) {
+    if (wasFlying && olivia.state === 'land') otto.swear(now);
+    wasFlying = olivia.state === 'fly';
+  }
+
   function direct(now) {
     if (!scene) {
       // Без сцены никто не должен оставаться в её состояниях.
@@ -1102,6 +1140,7 @@
     last = now;
 
     direct(now);
+    watchFall(now);
     pets.forEach(function (p) {
       p.update(now, step);
       p.pick(now);
