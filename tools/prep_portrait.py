@@ -9,8 +9,10 @@
 берётся из ~/.u2net; если её там нет, скрипт честно об этом говорит и ничего
 не делает.
 
-Дальше маска подрезается и растушёвывается на пиксель-другой — иначе по контуру
-остаётся светлая кайма от прежнего фона, — а полутона переводятся в дуотон от
+Дальше с края снимается кайма прежнего фона: фон на снимке не белый, а серый
+с градиентом сверху вниз, поэтому его яркость оценивается отдельно в каждой
+точке, и краевые пиксели, похожие на здешний фон, гасятся, а у оставшихся
+примесь фона вычитается. Полутона переводятся в дуотон от
 синевато-тёмного к почти белому: иначе чёрный свитер сливается с полотном
 страницы. Растворяется только низ, где силуэт обрезан краем кадра; по остальным
 сторонам вырезка идёт точно по контуру, а объём портрету на странице добавляют
@@ -34,6 +36,7 @@ MODEL = Path.home() / ".u2net" / "u2net_human_seg.onnx"
 TARGET_W = 760          # ширина итогового файла, px (показывается вдвое меньше)
 ASPECT = 0.92           # ширина к высоте кадра
 HEAD_RATIO = 2.05       # высота кадра в высотах головы
+BG_TOL = 26.0           # насколько близко к фону, чтобы считать пиксель фоном
 SHADOW = (0x1b, 0x22, 0x30)   # куда уходят тени — синевато-тёмный из палитры
 HIGHLIGHT = (0xe9, 0xec, 0xf4)  # куда уходят света
 # Растворяется только низ, и совсем немного: там силуэт обрезан краем кадра.
@@ -42,6 +45,32 @@ HIGHLIGHT = (0xe9, 0xec, 0xf4)  # куда уходят света
 FADE = 0.08
 SIDE_FADE = 0.0
 TOP_FADE = 0.0
+
+
+def background(gray: np.ndarray, mask: np.ndarray) -> np.ndarray:
+    """Яркость фона в каждой точке кадра.
+
+    Фон на снимке не белый и не ровный — серый с градиентом сверху вниз, — так
+    что одним числом его не описать. Усредняем только заведомо фоновые пиксели,
+    расширяя окно, пока не покроем весь кадр: у силуэта фон всегда рядом,
+    а что творится в его середине, нам и не нужно.
+    """
+    known = (mask < 0.03).astype(np.float32)
+    value = gray * known
+    out = np.zeros_like(gray)
+    filled = np.zeros_like(gray)
+
+    for window in (51, 121, 241, 481):
+        num = cv2.blur(value, (window, window))
+        den = cv2.blur(known, (window, window))
+        fresh = (den > 1e-4) & (filled < 0.5)
+        out[fresh] = num[fresh] / den[fresh]
+        filled[fresh] = 1.0
+
+    if (filled < 0.5).any():
+        out[filled < 0.5] = float(gray[known > 0.5].mean()) if known.any() else 200.0
+
+    return cv2.GaussianBlur(out, (0, 0), 12)
 
 
 def cutout(path: Path) -> tuple[np.ndarray, np.ndarray]:
@@ -67,13 +96,26 @@ def cutout(path: Path) -> tuple[np.ndarray, np.ndarray]:
     mask = (raw - raw.min()) / (span if span else 1.0)
     mask = cv2.resize(mask, (original.shape[1], original.shape[0]), interpolation=cv2.INTER_LINEAR)
 
-    # Подрезаем и растушёвываем край: прежний фон был светлым, и без этого по
-    # контуру остаётся заметная кайма.
-    mask = cv2.erode(mask, np.ones((3, 3), np.uint8), iterations=2)
-    mask = cv2.GaussianBlur(mask, (0, 0), 1.6)
+    gray = cv2.cvtColor(original, cv2.COLOR_RGB2GRAY).astype(np.float32)
+    bg = background(gray, mask)
 
-    gray = cv2.cvtColor(original, cv2.COLOR_RGB2GRAY)
-    return gray, np.clip(mask, 0, 1)
+    # Кайма. Сеть оставляет по контуру полупрозрачные пиксели, и в них сидит
+    # прежний фон: волосы и плечи обводило светлым ореолом. Гасим те краевые
+    # пиксели, что похожи на здешний фон; глубину силуэта не трогаем, иначе
+    # выело бы светлое лицо.
+    core = cv2.erode((mask > 0.6).astype(np.float32), np.ones((3, 3), np.uint8), iterations=4)
+    core = cv2.GaussianBlur(core, (0, 0), 2.0)
+    similar = np.clip(1.0 - np.abs(gray - bg) / BG_TOL, 0, 1)
+    mask = np.clip(mask * (1.0 - similar * (1.0 - core)), 0, 1)
+
+    mask = cv2.erode(mask, np.ones((3, 3), np.uint8), iterations=1)
+    mask = np.clip(cv2.GaussianBlur(mask, (0, 0), 1.0), 0, 1)
+
+    # У тех краевых пикселей, что остались, вычитаем примесь фона: они смесь
+    # его и силуэта, и без вычитания остаются светлее, чем есть на самом деле.
+    lean = np.where(mask > 0.02, (gray - (1 - mask) * bg) / np.maximum(mask, 0.25), gray)
+
+    return np.clip(lean, 0, 255).astype(np.uint8), mask
 
 
 def reframe(gray: np.ndarray, mask: np.ndarray) -> tuple[np.ndarray, np.ndarray]:

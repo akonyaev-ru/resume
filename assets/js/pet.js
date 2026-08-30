@@ -2,8 +2,9 @@
    нижнего края, раскрывает ноутбук и печатает; Оливия — розовая — гуляет и
    танцует на месте. Время от времени они сходятся: прыгают друг перед
    другом, а иногда она подходит и смотрит, как он работает. Оба отзываются на
-   курсор и щелчок, обоих можно схватить и зашвырнуть — а если зашвырнуть
-   Оливию, приземление она встретит уже под ругань Отто.
+   курсор и щелчок, обоих можно схватить и зашвырнуть. Кого зашвырнули, того
+   второй бежит утешать: встаёт рядом и гладит по щеке. Отто при этом ещё и
+   ругается, а Оливия пускает слезу — щёки у неё голубеют.
 
    Рисунок настоящий пиксельный: таблицы ниже, где буква — цвет, точка — пустое
    место. Кадры тела одни на двоих, различаются только палитрой. Ноутбук — второй
@@ -20,7 +21,9 @@
   var PIXEL = 3;             // сторона «пикселя» рисунка, px
 
   var SPEED = 24;            // как быстро идёт, px в секунду
+  var RUN_SPEED = 115;       // и как быстро бежит на выручку
   var WALK_MS = 170;         // смена кадра шага
+  var RUN_MS = 70;           // и смена кадра у бегущего
   var OPEN_MS = 130;         // кадр раскрытия крышки
   var BUSY_MS = 220;         // смена кадра за клавишами
   var DANCE_MS = 200;        // смена кадра в танце
@@ -41,6 +44,9 @@
   var DRAG_PX = 3;           // с какого сдвига считаем, что это перетаскивание
   var LAND_MS = 200;         // сколько лежит осевшим после падения
   var SWEAR_MS = 1900;       // сколько висит пузырь ругани
+  var WEEP_MS = 14000;       // сколько она ходит в слезах, если не утешит раньше
+  var PET_MS = 2800;         // сколько гладит упавшую
+  var PET_FRAME_MS = 320;    // и такт самого поглаживания
 
   var MEET_EVERY = 26000;    // не чаще, чем раз в столько, они сходятся
   var MEET_SPAN = 24000;     // плюс случайная добавка
@@ -55,7 +61,10 @@
   var LOOK_MS = 6500;        // сколько стоит и смотрит, как он работает
   var LOOK_KEEP = 30000;     // столько он не бросит работу, пока она идёт
 
-  /* Цвета у каждого свои, кадры общие. */
+  /* Цвета у каждого свои, кадры общие. Буква `r` — румянец: у Оливии он
+     розовый, у Отто той же краски, что и тело, то есть его не видно.
+     Пропускать эти клетки, как незнакомый цвет, нельзя — у него на их месте
+     были бы две дыры в теле. */
   var SKIN = {
     otto: {
       g: '#7c7cff',          // тело
@@ -71,8 +80,18 @@
       d: '#d9639f',
       w: '#e7eaf2',
       p: '#12141c',
+      r: '#ff5fa2',          // румянец
     },
   };
+
+  // У Отто румянца нет: там, где он у неё, у него просто тело. Цвет берётся
+  // ссылкой на его же — продублированный руками, он разъехался бы при первой
+  // смене окраски.
+  SKIN.otto.r = SKIN.otto.g;
+
+  // Заплаканная Оливия: тот же румянец, но голубой. Больше в палитре не
+  // меняется ничего — слёзы это про щёки, а не про всё существо.
+  var TEARS = { r: '#7cc4ff' };
 
   /* --- кадры ------------------------------------------------------------- */
 
@@ -92,7 +111,7 @@
         'ggwwggggwwgg',
         'ggwpggggwpgg',
         'ggwwggggwwgg',
-        'gggggggggggg',
+        'ggrrggggrrgg',
         'dggggggggggd',
         '.dddddddddd.',
         '.dd.dd.dd.dd',
@@ -107,7 +126,7 @@
         'ggwwggggwwgg',
         'ggwpggggwpgg',
         'ggwwggggwwgg',
-        'gggggggggggg',
+        'ggrrggggrrgg',
         'dggggggggggd',
         '.dddddddddd.',
         '.dd.dd.dd.dd',
@@ -121,7 +140,7 @@
         'gggggggggggg',
         'ggppggggppgg',
         'gggggggggggg',
-        'gggggggggggg',
+        'ggrrggggrrgg',
         'dggggggggggd',
         '.dddddddddd.',
         '.dd.dd.dd.dd',
@@ -136,7 +155,7 @@
         'ggwwggggwwgg',
         'ggwpggggwpgg',
         'ggwwggggwwgg',
-        'gggggggggggg',
+        'ggrrggggrrgg',
         'dggggggggggd',
         '.dddddddddd.',
         'dd..dd.dd.dd',
@@ -149,7 +168,7 @@
         'ggwwggggwwgg',
         'ggwpggggwpgg',
         'ggwwggggwwgg',
-        'gggggggggggg',
+        'ggrrggggrrgg',
         'dggggggggggd',
         '.dddddddddd.',
         '.dd.dd.dd.dd',
@@ -164,7 +183,7 @@
         'ggwwggggwwgg',
         'ggwpggggwpgg',
         'ggwwggggwwgg',
-        'gggggggggggg',
+        'ggrrggggrrgg',
         'dggggggggggd',
         '.dddddddddd.',
         '.dd..dd.dddd',
@@ -178,7 +197,7 @@
         'ggwwggggwwgg',
         'ggwpggggwpgg',
         'ggwwggggwwgg',
-        'gggggggggggg',
+        'ggrrggggrrgg',
         'dggggggggggd',
         '.dddddddddd.',
         '.dd.dd.dd.dd',
@@ -191,7 +210,7 @@
         'ggwwggggwwgg',
         'ggwpggggwpgg',
         'ggwwggggwwgg',
-        'gggggggggggg',
+        'ggrrggggrrgg',
         'dggggggggggd',
         '.dddddddddd.',
         '...dd.dddd..',
@@ -209,7 +228,7 @@
         'ggwwggggwwgg',
         'ggwpggggwpgg',
         'ggwwggggwwgg',
-        'gggggggggggg',
+        'ggrrggggrrgg',
         'dggggggggggd',
         '.dddddddddd.',
         'dd.dd.dd.dd.',
@@ -221,7 +240,7 @@
         'ggwwggggwwgg',
         'ggwpggggwpgg',
         'ggwwggggwwgg',
-        'gggggggggggg',
+        'ggrrggggrrgg',
         'dggggggggggd',
         '.dddddddddd.',
         '.dd.dd.dd.dd',
@@ -237,7 +256,7 @@
         'ggwwggggwwgg',
         'ggwpggggwpgg',
         'ggwwggggwwgg',
-        'gggggggggggg',
+        'ggrrggggrrgg',
         'dggggggggggd',
         '.dddddddddd.',
         '.dd.dd.dd.dd',
@@ -249,7 +268,7 @@
         'ggwwggggwwgg',
         'ggwpggggwpgg',
         'ggwwggggwwgg',
-        'gggggggggggg',
+        'ggrrggggrrgg',
         'dggggggggggd',
         '.dddddddddd.',
         'dd.dd.dd.dd.',
@@ -264,7 +283,7 @@
         'ggwwggggwwgg',
         'ggwpggggwpgg',
         'ggwwggggwwgg',
-        'gggggggggggg',
+        'ggrrggggrrgg',
         'dggggggggggd',
         '.dddddddddd.',
         '.dd.dd.dd.dd',
@@ -278,7 +297,7 @@
         'ggwwggggwwgg',
         'ggwpggggwpgg',
         'ggwwggggwwgg',
-        'gggggggggggg',
+        'ggrrggggrrgg',
         'dggggggggggd',
         '.dddddddddd.',
         'dd..dd.dd.dd',
@@ -292,7 +311,7 @@
         'ggwwggggwwgg',
         'ggwpggggwpgg',
         'ggwwggggwwgg',
-        'gggggggggggg',
+        'ggrrggggrrgg',
         'dggggggggggd',
         '.dddddddddd.',
         '.dd.dd.dd.dd',
@@ -306,7 +325,7 @@
         'ggwwggggwwgg',
         'ggwpggggwpgg',
         'ggwwggggwwgg',
-        'gggggggggggg',
+        'ggrrggggrrgg',
         'dggggggggggd',
         '.dddddddddd.',
         '.dd..dd.dddd',
@@ -321,7 +340,7 @@
         'ggwwggggwwgg',
         'ggwpggggwpgg',
         'ggwwggggwwgg',
-        'gggggggggggg',
+        'ggrrggggrrgg',
         'dggggggggggd',
         '.dddddddddd.',
         'dd.dd.dd.dd.',
@@ -335,7 +354,7 @@
         'ggwwggggwwgg',
         'ggwpggggwpgg',
         'ggwwggggwwgg',
-        'gggggggggggg',
+        'ggrrggggrrgg',
         'dggggggggggd',
         '.dddddddddd.',
         '.dd.dd.dd.dd',
@@ -352,7 +371,7 @@
         'ggwwggggwwgg',
         'ggwpggggwpgg',
         'ggwwggggwwgg',
-        'gggggggggggg',
+        'ggrrggggrrgg',
         'dggggggggggd',
         '.dddddddddd.',
         'dd.dd..dd.dd',
@@ -461,6 +480,40 @@
       ],
   ];
 
+  // Щупальце, которым Отто гладит соседку: то на макушке, то над.
+  var PET = [
+    [
+        '.......',
+        '.......',
+        '.......',
+        '.......',
+        '.......',
+        '.......',
+        '.......',
+        'dd.....',
+        'dd.....',
+        '.......',
+        '.......',
+        '.......',
+        '.......',
+      ],
+    [
+        '.......',
+        '.......',
+        '.......',
+        '.......',
+        '.......',
+        'dd.....',
+        'dd.....',
+        '.......',
+        '.......',
+        '.......',
+        '.......',
+        '.......',
+        '.......',
+      ],
+  ];
+
   // Пузырь ругани: белое облачко с тремя восклицательными.
   var BUBBLE = [
         '.wwwwwww.',
@@ -512,6 +565,15 @@
     return canvas;
   }
 
+  // Палитра с подменёнными цветами: своя копия, чтобы не портить исходную.
+  function tint(skin, over) {
+    var out = {};
+    var key;
+    for (key in skin) if (skin.hasOwnProperty(key)) out[key] = skin[key];
+    for (key in over) if (over.hasOwnProperty(key)) out[key] = over[key];
+    return out;
+  }
+
   /* Рисунок общий, цвета разные — значит и готовых холстов два набора. Собрать
      их один раз дешевле, чем красить пиксели в кадре. */
   function sheet(skin) {
@@ -533,6 +595,8 @@
      обработчики. Кадровый цикл при этом один на двоих — он ниже. */
   function makePet(spec) {
     var sprites = sheet(spec.skin);
+    // Заплаканный набор кадров: тот же рисунок, другой цвет щёк.
+    var teary = spec.tears ? sheet(tint(spec.skin, spec.tears)) : null;
 
     /* Предмет — второй слой справа от тела, он не зеркалится. Есть он только у
        Отто; у Оливии своё занятие без предмета. Сколько кадров занимает
@@ -541,6 +605,7 @@
     var busy = null;
     var openLast = 0;
     var bubble = render(BUBBLE, false, spec.skin);
+    var hands = PET.map(function (art) { return render(art, false, spec.skin); });
 
     if (spec.prop) {
       prop = spec.prop.open.map(function (art) { return render(art, false, spec.skin); });
@@ -550,8 +615,9 @@
 
     var canvas = document.createElement('canvas');
     canvas.className = 'pet';
-    // Холст шире рисунка только у того, кто носит с собой предмет.
-    canvas.width = (BODY_W + (spec.prop ? PROP_W : 0)) * PIXEL;
+    /* Холст шире рисунка у обоих: справа место под предмет, а у кого предмета
+       нет — под квадратик, которым он гладит соседа. */
+    canvas.width = (BODY_W + PROP_W) * PIXEL;
     canvas.height = (ART_H + BUBBLE_H) * PIXEL;
     canvas.setAttribute('aria-hidden', 'true');
     canvas.title = spec.title;
@@ -571,6 +637,8 @@
       frameAt: 0,
       blinkAt: 0,
       swearUntil: 0,         // до какого времени висит пузырь ругани
+      sadUntil: 0,           // и до какого она в слезах
+      hurry: false,          // на выручку он бежит, а не идёт
       errand: null,          // куда позвал режиссёр встреч; null — занят собой
       facing: 1,             // и куда повернуться, когда дойдёт
       grab: null,
@@ -598,15 +666,16 @@
        существо стоит не у верхнего края холста, а ниже на высоту пузыря: холст
        прижат к низу окна, и запас сверху ничего не сдвигает. */
     function draw(name, index, lap) {
-      var set = sprites[name][index % sprites[name].length];
+      var now = performance.now();
+      var book = teary && me.sadUntil > now ? teary : sprites;
+      var set = book[name][index % book[name].length];
       var top = BUBBLE_H * PIXEL;
 
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       ctx.drawImage(me.dir < 0 ? set.left : set.right, 0, top);
       if (lap) ctx.drawImage(lap, BODY_W * PIXEL, top);
 
-      if (me.swearUntil > performance.now() &&
-        me.state !== 'held' && me.state !== 'fly') {
+      if (me.swearUntil > now && me.state !== 'held' && me.state !== 'fly') {
         ctx.drawImage(bubble, BUBBLE_X * PIXEL, 0);
       }
     }
@@ -619,6 +688,7 @@
     }
 
     function stroll(now) {
+      me.hurry = false;
       me.target = EDGE + Math.random() * (limit() - EDGE);
       me.dir = me.target < me.x ? -1 : 1;
       enter('walk', now);
@@ -662,11 +732,12 @@
     /* Режиссёр зовёт на место встречи: дойти до `x` и встать мордой в сторону
        `facing`. Занятие бросается сразу — иначе один топтался бы у места
        встречи, пока второй допечатывает свои десять секунд. */
-    function summon(now, x, facing) {
+    function summon(now, x, facing, hurry) {
       if (me.state === 'held' || me.state === 'fly') return;
 
       me.errand = clamp(x, EDGE, limit());
       me.facing = facing;
+      me.hurry = !!hurry;
 
       // Раскрытое он закроет сам: раскрытие и закрытие идут по кадрам,
       // обрывать их на середине нельзя. Само дело обрывается сразу.
@@ -717,6 +788,7 @@
       }
 
       me.errand = null;
+      me.hurry = false;
       me.dir = me.facing;
       enter('wait', now);
     }
@@ -732,7 +804,7 @@
       if (me.state === 'walk') {
         if (inTheWay()) { stepAside(now); return; }
 
-        me.x += me.dir * SPEED * (step / 1000);
+        me.x += me.dir * (me.hurry ? RUN_SPEED : SPEED) * (step / 1000);
         if ((me.dir > 0 && me.x >= me.target) || (me.dir < 0 && me.x <= me.target)) {
           me.x = me.target;
           arrive(now);
@@ -769,9 +841,9 @@
       // Пока держат — он слушается курсора, а не себя.
       if (me.state === 'held') return;
 
-      // Стоит у места встречи и прыгает по команде: этими двумя состояниями
-      // распоряжается режиссёр, сам из них никто не выходит.
-      if (me.state === 'wait' || me.state === 'jump') return;
+      // Стоит у места встречи, прыгает, гладит: этими состояниями распоряжается
+      // режиссёр, сам из них никто не выходит.
+      if (me.state === 'wait' || me.state === 'jump' || me.state === 'pet') return;
 
       /* Брошенный летит по параболе, отскакивает от стен и от пола, пока не
          выдохнется. Пол — низ окна, стены — те же отступы, что и при ходьбе. */
@@ -814,7 +886,10 @@
 
     function pick(now) {
       if (me.state === 'walk') {
-        if (now - me.frameAt > WALK_MS) { me.frame += 1; me.frameAt = now; }
+        if (now - me.frameAt > (me.hurry ? RUN_MS : WALK_MS)) {
+          me.frame += 1;
+          me.frameAt = now;
+        }
         return draw('walk', me.frame, null);
       }
 
@@ -823,6 +898,12 @@
       // За делом идут те же два кадра дыхания, что и стоя, — меняется предмет.
       if (me.state === 'busy') return draw('idle', me.frame, busy[me.frame % busy.length]);
       if (me.state === 'hop') return draw('hop', 0, null);
+
+      // Гладит соседку: щупальце то на её макушке, то поднято над ней.
+      if (me.state === 'pet') {
+        if (now - me.frameAt > PET_FRAME_MS) { me.frame += 1; me.frameAt = now; }
+        return draw('idle', 0, hands[me.frame % hands.length]);
+      }
 
       // Танцует на месте: приседает, подскакивает и перебирает щупальцами.
       if (me.state === 'dance') {
@@ -851,8 +932,12 @@
       return draw('idle', Math.floor(now / BREATH_MS), null);
     }
 
+    /* Поза покоя для `prefers-reduced-motion`. Проверка на предмет обязательна:
+       он есть не у всех, и без неё скрипт падал у тех, кто просил меньше
+       движения, — а падал он до отрисовки, так что не было видно вообще
+       никого. */
     function rest(open) {
-      draw('idle', 0, open ? prop[openLast] : null);
+      draw('idle', 0, open && prop ? prop[openLast] : null);
     }
 
     /* Ругань — не состояние, а наклейка поверх кадра: занятие она не обрывает,
@@ -860,6 +945,12 @@
        отвернулся бы от ноутбука, а тот слой не зеркалится. */
     function swear(now) {
       me.swearUntil = now + SWEAR_MS;
+      wake();
+    }
+
+    // Слёзы — тоже не состояние, а другой набор кадров: голубые щёки.
+    function weep(now) {
+      me.sadUntil = now + WEEP_MS;
       wake();
     }
 
@@ -878,7 +969,7 @@
       if (me.grab || me.errand !== null) return;
       if (me.state === 'open' || me.state === 'busy' || me.state === 'close' ||
         me.state === 'fly' || me.state === 'held' || me.state === 'dance' ||
-        me.state === 'wait' || me.state === 'jump') return;
+        me.state === 'wait' || me.state === 'jump' || me.state === 'pet') return;
 
       var box = canvas.getBoundingClientRect();
       var near = x > box.left - WATCH_PX && x < box.right + WATCH_PX &&
@@ -990,6 +1081,7 @@
     me.pick = pick;
     me.rest = rest;
     me.swear = swear;
+    me.weep = weep;
     me.checkHidden = checkHidden;
     me.watch = watch;
     me.hover = hover;
@@ -1005,7 +1097,7 @@
     prop: { open: LAPTOP, busy: LAPTOP_TYPE },
   });
   var olivia = makePet({
-    title: 'Погладить Оливию', skin: SKIN.olivia, aside: 1,
+    title: 'Погладить Оливию', skin: SKIN.olivia, aside: 1, tears: TEARS,
   });
   var pets = [otto, olivia];
 
@@ -1035,7 +1127,9 @@
 
     pets.forEach(function (p) {
       p.errand = null;
-      if (p.state === 'wait' || p.state === 'jump') p.decide(now);
+      p.hurry = false;
+      p.sadUntil = 0;        // утешил — и слёзы высохли
+      if (p.state === 'wait' || p.state === 'jump' || p.state === 'pet') p.decide(now);
     });
   }
 
@@ -1072,20 +1166,43 @@
     return true;
   }
 
-  /* Оливию зашвырнули, и она приземлилась — Отто на это ругается. Ловим
-     переход из полёта в приземление: бросок кончается именно им. */
-  var wasFlying = false;
+  /* Кого зашвырнули, того второй бежит утешать: встаёт рядом и гладит по щеке.
+     Отто при этом ругается, Оливия молча пускает слезу. Ловим переход из полёта
+     в приземление: бросок кончается именно им.
+
+     Утешающий встаёт всегда слева: квадратик, которым он гладит, живёт в слое
+     предмета, а тот не зеркалится и смотрит вправо. Если он был справа, по
+     дороге он упавшего обгоняет — правило «не ходить сквозь друг друга» на пути
+     с поручением не действует, и это осознанно: он спешит. */
+  var falling = [false, false];
 
   function watchFall(now) {
-    if (wasFlying && olivia.state === 'land') otto.swear(now);
-    wasFlying = olivia.state === 'fly';
+    pets.forEach(function (p, i) {
+      if (falling[i] && p.state === 'land') comfort(now, p);
+      falling[i] = p.state === 'fly';
+    });
+  }
+
+  function comfort(now, fallen) {
+    var helper = fallen === otto ? olivia : otto;
+
+    if (helper === otto) otto.swear(now);
+    else olivia.weep(now);
+
+    var spot = fallen.x - SPAN;
+    if (spot < EDGE || occupied(helper)) return;   // встать негде — только чувства
+
+    if (scene) endScene(now);
+    fallen.summon(now, fallen.x, -1);              // лежит где упал, мордой к нему
+    helper.summon(now, spot, 1, true);
+    scene = { kind: 'pet', until: 0, deadline: now + SCENE_MAX, helper: helper };
   }
 
   function direct(now) {
     if (!scene) {
       // Без сцены никто не должен оставаться в её состояниях.
       pets.forEach(function (p) {
-        if (p.state === 'wait' || p.state === 'jump') p.decide(now);
+        if (p.state === 'wait' || p.state === 'jump' || p.state === 'pet') p.decide(now);
       });
 
       if (now < meetAt || otto.hidden || olivia.hidden) return;
@@ -1114,6 +1231,12 @@
       }
 
       if (otto.state !== 'wait' || olivia.state !== 'wait') return;
+
+      if (scene.kind === 'pet') {
+        scene.until = now + PET_MS;
+        scene.helper.enter('pet', now, scene.until);
+        return;
+      }
 
       scene.until = now + JUMPS * JUMP_MS;
       otto.enter('jump', now, scene.until);
