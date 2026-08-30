@@ -470,6 +470,13 @@
   }
 
   function update(now, step) {
+    /* Подстраховка от любых будущих оплошностей: если Отто оказался выше пола,
+       а его не держат и он не летит — он падает. */
+    if (pet.y > 0 && pet.state !== 'held' && pet.state !== 'fly') {
+      enter('fly', now);
+      return;
+    }
+
     if (pet.state === 'walk') {
       pet.x += pet.dir * SPEED * (step / 1000);
       if ((pet.dir > 0 && pet.x >= pet.target) || (pet.dir < 0 && pet.x <= pet.target)) {
@@ -680,11 +687,17 @@
     grab.y = event.clientY;
     grab.at = now;
 
-    if (Math.abs(event.clientX - grab.dx - pet.x) > DRAG_PX) dragged = true;
-
-    pet.x = clamp(event.clientX - grab.dx, EDGE, limit());
-    pet.y = clamp(window.innerHeight - (event.clientY - grab.dy) - canvas.height,
+    var x = clamp(event.clientX - grab.dx, EDGE, limit());
+    var y = clamp(window.innerHeight - (event.clientY - grab.dy) - canvas.height,
       0, ceiling());
+
+    // Считать перетаскиванием только сдвиг вбок было ошибкой: поднятый вверх
+    // Отто считался нетронутым, щелчок после броска шёл за тычок, и прыжок
+    // обрывал полёт — Отто оставался висеть в воздухе.
+    if (Math.abs(x - pet.x) > DRAG_PX || Math.abs(y - pet.y) > DRAG_PX) dragged = true;
+
+    pet.x = x;
+    pet.y = y;
     place();
   }
 
