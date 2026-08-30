@@ -33,7 +33,7 @@ BODY = [
 ]
 
 BODY_W = len(BODY[0])       # ширина слоя существа
-LAP_W = 6                   # ширина слоя ноутбука
+LAP_W = 7                   # ширина слоя ноутбука
 H = 11
 GROUND = H - 1
 LEGS_TOP = len(BODY)
@@ -44,6 +44,8 @@ LEGS = {
     'walkA': ((0, 1), (4, 5), (7, 8), (10, 11)),
     'walkB': ((1, 2), (5, 6), (8, 9), (10, 11)),
     'tuck': ((3, 4), (6, 7), (8, 9), (-1, -1)),
+    'sweep': ((0, 1), (3, 4), (6, 7), (9, 10)),   # сдуты назад в полёте
+    'splay': ((0, 1), (3, 4), (7, 8), (10, 11)),  # разъехались при ударе
 }
 
 
@@ -97,9 +99,10 @@ def volume(g):
     return g
 
 
-def body(legs='stand', eyes=True, lift=0, crouch=0, step=0):
+def body(legs='stand', eyes=True, lift=0, crouch=0, step=0, hang=False):
     """legs — как стоят щупальца; lift — подскок целиком; crouch — присесть на
-    клетку; step — какая пара щупалец оторвана от земли."""
+    клетку; step — какая пара щупалец оторвана от земли; hang — щупальца висят
+    во всю длину, до нижнего края (когда Отто держат на весу)."""
     g = blank(BODY_W)
     shift = crouch - lift
 
@@ -118,9 +121,10 @@ def body(legs='stand', eyes=True, lift=0, crouch=0, step=0):
         if x1 < x0 or x0 < 0:
             continue
         short = 1 if step and (i % 2 == (step - 1)) else 0
-        rect(g, x0, top, x1, GROUND - lift - short, 'd')
+        bottom = GROUND if hang else GROUND - lift - short
+        rect(g, x0, top, x1, bottom, 'd')
 
-    if not eyes:
+    if eyes is False:
         for y in range(H):
             for x in range(BODY_W):
                 if g[y][x] in 'wp':
@@ -138,16 +142,16 @@ def laptop(stage):
     самого: вполовину ниже и вдвое уже.
     stage: 0 — закрыт, 1 и 2 — раскрывается, 3 — открыт."""
     g = blank(LAP_W)
-    hinge = 3
+    hinge = 4
 
     rect(g, 0, GROUND, hinge, GROUND, 'k')          # клавиатура
 
     if stage == 0:
         rect(g, 0, GROUND - 1, hinge, GROUND - 1, 'k')
     elif stage == 1:
-        line(g, hinge, GROUND - 1, 1, GROUND - 2, 'k')
+        line(g, hinge, GROUND - 1, 2, GROUND - 2, 'k')
     elif stage == 2:
-        line(g, hinge, GROUND - 1, 2, GROUND - 4, 'k')
+        line(g, hinge, GROUND - 1, 3, GROUND - 4, 'k')
     else:
         # Крышка в две клетки толщиной, откинута назад через вертикаль.
         line(g, hinge, GROUND - 1, hinge + 1, GROUND - 5, 'k')
@@ -156,17 +160,24 @@ def laptop(stage):
     return g
 
 
+# Где стоят щупальца на клавиатуре: каждое в две клетки шириной, между ними
+# просвет — иначе они сливаются в одно пятно и движение читается как перескок
+# вбок, а не как нажатие.
+PRESS_X = ((0, 1), (3, 4))
+
+
 def tentacles(g, first):
-    """Два щупальца на клавишах: одно опущено до клавиши, второе занесено на
-    две клетки выше — в соседнем кадре они меняются местами, и получается
-    нажатие. Живут они в слое ноутбука, а не тела: тот слой не зеркалится, а
+    """Два щупальца печатают: каждое ходит вверх-вниз в своём столбце. Одно
+    опущено на клавишу, второе занесено на две клетки выше; в соседнем кадре
+    наоборот. Живут они в слое ноутбука, а не тела: тот слой не зеркалится, а
     печатает осьминожек всегда мордой к нему."""
     g = [row[:] for row in g]
+    arm = GROUND - 3
 
-    rect(g, 0, GROUND - 3, 2, GROUND - 3, 'd')      # тянутся от осьминожка
-    down, up = (1, 2) if first else (2, 1)
-    rect(g, down, GROUND - 3, down, GROUND, 'd')    # это жмёт клавишу
-    rect(g, up, GROUND - 3, up, GROUND - 2, 'd')    # это занесено над ней
+    rect(g, 0, arm, PRESS_X[1][1], arm, 'd')        # тянутся от осьминожка
+    for i, (x0, x1) in enumerate(PRESS_X):
+        down = (i == 0) if first else (i == 1)
+        rect(g, x0, arm, x1, GROUND if down else GROUND - 2, 'd')
 
     return g
 
@@ -183,6 +194,20 @@ BODY_FRAMES = [
     ]),
     ('hop', [lambda: body(legs='tuck', lift=2)]),
     ('type', [lambda: body(), lambda: body(crouch=1)]),
+    # Отто держат на весу: щупальца висят и качаются из стороны в сторону.
+    ('held', [
+        lambda: body(lift=1, hang=True),
+        lambda: body(legs='walkA', lift=1, hang=True),
+        lambda: body(lift=1, hang=True),
+        lambda: body(legs='walkB', lift=1, hang=True),
+    ]),
+    # Летит: щупальца полощет ветром.
+    ('fly', [
+        lambda: body(legs='sweep', lift=1, hang=True),
+        lambda: body(lift=1, hang=True),
+    ]),
+    # Приземлился: осел, щупальца разъехались.
+    ('land', [lambda: body(legs='splay', crouch=1)]),
 ]
 
 LAP_FRAMES = [laptop(0), laptop(1), laptop(2), laptop(3)]

@@ -19,11 +19,21 @@
   var OPEN_MS = 130;         // кадр раскрытия крышки
   var TYPE_MS = 220;         // смена кадра за клавишами
   var BREATH_MS = 1100;      // как медленно дышит, стоя на месте
+  var SWAY_MS = 190;         // как часто перебирает щупальцами на весу
+  var FLAP_MS = 110;         // и как часто полощет ими в полёте
   var BLINK_EVERY = 4600;    // как часто моргает
   var BLINK_MS = 140;
   var WATCH_PX = 110;        // на каком расстоянии замечает курсор
   var HOP_MS = 260;          // прыжок в ответ на щелчок
   var EDGE = 12;             // отступ от краёв окна
+
+  var GRAVITY = 1700;        // px/с² — с каким ускорением падает брошенный
+  var BOUNCE = 0.42;         // сколько скорости остаётся после удара о пол
+  var RUB = 0.72;            // и сколько от горизонтальной после того же удара
+  var STICK = 130;           // ниже этой скорости отскок прекращается, px/с
+  var THROW_MAX = 1200;      // предел скорости броска, px/с
+  var DRAG_PX = 3;           // с какого сдвига считаем, что это перетаскивание
+  var LAND_MS = 200;         // сколько лежит осевшим после падения
 
   var COLORS = {
     g: '#7c7cff',            // тело
@@ -166,91 +176,178 @@
         '.dddddddddd.',
         '.dd.dd.dd.dd',
       ]],
+    held: [[
+        'hhhhhhhhhhhh',
+        'gggggggggggg',
+        'ggwwggggwwgg',
+        'ggwpggggwpgg',
+        'ggwwggggwwgg',
+        'gggggggggggg',
+        'dggggggggggd',
+        '.dddddddddd.',
+        '.dd.dd.dd.dd',
+        '.dd.dd.dd.dd',
+        '.dd.dd.dd.dd',
+      ], [
+        'hhhhhhhhhhhh',
+        'gggggggggggg',
+        'ggwwggggwwgg',
+        'ggwpggggwpgg',
+        'ggwwggggwwgg',
+        'gggggggggggg',
+        'dggggggggggd',
+        '.dddddddddd.',
+        'dd..dd.dd.dd',
+        'dd..dd.dd.dd',
+        'dd..dd.dd.dd',
+      ], [
+        'hhhhhhhhhhhh',
+        'gggggggggggg',
+        'ggwwggggwwgg',
+        'ggwpggggwpgg',
+        'ggwwggggwwgg',
+        'gggggggggggg',
+        'dggggggggggd',
+        '.dddddddddd.',
+        '.dd.dd.dd.dd',
+        '.dd.dd.dd.dd',
+        '.dd.dd.dd.dd',
+      ], [
+        'hhhhhhhhhhhh',
+        'gggggggggggg',
+        'ggwwggggwwgg',
+        'ggwpggggwpgg',
+        'ggwwggggwwgg',
+        'gggggggggggg',
+        'dggggggggggd',
+        '.dddddddddd.',
+        '.dd..dd.dddd',
+        '.dd..dd.dddd',
+        '.dd..dd.dddd',
+      ]],
+    fly: [[
+        'hhhhhhhhhhhh',
+        'gggggggggggg',
+        'ggwwggggwwgg',
+        'ggwpggggwpgg',
+        'ggwwggggwwgg',
+        'gggggggggggg',
+        'dggggggggggd',
+        '.dddddddddd.',
+        'dd.dd.dd.dd.',
+        'dd.dd.dd.dd.',
+        'dd.dd.dd.dd.',
+      ], [
+        'hhhhhhhhhhhh',
+        'gggggggggggg',
+        'ggwwggggwwgg',
+        'ggwpggggwpgg',
+        'ggwwggggwwgg',
+        'gggggggggggg',
+        'dggggggggggd',
+        '.dddddddddd.',
+        '.dd.dd.dd.dd',
+        '.dd.dd.dd.dd',
+        '.dd.dd.dd.dd',
+      ]],
+    land: [[
+        '............',
+        '.hhhhhhhhhh.',
+        'hggggggggggh',
+        'gggggggggggg',
+        'ggwwggggwwgg',
+        'ggwpggggwpgg',
+        'ggwwggggwwgg',
+        'gggggggggggg',
+        'dggggggggggd',
+        '.dddddddddd.',
+        'dd.dd..dd.dd',
+      ]],
   };
 
   // Крышка: лежит, поднимается, поднимается выше, откинута назад.
   var LAPTOP = [
     [
-        '......',
-        '......',
-        '......',
-        '......',
-        '......',
-        '......',
-        '......',
-        '......',
-        '......',
-        'kkkk..',
-        'kkkk..',
+        '.......',
+        '.......',
+        '.......',
+        '.......',
+        '.......',
+        '.......',
+        '.......',
+        '.......',
+        '.......',
+        'kkkkk..',
+        'kkkkk..',
       ],
     [
-        '......',
-        '......',
-        '......',
-        '......',
-        '......',
-        '......',
-        '......',
-        '......',
-        '.k....',
-        '..kk..',
-        'kkkk..',
+        '.......',
+        '.......',
+        '.......',
+        '.......',
+        '.......',
+        '.......',
+        '.......',
+        '.......',
+        '..k....',
+        '...kk..',
+        'kkkkk..',
       ],
     [
-        '......',
-        '......',
-        '......',
-        '......',
-        '......',
-        '......',
-        '..k...',
-        '..k...',
-        '...k..',
-        '...k..',
-        'kkkk..',
+        '.......',
+        '.......',
+        '.......',
+        '.......',
+        '.......',
+        '.......',
+        '...k...',
+        '...k...',
+        '....k..',
+        '....k..',
+        'kkkkk..',
       ],
     [
-        '......',
-        '......',
-        '......',
-        '......',
-        '......',
-        '....kk',
-        '....kk',
-        '...kk.',
-        '...kk.',
-        '...kk.',
-        'kkkk..',
+        '.......',
+        '.......',
+        '.......',
+        '.......',
+        '.......',
+        '.....kk',
+        '.....kk',
+        '....kk.',
+        '....kk.',
+        '....kk.',
+        'kkkkk..',
       ],
   ];
 
   // Тот же раскрытый ноутбук, но с двумя щупальцами на клавишах.
   var LAPTOP_TYPE = [
     [
-        '......',
-        '......',
-        '......',
-        '......',
-        '......',
-        '....kk',
-        '....kk',
-        'dddkk.',
-        '.ddkk.',
-        '.d.kk.',
-        'kdkk..',
+        '.......',
+        '.......',
+        '.......',
+        '.......',
+        '.......',
+        '.....kk',
+        '.....kk',
+        'dddddk.',
+        'dd.ddk.',
+        'dd..kk.',
+        'ddkkk..',
       ],
     [
-        '......',
-        '......',
-        '......',
-        '......',
-        '......',
-        '....kk',
-        '....kk',
-        'dddkk.',
-        '.ddkk.',
-        '..dkk.',
-        'kkdk..',
+        '.......',
+        '.......',
+        '.......',
+        '.......',
+        '.......',
+        '.....kk',
+        '.....kk',
+        'dddddk.',
+        'dd.ddk.',
+        '...ddk.',
+        'kkkdd..',
       ],
   ];
 
@@ -306,6 +403,9 @@
   var ctx = canvas.getContext('2d');
   var pet = {
     x: 0,
+    y: 0,                    // высота над нижним краем окна
+    vx: 0,
+    vy: 0,
     dir: 1,
     state: 'idle',
     until: 0,
@@ -323,7 +423,16 @@
   }
 
   function place() {
-    canvas.style.transform = 'translateX(' + Math.round(pet.x) + 'px)';
+    canvas.style.transform = 'translate(' + Math.round(pet.x) + 'px,' +
+      Math.round(-pet.y) + 'px)';
+  }
+
+  function clamp(value, low, high) {
+    return Math.min(high, Math.max(low, value));
+  }
+
+  function ceiling() {
+    return Math.max(0, window.innerHeight - canvas.height);
   }
 
   /* Существо зеркалится внутри своей рамки — поэтому при развороте остаётся на
@@ -393,6 +502,45 @@
       return;
     }
 
+    // Пока держат — Отто слушается курсора, а не себя.
+    if (pet.state === 'held') return;
+
+    /* Брошенный летит по параболе, отскакивает от стен и от пола, пока не
+       выдохнется. Пол — низ окна, стены — те же отступы, что и при ходьбе. */
+    if (pet.state === 'fly') {
+      var dt = step / 1000;
+
+      pet.vy -= GRAVITY * dt;
+      pet.x += pet.vx * dt;
+      pet.y += pet.vy * dt;
+
+      if (pet.x < EDGE) { pet.x = EDGE; pet.vx = -pet.vx * BOUNCE; }
+      if (pet.x > limit()) { pet.x = limit(); pet.vx = -pet.vx * BOUNCE; }
+      if (pet.y > ceiling()) { pet.y = ceiling(); pet.vy = -pet.vy * BOUNCE; }
+
+      if (pet.y <= 0) {
+        pet.y = 0;
+        pet.vx *= RUB;
+
+        if (Math.abs(pet.vy) < STICK) {
+          pet.vx = 0;
+          pet.vy = 0;
+          enter('land', now, now + LAND_MS);
+        } else {
+          pet.vy = -pet.vy * BOUNCE;
+        }
+      }
+
+      pet.dir = pet.vx < 0 ? -1 : 1;
+      place();
+      return;
+    }
+
+    if (pet.state === 'land') {
+      if (now >= pet.until) decide(now);
+      return;
+    }
+
 
     if (now >= pet.until) decide(now);
   }
@@ -409,6 +557,10 @@
       return draw('type', pet.frame, lapTypes[pet.frame % lapTypes.length]);
     }
     if (pet.state === 'hop') return draw('hop', 0, null);
+    // На весу и в полёте Отто не картинка: щупальца перебирают сами по себе.
+    if (pet.state === 'held') return draw('held', Math.floor(now / SWAY_MS), null);
+    if (pet.state === 'fly') return draw('fly', Math.floor(now / FLAP_MS), null);
+    if (pet.state === 'land') return draw('land', 0, null);
 
     if (now - pet.blinkAt > BLINK_EVERY) {
       if (now - pet.blinkAt > BLINK_EVERY + BLINK_MS) pet.blinkAt = now;
@@ -454,7 +606,8 @@
      Убегать не надо: он любопытный, а не пугливый. За ноутбуком не отвлекается,
      иначе работа обрывалась бы на полуслове. */
   function watch(x, y) {
-    if (pet.state === 'open' || pet.state === 'type' || pet.state === 'close') return;
+    if (grab || pet.state === 'open' || pet.state === 'type' ||
+      pet.state === 'close' || pet.state === 'fly' || pet.state === 'held') return;
 
     var box = canvas.getBoundingClientRect();
     var near = x > box.left - WATCH_PX && x < box.right + WATCH_PX &&
@@ -470,6 +623,8 @@
      съедала щелчки по странице, холст пропускает их сквозь себя и ловит только
      тогда, когда курсор действительно на существе. */
   function hover(x, y) {
+    if (grab) return;          // пока держат, холст щелчки не отпускает
+
     var box = canvas.getBoundingClientRect();
     var on = x > box.left && x < box.left + PIXEL * BODY_W &&
       y > box.top + PIXEL * 3 && y < box.bottom;
@@ -478,7 +633,71 @@
   }
 
   function poke() {
+    // После броска браузер шлёт ещё и click — прыгать в ответ на него не надо.
+    if (dragged) { dragged = false; return; }
+
     enter('hop', performance.now(), performance.now() + HOP_MS);
+    wake();
+  }
+
+  /* Отто можно взять и потаскать. Пока держат, он висит на курсоре; при
+     отпускании получает скорость последнего движения руки и летит. */
+  var grab = null;
+  var dragged = false;
+
+  function take(event) {
+    if (LESS_MOTION || hiddenByStyle) return;
+    event.preventDefault();
+
+    var box = canvas.getBoundingClientRect();
+    grab = {
+      dx: event.clientX - box.left,
+      dy: event.clientY - box.top,
+      x: event.clientX,
+      y: event.clientY,
+      at: performance.now(),
+      vx: 0,
+      vy: 0,
+    };
+
+    dragged = false;
+    canvas.classList.add('is-held');
+    enter('held', performance.now());
+    wake();
+  }
+
+  function haul(event) {
+    if (!grab) return;
+
+    var now = performance.now();
+    var dt = Math.max(16, now - grab.at) / 1000;
+
+    // Скорость руки считаем по последнему отрезку: бросок должен слушаться
+    // того, как рука двигалась перед отпусканием, а не всего пути.
+    grab.vx = (event.clientX - grab.x) / dt;
+    grab.vy = (event.clientY - grab.y) / dt;
+    grab.x = event.clientX;
+    grab.y = event.clientY;
+    grab.at = now;
+
+    if (Math.abs(event.clientX - grab.dx - pet.x) > DRAG_PX) dragged = true;
+
+    pet.x = clamp(event.clientX - grab.dx, EDGE, limit());
+    pet.y = clamp(window.innerHeight - (event.clientY - grab.dy) - canvas.height,
+      0, ceiling());
+    place();
+  }
+
+  function toss() {
+    if (!grab) return;
+
+    // Экранный Y растёт вниз, наш — вверх, поэтому вертикальная меняет знак.
+    pet.vx = clamp(grab.vx, -THROW_MAX, THROW_MAX);
+    pet.vy = clamp(-grab.vy, -THROW_MAX, THROW_MAX);
+
+    grab = null;
+    canvas.classList.remove('is-held');
+    enter('fly', performance.now());
     wake();
   }
 
@@ -496,6 +715,9 @@
   wake();
 
   canvas.addEventListener('click', poke);
+  canvas.addEventListener('mousedown', take);
+  window.addEventListener('mousemove', haul, { passive: true });
+  window.addEventListener('mouseup', toss);
 
   if (FINE_POINTER) {
     window.addEventListener('mousemove', function (event) {

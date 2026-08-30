@@ -162,10 +162,17 @@ a:hover { color: var(--text); }
   inset-inline-start: 0;
   z-index: 20;
   image-rendering: pixelated;
-  cursor: pointer;
+  cursor: grab;
+  user-select: none;
   /* По умолчанию холст прозрачен для щелчков — скрипт включает их, когда
      курсор оказывается на самом существе. */
   pointer-events: none;
+}
+
+/* Пока держат — курсор сжатый, а холст ловит движение мыши по всей странице. */
+.pet.is-held {
+  cursor: grabbing;
+  pointer-events: auto;
 }
 
 /* На телефоне существо только мешало: `position: fixed` считается от
