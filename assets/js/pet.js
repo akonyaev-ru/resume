@@ -234,9 +234,9 @@
         '......',
         '....kk',
         '....kk',
-        '...kk.',
         'dddkk.',
         '.ddkk.',
+        '.d.kk.',
         'kdkk..',
       ],
     [
@@ -247,9 +247,9 @@
         '......',
         '....kk',
         '....kk',
-        '...kk.',
         'dddkk.',
         '.ddkk.',
+        '..dkk.',
         'kkdk..',
       ],
   ];
@@ -419,8 +419,18 @@
     return draw('idle', Math.floor(now / BREATH_MS), null);
   }
 
+  /* Спрятанное стилями существо (узкий экран, печать) кадров не просит.
+     Проверяется это не в кадре, а при изменении размера окна: чтение стиля
+     заставляет браузер пересчитывать раскладку. `offsetParent` тут не годится —
+     у элемента с `position: fixed` он пустой всегда. */
+  var hiddenByStyle = false;
+
+  function checkHidden() {
+    hiddenByStyle = window.getComputedStyle(canvas).display === 'none';
+  }
+
   function frame(now) {
-    if (document.hidden) { running = false; return; }
+    if (document.hidden || hiddenByStyle) { running = false; return; }
 
     var step = last ? Math.min(now - last, 80) : 16.7;
     last = now;
@@ -432,7 +442,7 @@
   }
 
   function wake() {
-    if (running || document.hidden || LESS_MOTION) return;
+    if (running || document.hidden || hiddenByStyle || LESS_MOTION) return;
     running = true;
     last = 0;
     window.requestAnimationFrame(frame);
@@ -473,6 +483,7 @@
   }
 
   document.body.appendChild(canvas);
+  checkHidden();
   pet.x = Math.min(limit(), 64);
   place();
 
@@ -494,8 +505,12 @@
   }
 
   window.addEventListener('resize', function () {
+    checkHidden();
     pet.x = Math.min(limit(), pet.x);
     place();
+    // Окно могли растянуть с телефонной ширины обратно — тогда существо
+    // появляется снова и его надо разбудить.
+    wake();
   });
 
   // Во вкладке в фоне кадры не считаются: вернулись — существо просыпается.

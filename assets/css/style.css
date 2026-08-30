@@ -168,6 +168,13 @@ a:hover { color: var(--text); }
   pointer-events: none;
 }
 
+/* На телефоне существо только мешало: `position: fixed` считается от
+   раскладочного окна, а у мобильных браузеров оно живёт своей жизнью вместе с
+   выезжающей адресной строкой — существо оказывалось висящим в воздухе. */
+@media (max-width: 720px) {
+  .pet { display: none; }
+}
+
 @media print {
   .pet { display: none; }
 }
