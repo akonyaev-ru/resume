@@ -1,15 +1,16 @@
 /* Двое пиксельных существ, которые живут внизу страницы. Отто ходит вдоль
-   нижнего края, раскрывает ноутбук и печатает; Оливия — розовая, с бантиком и
-   без ноутбука и с румянцем — гуляет рядом. Время от времени они сходятся: прыгают друг
-   перед другом, а иногда она подходит и смотрит, как он работает. Оба
-   отзываются на курсор и щелчок, обоих можно схватить и зашвырнуть.
+   нижнего края, раскрывает ноутбук и печатает; Оливия — розовая, с румянцем —
+   гуляет и танцует на месте. Время от времени они сходятся: прыгают друг перед
+   другом, а иногда она подходит и смотрит, как он работает. Оба отзываются на
+   курсор и щелчок, обоих можно схватить и зашвырнуть.
 
-   Рисунок настоящий пиксельный: таблица ниже, где буква — цвет, точка — пустое
-   место. Кадры одни на двоих, различаются только палитрой: клетки румянца
-   помечены своей буквой, и у Отто она красится в цвет тела.
-   Каждый кадр один раз собирается в отдельный холст, дальше только копируется —
-   перерисовывать сотни квадратиков в кадре незачем. При `prefers-reduced-motion`
-   оба стоят на месте: Отто за раскрытым ноутбуком, Оливия рядом. */
+   Рисунок настоящий пиксельный: таблицы ниже, где буква — цвет, точка — пустое
+   место. Кадры тела одни на двоих, различаются только палитрой: клетки румянца
+   помечены своей буквой, и у Отто она красится в цвет тела. Ноутбук — второй
+   слой справа, он есть только у Отто. Каждый кадр один раз собирается в
+   отдельный холст, дальше только копируется — перерисовывать сотни квадратиков
+   в кадре незачем. При `prefers-reduced-motion` оба стоят на месте: Отто за
+   раскрытым ноутбуком, Оливия просто рядом. */
 (function () {
   'use strict';
 
@@ -21,7 +22,8 @@
   var SPEED = 24;            // как быстро идёт, px в секунду
   var WALK_MS = 170;         // смена кадра шага
   var OPEN_MS = 130;         // кадр раскрытия крышки
-  var TYPE_MS = 220;         // смена кадра за клавишами
+  var BUSY_MS = 220;         // смена кадра за клавишами
+  var DANCE_MS = 200;        // смена кадра в танце
   var BREATH_MS = 1100;      // как медленно дышит, стоя на месте
   var SWAY_MS = 190;         // как часто перебирает щупальцами на весу
   var FLAP_MS = 110;         // и как часто полощет ими в полёте
@@ -82,11 +84,11 @@
 
   /* --- кадры ------------------------------------------------------------- */
 
-  /* Точка — пусто, буква — цвет из палитры. Кадры одни на двоих: бантик
-     нарисован во всех, но в палитре Отто цветов `b` и `n` нет, и такие
-     клетки `render` пропускает. Два слоя: существо шириной ровно в себя
-     (при развороте зеркалится внутри своей рамки и не съезжает) и ноутбук,
-     который не зеркалится никогда. Кадры перерисовывает
+  /* Точка — пусто, буква — цвет из палитры. Кадры тела одни на двоих:
+     клетки румянца помечены буквой `r`, и каждый берёт по ней своё.
+     Два слоя: существо шириной ровно в себя (при развороте зеркалится
+     внутри своей рамки и не съезжает) и ноутбук, который не зеркалится
+     никогда и есть только у Отто. Кадры перерисовывает
      tools/draw_pet.py — руками их не правят. */
   var ART = {
     idle: [[
@@ -205,8 +207,21 @@
         '............',
         '............',
       ]],
-    type: [[
+    dance: [[
         '............',
+        '............',
+        '............',
+        '.hhhhhhhhhh.',
+        'hggggggggggh',
+        'gggggggggggg',
+        'ggwwggggwwgg',
+        'ggwpggggwpgg',
+        'ggwwggggwwgg',
+        'ggrrggggrrgg',
+        'dggggggggggd',
+        '.dddddddddd.',
+        'dd.dd.dd.dd.',
+      ], [
         '............',
         '.hhhhhhhhhh.',
         'hggggggggggh',
@@ -219,6 +234,7 @@
         '.dddddddddd.',
         '.dd.dd.dd.dd',
         '.dd.dd.dd.dd',
+        '............',
       ], [
         '............',
         '............',
@@ -233,6 +249,20 @@
         'dggggggggggd',
         '.dddddddddd.',
         '.dd.dd.dd.dd',
+      ], [
+        '............',
+        '.hhhhhhhhhh.',
+        'hggggggggggh',
+        'gggggggggggg',
+        'ggwwggggwwgg',
+        'ggwpggggwpgg',
+        'ggwwggggwwgg',
+        'ggrrggggrrgg',
+        'dggggggggggd',
+        '.dddddddddd.',
+        'dd.dd.dd.dd.',
+        'dd.dd.dd.dd.',
+        '............',
       ]],
     held: [[
         '............',
@@ -337,8 +367,8 @@
       ]],
   };
 
-  // Сколько пустых строк рамки идёт над телом: там бантик и запас
-  // на прыжок. По ним считается, где холст ловит щелчок.
+  // Сколько пустых строк рамки идёт над телом: запас на прыжок.
+  // По ним считается, где холст ловит щелчок.
   var ART_TOP = 2;
 
   // Крышка: лежит, поднимается, поднимается выше, откинута назад.
@@ -443,9 +473,8 @@
 
   // Размеры берутся из самих кадров, чтобы не разъезжаться с рисовалкой.
   var BODY_W = ART.idle[0][0].length;
-  var LAP_W = LAPTOP[0][0].length;
+  var PROP_W = LAPTOP[0][0].length;
   var ART_H = ART.idle[0].length;
-  var OPEN_LAST = LAPTOP.length - 1;
 
   // На столько расходятся их `x`, когда они стоят бок о бок.
   var SPAN = BODY_W * PIXEL + MEET_GAP;
@@ -495,18 +524,24 @@
      обработчики. Кадровый цикл при этом один на двоих — он ниже. */
   function makePet(spec) {
     var sprites = sheet(spec.skin);
-    var laptops = null;
-    var lapTypes = null;
 
-    if (spec.laptop) {
-      laptops = LAPTOP.map(function (art) { return render(art, false, spec.skin); });
-      lapTypes = LAPTOP_TYPE.map(function (art) { return render(art, false, spec.skin); });
+    /* Предмет — второй слой справа от тела, он не зеркалится. Есть он только у
+       Отто; у Оливии своё занятие без предмета. Сколько кадров занимает
+       раскрытие, считаем по самой таблице, а не числом в коде. */
+    var prop = null;
+    var busy = null;
+    var openLast = 0;
+
+    if (spec.prop) {
+      prop = spec.prop.open.map(function (art) { return render(art, false, spec.skin); });
+      busy = spec.prop.busy.map(function (art) { return render(art, false, spec.skin); });
+      openLast = prop.length - 1;
     }
 
     var canvas = document.createElement('canvas');
     canvas.className = 'pet';
-    // Холст шире рисунка только у того, кто носит с собой ноутбук.
-    canvas.width = (BODY_W + (spec.laptop ? LAP_W : 0)) * PIXEL;
+    // Холст шире рисунка только у того, кто носит с собой предмет.
+    canvas.width = (BODY_W + (spec.prop ? PROP_W : 0)) * PIXEL;
     canvas.height = ART_H * PIXEL;
     canvas.setAttribute('aria-hidden', 'true');
     canvas.title = spec.title;
@@ -569,9 +604,10 @@
       enter('walk', now);
     }
 
-    /* Что делать дальше: пройтись, сесть за ноутбук или постоять. Ноутбук
-       существо ставит перед собой, поэтому работать садится мордой вправо.
-       Позвал режиссёр — свои планы отменяются, идём на встречу. */
+    /* Что делать дальше: пройтись, заняться своим делом или постоять. Дело у
+       каждого своё: Отто садится за ноутбук — и мордой вправо, потому что
+       ставит его перед собой, — а Оливия танцует на месте. Позвал режиссёр —
+       свои планы отменяются, идём на встречу. */
     function decide(now) {
       if (me.errand !== null) {
         me.target = me.errand;
@@ -589,17 +625,15 @@
 
       var roll = Math.random();
 
-      if (!spec.laptop) {
-        if (roll < 0.62) stroll(now);
-        else enter('idle', now, now + 1800 + Math.random() * 3200);
-        return;
-      }
-
       if (roll < 0.44) {
         stroll(now);
       } else if (roll < 0.8) {
-        me.dir = 1;
-        enter('open', now);
+        if (spec.prop) {
+          me.dir = 1;
+          enter('open', now);
+        } else {
+          enter('dance', now, now + 4000 + Math.random() * 5000);
+        }
       } else {
         enter('idle', now, now + 1800 + Math.random() * 3200);
       }
@@ -614,9 +648,9 @@
       me.errand = clamp(x, EDGE, limit());
       me.facing = facing;
 
-      // Крышку он закроет сам: раскрытие и закрытие идут по кадрам, обрывать
-      // их на середине нельзя. Печать обрывается — на то она и работа.
-      if (me.state === 'type') me.until = 0;
+      // Раскрытое он закроет сам: раскрытие и закрытие идут по кадрам,
+      // обрывать их на середине нельзя. Само дело обрывается сразу.
+      if (me.state === 'busy') me.until = 0;
       else if (me.state !== 'open' && me.state !== 'close') decide(now);
     }
 
@@ -688,7 +722,7 @@
         return;
       }
 
-      // Крышка поднимается кадр за кадром, потом он печатает; закрывает он её
+      // Предмет раскрывается кадр за кадром, потом идёт дело; закрывается он
       // теми же кадрами в обратную сторону.
       if (me.state === 'open' || me.state === 'close') {
         if (now - me.frameAt < OPEN_MS) return;
@@ -696,18 +730,18 @@
         me.frameAt = now;
         me.frame += 1;
 
-        if (me.frame > OPEN_LAST) {
+        if (me.frame > openLast) {
           if (me.state !== 'open') decide(now);
-          // Позвали, пока крышка поднималась, — работать он не садится вовсе:
+          // Позвали, пока раскрывалось, — за дело он не садится вовсе:
           // закрывает обратно и идёт.
           else if (me.errand !== null) enter('close', now);
-          else enter('type', now, now + 8000 + Math.random() * 9000);
+          else enter('busy', now, now + 8000 + Math.random() * 9000);
         }
         return;
       }
 
-      if (me.state === 'type') {
-        if (now - me.frameAt > TYPE_MS) { me.frame += 1; me.frameAt = now; }
+      if (me.state === 'busy') {
+        if (now - me.frameAt > BUSY_MS) { me.frame += 1; me.frameAt = now; }
         if (now >= me.until) enter('close', now);
         return;
       }
@@ -764,12 +798,18 @@
         return draw('walk', me.frame, null);
       }
 
-      if (me.state === 'open') return draw('idle', 0, laptops[Math.min(me.frame, OPEN_LAST)]);
-      if (me.state === 'close') return draw('idle', 0, laptops[Math.max(0, OPEN_LAST - me.frame)]);
-      if (me.state === 'type') {
-        return draw('type', me.frame, lapTypes[me.frame % lapTypes.length]);
-      }
+      if (me.state === 'open') return draw('idle', 0, prop[Math.min(me.frame, openLast)]);
+      if (me.state === 'close') return draw('idle', 0, prop[Math.max(0, openLast - me.frame)]);
+      // За делом идут те же два кадра дыхания, что и стоя, — меняется предмет.
+      if (me.state === 'busy') return draw('idle', me.frame, busy[me.frame % busy.length]);
       if (me.state === 'hop') return draw('hop', 0, null);
+
+      // Танцует на месте: приседает, подскакивает и перебирает щупальцами.
+      if (me.state === 'dance') {
+        if (now - me.frameAt > DANCE_MS) { me.frame += 1; me.frameAt = now; }
+        return draw('dance', me.frame, null);
+      }
+
       // На весу и в полёте он не картинка: щупальца перебирают сами по себе.
       if (me.state === 'held') return draw('held', Math.floor(now / SWAY_MS), null);
       if (me.state === 'fly') return draw('fly', Math.floor(now / FLAP_MS), null);
@@ -792,7 +832,7 @@
     }
 
     function rest(open) {
-      draw('idle', 0, open && laptops ? laptops[OPEN_LAST] : null);
+      draw('idle', 0, open ? prop[openLast] : null);
     }
 
     /* Спрятанное стилями существо (узкий экран, печать) кадров не просит.
@@ -804,12 +844,12 @@
     }
 
     /* Курсор подошёл близко — существо останавливается и поворачивается к нему.
-       Убегать не надо: оно любопытное, а не пугливое. За ноутбуком и по дороге
-       на встречу не отвлекается, иначе дело обрывалось бы на полуслове. */
+       Убегать не надо: оно любопытное, а не пугливое. За делом и по дороге на
+       встречу не отвлекается, иначе оно обрывалось бы на полуслове. */
     function watch(x, y) {
       if (me.grab || me.errand !== null) return;
-      if (me.state === 'open' || me.state === 'type' || me.state === 'close' ||
-        me.state === 'fly' || me.state === 'held' ||
+      if (me.state === 'open' || me.state === 'busy' || me.state === 'close' ||
+        me.state === 'fly' || me.state === 'held' || me.state === 'dance' ||
         me.state === 'wait' || me.state === 'jump') return;
 
       var box = canvas.getBoundingClientRect();
@@ -932,10 +972,11 @@
 
   // Подпись всплывает при наведении — у каждого своя, с именем.
   var otto = makePet({
-    title: 'Погладить Отто', skin: SKIN.otto, laptop: true, aside: -1,
+    title: 'Погладить Отто', skin: SKIN.otto, aside: -1,
+    prop: { open: LAPTOP, busy: LAPTOP_TYPE },
   });
   var olivia = makePet({
-    title: 'Погладить Оливию', skin: SKIN.olivia, laptop: false, aside: 1,
+    title: 'Погладить Оливию', skin: SKIN.olivia, aside: 1,
   });
   var pets = [otto, olivia];
 
@@ -1013,7 +1054,7 @@
       if (occupied(otto) || occupied(olivia)) { meetAt = now + RETRY_MS; return; }
 
       // Не сложилось со сценой посмотреть — идут прыгать.
-      var started = otto.state === 'type' && Math.random() < LOOK_CHANCE && callLook(now);
+      var started = otto.state === 'busy' && Math.random() < LOOK_CHANCE && callLook(now);
       if (!started) started = callTogether(now);
       if (!started) meetAt = now + RETRY_MS;
       return;
@@ -1028,7 +1069,7 @@
     if (!scene.until) {
       if (scene.kind === 'look') {
         // Работу он мог и бросить — тогда смотреть не на что.
-        if (otto.state !== 'type') { endScene(now); return; }
+        if (otto.state !== 'busy') { endScene(now); return; }
         if (olivia.state !== 'wait') return;
         scene.until = now + LOOK_MS;
         return;
