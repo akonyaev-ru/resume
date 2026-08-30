@@ -28,6 +28,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # Существ глазами не проверить: в панели предпросмотра кадры не считаются
+      # вовсе, а ветка `prefers-reduced-motion` в обычном режиме не исполняется —
+      # там уже жил дефект, из-за которого Оливия не появлялась совсем. Прогон
+      # крутит `pet.js` вхолостую под заглушками браузера, `--selftest` следом
+      # проверяет саму проверку. Красный прогон останавливает выкладку.
+      - name: Прогнать существ
+        run: |
+          node tools/check_pet.js
+          node tools/check_pet.js --selftest
+
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
