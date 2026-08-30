@@ -33,7 +33,7 @@ BODY = [
 ]
 
 BODY_W = len(BODY[0])       # ширина слоя существа
-LAP_W = 8                   # ширина слоя ноутбука
+LAP_W = 6                   # ширина слоя ноутбука
 H = 11
 GROUND = H - 1
 LEGS_TOP = len(BODY)
@@ -134,36 +134,38 @@ def body(legs='stand', eyes=True, lift=0, crouch=0, step=0):
 
 def laptop(stage):
     """Клавиатура лежит, крышка поднимается от неё и в раскрытом виде откинута
-    назад — от осьминога, экраном к нему, как у настоящего ноутбука.
+    назад — от осьминожка, экраном к нему. Весь ноутбук нарочно мельче его
+    самого: вполовину ниже и вдвое уже.
     stage: 0 — закрыт, 1 и 2 — раскрывается, 3 — открыт."""
     g = blank(LAP_W)
-    hinge = 4
+    hinge = 3
 
     rect(g, 0, GROUND, hinge, GROUND, 'k')          # клавиатура
 
     if stage == 0:
         rect(g, 0, GROUND - 1, hinge, GROUND - 1, 'k')
     elif stage == 1:
-        line(g, hinge, GROUND - 1, 1, GROUND - 3, 'k')
+        line(g, hinge, GROUND - 1, 1, GROUND - 2, 'k')
     elif stage == 2:
-        line(g, hinge, GROUND - 1, 3, GROUND - 6, 'k')
+        line(g, hinge, GROUND - 1, 2, GROUND - 4, 'k')
     else:
         # Крышка в две клетки толщиной, откинута назад через вертикаль.
-        line(g, hinge, GROUND - 1, hinge + 2, GROUND - 8, 'k')
-        line(g, hinge + 1, GROUND - 1, hinge + 3, GROUND - 8, 'k')
+        line(g, hinge, GROUND - 1, hinge + 1, GROUND - 5, 'k')
+        line(g, hinge + 1, GROUND - 1, hinge + 2, GROUND - 5, 'k')
 
     return g
 
 
-def tentacle(g, pressing):
-    """Щупальце тянется от осьминога к клавишам и постукивает по ним. Живёт в
-    слое ноутбука: тот не зеркалится, а печатает осьминог всегда мордой к нему."""
+def tentacles(g, first):
+    """Два щупальца на клавишах: пока одно жмёт клавишу, второе занесено над
+    ней. Живут они в слое ноутбука, а не тела: тот слой не зеркалится, а
+    печатает осьминожек всегда мордой к нему."""
     g = [row[:] for row in g]
-    y = GROUND - 1 if pressing else GROUND - 2
 
-    rect(g, 0, y, 2, y, 'd')
-    if pressing:
-        rect(g, 2, GROUND, 2, GROUND, 'd')          # кончик на клавише
+    rect(g, 0, GROUND - 2, 2, GROUND - 2, 'd')      # тянутся от осьминожка
+    down, up = (1, 2) if first else (2, 1)
+    rect(g, down, GROUND - 2, down, GROUND, 'd')    # это жмёт клавишу
+    rect(g, up, GROUND - 2, up, GROUND - 1, 'd')    # это занесено
 
     return g
 
@@ -183,7 +185,7 @@ BODY_FRAMES = [
 ]
 
 LAP_FRAMES = [laptop(0), laptop(1), laptop(2), laptop(3)]
-TYPE_FRAMES = [tentacle(laptop(3), False), tentacle(laptop(3), True)]
+TYPE_FRAMES = [tentacles(laptop(3), True), tentacles(laptop(3), False)]
 
 HEAD = '  /* --- кадры ------------------------------------------------------------- */'
 TAIL = '  /* --- сборка кадров ----------------------------------------------------- */'
@@ -214,7 +216,7 @@ def art() -> str:
             + '  var ART = {\n' + '\n'.join(parts) + '\n  };\n\n'
             + '  // Крышка: лежит, поднимается, поднимается выше, откинута назад.\n'
             + '  var LAPTOP = [\n    ' + laps + ',\n  ];\n\n'
-            + '  // Тот же раскрытый ноутбук, но со щупальцем на клавишах.\n'
+            + '  // Тот же раскрытый ноутбук, но с двумя щупальцами на клавишах.\n'
             + '  var LAPTOP_TYPE = [\n    ' + typing + ',\n  ];\n\n')
 
 
