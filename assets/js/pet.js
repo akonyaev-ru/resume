@@ -4,7 +4,7 @@
    другом, а иногда она подходит и смотрит, как он работает. Оба отзываются на
    курсор и щелчок, обоих можно схватить и зашвырнуть. Кого зашвырнули, того
    второй бежит утешать: встаёт рядом и гладит по щеке. Отто при этом ещё и
-   ругается, а Оливия пускает слезу — щёки у неё голубеют.
+   ругается, Оливия утешает молча.
 
    Рисунок настоящий пиксельный: таблицы ниже, где буква — цвет, точка — пустое
    место. Кадры тела одни на двоих, различаются только палитрой. Ноутбук — второй
@@ -44,7 +44,6 @@
   var DRAG_PX = 3;           // с какого сдвига считаем, что это перетаскивание
   var LAND_MS = 200;         // сколько лежит осевшим после падения
   var SWEAR_MS = 1900;       // сколько висит пузырь ругани
-  var WEEP_MS = 14000;       // сколько она ходит в слезах, если не утешит раньше
   var PET_MS = 2800;         // сколько гладит упавшую
   var PET_FRAME_MS = 320;    // и такт самого поглаживания
 
@@ -61,10 +60,7 @@
   var LOOK_MS = 6500;        // сколько стоит и смотрит, как он работает
   var LOOK_KEEP = 30000;     // столько он не бросит работу, пока она идёт
 
-  /* Цвета у каждого свои, кадры общие. Буква `r` — румянец: у Оливии он
-     розовый, у Отто той же краски, что и тело, то есть его не видно.
-     Пропускать эти клетки, как незнакомый цвет, нельзя — у него на их месте
-     были бы две дыры в теле. */
+  /* Цвета у каждого свои, кадры общие. */
   var SKIN = {
     otto: {
       g: '#7c7cff',          // тело
@@ -80,18 +76,8 @@
       d: '#d9639f',
       w: '#e7eaf2',
       p: '#12141c',
-      r: '#ff5fa2',          // румянец
     },
   };
-
-  // У Отто румянца нет: там, где он у неё, у него просто тело. Цвет берётся
-  // ссылкой на его же — продублированный руками, он разъехался бы при первой
-  // смене окраски.
-  SKIN.otto.r = SKIN.otto.g;
-
-  // Заплаканная Оливия: тот же румянец, но голубой. Больше в палитре не
-  // меняется ничего — слёзы это про щёки, а не про всё существо.
-  var TEARS = { r: '#7cc4ff' };
 
   /* --- кадры ------------------------------------------------------------- */
 
@@ -111,7 +97,7 @@
         'ggwwggggwwgg',
         'ggwpggggwpgg',
         'ggwwggggwwgg',
-        'ggrrggggrrgg',
+        'gggggggggggg',
         'dggggggggggd',
         '.dddddddddd.',
         '.dd.dd.dd.dd',
@@ -126,7 +112,7 @@
         'ggwwggggwwgg',
         'ggwpggggwpgg',
         'ggwwggggwwgg',
-        'ggrrggggrrgg',
+        'gggggggggggg',
         'dggggggggggd',
         '.dddddddddd.',
         '.dd.dd.dd.dd',
@@ -140,7 +126,7 @@
         'gggggggggggg',
         'ggppggggppgg',
         'gggggggggggg',
-        'ggrrggggrrgg',
+        'gggggggggggg',
         'dggggggggggd',
         '.dddddddddd.',
         '.dd.dd.dd.dd',
@@ -155,7 +141,7 @@
         'ggwwggggwwgg',
         'ggwpggggwpgg',
         'ggwwggggwwgg',
-        'ggrrggggrrgg',
+        'gggggggggggg',
         'dggggggggggd',
         '.dddddddddd.',
         'dd..dd.dd.dd',
@@ -168,7 +154,7 @@
         'ggwwggggwwgg',
         'ggwpggggwpgg',
         'ggwwggggwwgg',
-        'ggrrggggrrgg',
+        'gggggggggggg',
         'dggggggggggd',
         '.dddddddddd.',
         '.dd.dd.dd.dd',
@@ -183,7 +169,7 @@
         'ggwwggggwwgg',
         'ggwpggggwpgg',
         'ggwwggggwwgg',
-        'ggrrggggrrgg',
+        'gggggggggggg',
         'dggggggggggd',
         '.dddddddddd.',
         '.dd..dd.dddd',
@@ -197,7 +183,7 @@
         'ggwwggggwwgg',
         'ggwpggggwpgg',
         'ggwwggggwwgg',
-        'ggrrggggrrgg',
+        'gggggggggggg',
         'dggggggggggd',
         '.dddddddddd.',
         '.dd.dd.dd.dd',
@@ -210,7 +196,7 @@
         'ggwwggggwwgg',
         'ggwpggggwpgg',
         'ggwwggggwwgg',
-        'ggrrggggrrgg',
+        'gggggggggggg',
         'dggggggggggd',
         '.dddddddddd.',
         '...dd.dddd..',
@@ -228,7 +214,7 @@
         'ggwwggggwwgg',
         'ggwpggggwpgg',
         'ggwwggggwwgg',
-        'ggrrggggrrgg',
+        'gggggggggggg',
         'dggggggggggd',
         '.dddddddddd.',
         'dd.dd.dd.dd.',
@@ -240,7 +226,7 @@
         'ggwwggggwwgg',
         'ggwpggggwpgg',
         'ggwwggggwwgg',
-        'ggrrggggrrgg',
+        'gggggggggggg',
         'dggggggggggd',
         '.dddddddddd.',
         '.dd.dd.dd.dd',
@@ -256,7 +242,7 @@
         'ggwwggggwwgg',
         'ggwpggggwpgg',
         'ggwwggggwwgg',
-        'ggrrggggrrgg',
+        'gggggggggggg',
         'dggggggggggd',
         '.dddddddddd.',
         '.dd.dd.dd.dd',
@@ -268,7 +254,7 @@
         'ggwwggggwwgg',
         'ggwpggggwpgg',
         'ggwwggggwwgg',
-        'ggrrggggrrgg',
+        'gggggggggggg',
         'dggggggggggd',
         '.dddddddddd.',
         'dd.dd.dd.dd.',
@@ -283,7 +269,7 @@
         'ggwwggggwwgg',
         'ggwpggggwpgg',
         'ggwwggggwwgg',
-        'ggrrggggrrgg',
+        'gggggggggggg',
         'dggggggggggd',
         '.dddddddddd.',
         '.dd.dd.dd.dd',
@@ -297,7 +283,7 @@
         'ggwwggggwwgg',
         'ggwpggggwpgg',
         'ggwwggggwwgg',
-        'ggrrggggrrgg',
+        'gggggggggggg',
         'dggggggggggd',
         '.dddddddddd.',
         'dd..dd.dd.dd',
@@ -311,7 +297,7 @@
         'ggwwggggwwgg',
         'ggwpggggwpgg',
         'ggwwggggwwgg',
-        'ggrrggggrrgg',
+        'gggggggggggg',
         'dggggggggggd',
         '.dddddddddd.',
         '.dd.dd.dd.dd',
@@ -325,7 +311,7 @@
         'ggwwggggwwgg',
         'ggwpggggwpgg',
         'ggwwggggwwgg',
-        'ggrrggggrrgg',
+        'gggggggggggg',
         'dggggggggggd',
         '.dddddddddd.',
         '.dd..dd.dddd',
@@ -340,7 +326,7 @@
         'ggwwggggwwgg',
         'ggwpggggwpgg',
         'ggwwggggwwgg',
-        'ggrrggggrrgg',
+        'gggggggggggg',
         'dggggggggggd',
         '.dddddddddd.',
         'dd.dd.dd.dd.',
@@ -354,7 +340,7 @@
         'ggwwggggwwgg',
         'ggwpggggwpgg',
         'ggwwggggwwgg',
-        'ggrrggggrrgg',
+        'gggggggggggg',
         'dggggggggggd',
         '.dddddddddd.',
         '.dd.dd.dd.dd',
@@ -371,7 +357,7 @@
         'ggwwggggwwgg',
         'ggwpggggwpgg',
         'ggwwggggwwgg',
-        'ggrrggggrrgg',
+        'gggggggggggg',
         'dggggggggggd',
         '.dddddddddd.',
         'dd.dd..dd.dd',
@@ -565,15 +551,6 @@
     return canvas;
   }
 
-  // Палитра с подменёнными цветами: своя копия, чтобы не портить исходную.
-  function tint(skin, over) {
-    var out = {};
-    var key;
-    for (key in skin) if (skin.hasOwnProperty(key)) out[key] = skin[key];
-    for (key in over) if (over.hasOwnProperty(key)) out[key] = over[key];
-    return out;
-  }
-
   /* Рисунок общий, цвета разные — значит и готовых холстов два набора. Собрать
      их один раз дешевле, чем красить пиксели в кадре. */
   function sheet(skin) {
@@ -595,8 +572,6 @@
      обработчики. Кадровый цикл при этом один на двоих — он ниже. */
   function makePet(spec) {
     var sprites = sheet(spec.skin);
-    // Заплаканный набор кадров: тот же рисунок, другой цвет щёк.
-    var teary = spec.tears ? sheet(tint(spec.skin, spec.tears)) : null;
 
     /* Предмет — второй слой справа от тела, он не зеркалится. Есть он только у
        Отто; у Оливии своё занятие без предмета. Сколько кадров занимает
@@ -637,7 +612,6 @@
       frameAt: 0,
       blinkAt: 0,
       swearUntil: 0,         // до какого времени висит пузырь ругани
-      sadUntil: 0,           // и до какого она в слезах
       hurry: false,          // на выручку он бежит, а не идёт
       errand: null,          // куда позвал режиссёр встреч; null — занят собой
       facing: 1,             // и куда повернуться, когда дойдёт
@@ -667,8 +641,7 @@
        прижат к низу окна, и запас сверху ничего не сдвигает. */
     function draw(name, index, lap) {
       var now = performance.now();
-      var book = teary && me.sadUntil > now ? teary : sprites;
-      var set = book[name][index % book[name].length];
+      var set = sprites[name][index % sprites[name].length];
       var top = BUBBLE_H * PIXEL;
 
       ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -948,11 +921,6 @@
       wake();
     }
 
-    // Слёзы — тоже не состояние, а другой набор кадров: голубые щёки.
-    function weep(now) {
-      me.sadUntil = now + WEEP_MS;
-      wake();
-    }
 
     /* Спрятанное стилями существо (узкий экран, печать) кадров не просит.
        Проверяется это не в кадре, а при изменении размера окна: чтение стиля
@@ -1081,7 +1049,6 @@
     me.pick = pick;
     me.rest = rest;
     me.swear = swear;
-    me.weep = weep;
     me.checkHidden = checkHidden;
     me.watch = watch;
     me.hover = hover;
@@ -1097,7 +1064,7 @@
     prop: { open: LAPTOP, busy: LAPTOP_TYPE },
   });
   var olivia = makePet({
-    title: 'Погладить Оливию', skin: SKIN.olivia, aside: 1, tears: TEARS,
+    title: 'Погладить Оливию', skin: SKIN.olivia, aside: 1,
   });
   var pets = [otto, olivia];
 
@@ -1128,7 +1095,6 @@
     pets.forEach(function (p) {
       p.errand = null;
       p.hurry = false;
-      p.sadUntil = 0;        // утешил — и слёзы высохли
       if (p.state === 'wait' || p.state === 'jump' || p.state === 'pet') p.decide(now);
     });
   }
@@ -1167,8 +1133,8 @@
   }
 
   /* Кого зашвырнули, того второй бежит утешать: встаёт рядом и гладит по щеке.
-     Отто при этом ругается, Оливия молча пускает слезу. Ловим переход из полёта
-     в приземление: бросок кончается именно им.
+     Отто при этом ругается, Оливия утешает молча. Ловим переход из полёта в
+     приземление: бросок кончается именно им.
 
      Утешающий встаёт всегда слева: квадратик, которым он гладит, живёт в слое
      предмета, а тот не зеркалится и смотрит вправо. Если он был справа, по
@@ -1187,10 +1153,9 @@
     var helper = fallen === otto ? olivia : otto;
 
     if (helper === otto) otto.swear(now);
-    else olivia.weep(now);
 
     var spot = fallen.x - SPAN;
-    if (spot < EDGE || occupied(helper)) return;   // встать негде — только чувства
+    if (spot < EDGE || occupied(helper)) return;   // встать негде — не утешить
 
     if (scene) endScene(now);
     fallen.summon(now, fallen.x, -1);              // лежит где упал, мордой к нему
