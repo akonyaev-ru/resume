@@ -29,7 +29,6 @@ const ROOT = path.resolve(__dirname, '..');
 const SOURCE = path.join(ROOT, 'assets', 'js', 'pet.js');
 
 // На диске у файла CRLF — приводим к одному виду, иначе поиск кусков врёт.
-// На диске у файла CRLF — приводим к одному виду, иначе поиск кусков врёт.
 const CODE = fs.readFileSync(SOURCE, 'utf8')
   .split('\r\n').join('\n');
 
