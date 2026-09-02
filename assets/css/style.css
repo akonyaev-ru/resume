@@ -47,6 +47,14 @@
   --step-3: clamp(1.6rem, 1.1rem + 1.7vw, 2.2rem);
   --step-4: clamp(1.9rem, 1.1rem + 3.2vw, 3.4rem);
 
+  /* Скругление плашек одним числом: кнопки, чипы, карточки, показатели. Правится
+     здесь, а не по двенадцати местам. --radius-sm — для вложенного ползунка
+     языка: рамка `.lang` держит отступ 3px, и без вычета он смотрится не
+     концентрично. Шкала опыта сюда не входит намеренно: её отрезки 10px в
+     высоту, на большом радиусе они станут пилюлями. */
+  --radius: 8px;
+  --radius-sm: 5px;
+
   --measure: 66ch;
   --page: 68rem;
   --gutter: clamp(1.25rem, 4vw, 3rem);
@@ -308,7 +316,7 @@ a:hover { color: var(--text); }
   display: flex;
   padding: 3px;
   border: 1px solid var(--line);
-  border-radius: 3px;
+  border-radius: var(--radius);
   background: var(--panel);
 }
 
@@ -319,7 +327,7 @@ a:hover { color: var(--text); }
   inset-inline-start: 3px;
   width: calc(50% - 3px);
   background: var(--accent);
-  border-radius: 2px;
+  border-radius: var(--radius-sm);
   transition: transform 0.22s cubic-bezier(0.2, 0.7, 0.3, 1);
 }
 
@@ -353,7 +361,7 @@ a:hover { color: var(--text); }
   color: var(--text-dim);
   background: transparent;
   border: 1px solid var(--line);
-  border-radius: 3px;
+  border-radius: var(--radius);
   padding: 0.45rem 0.75rem;
   cursor: pointer;
   /* transform — для магнита: кнопка тянется к курсору, сдвиг задаёт app.js.
@@ -497,7 +505,7 @@ a:hover { color: var(--text); }
   letter-spacing: 0.06em;
   color: var(--muted);
   border: 1px solid var(--line);
-  border-radius: 3px;
+  border-radius: var(--radius);
   padding: 0.28rem 0.55rem;
 }
 
@@ -651,7 +659,7 @@ a:hover { color: var(--text); }
   position: relative;
   background: var(--panel);
   border: 1px solid var(--line);
-  border-radius: 3px;
+  border-radius: var(--radius);
   padding: 1.6rem 1.35rem 1.4rem;
   display: grid;
   grid-template-rows: auto 1fr;
@@ -947,7 +955,7 @@ a:hover { color: var(--text); }
   text-transform: uppercase;
   color: var(--mint);
   border: 1px solid color-mix(in srgb, var(--mint) 45%, transparent);
-  border-radius: 3px;
+  border-radius: var(--radius);
   padding: 0.1rem 0.4rem;
   margin-block-start: 0.25rem;
 }
@@ -1010,7 +1018,7 @@ a:hover { color: var(--text); }
   padding: 1.5rem;
   background: var(--panel);
   border: 1px solid var(--line);
-  border-radius: 3px;
+  border-radius: var(--radius);
   overflow: hidden;
   transition: border-color 0.18s ease, transform 0.18s ease, opacity 0.25s ease, background 0.18s ease;
 }
@@ -1068,7 +1076,7 @@ a:hover { color: var(--text); }
   font-size: var(--step--2);
   color: var(--muted);
   border: 1px solid var(--line);
-  border-radius: 3px;
+  border-radius: var(--radius);
   padding: 0.15rem 0.4rem;
 }
 
@@ -1119,7 +1127,7 @@ a:hover { color: var(--text); }
   color: var(--text-dim);
   background: var(--panel);
   border: 1px solid var(--line);
-  border-radius: 3px;
+  border-radius: var(--radius);
   padding: 0.34rem 0.62rem;
 }
 
@@ -1242,8 +1250,12 @@ button.chip[aria-pressed='true']::after { background: #fff; }
   justify-content: space-between;
 }
 
-.footer a { color: var(--muted); }
-.footer a:hover { color: var(--text); }
+/* Подчёркивание снято по просьбе владельца 2026-09-02. На наведении оно
+   возвращается — та же идиома, что у ссылок в анкете и на карточках проектов:
+   ссылка остаётся отличима не одним лишь цветом. Ссылка стоит отдельным
+   элементом, не внутри фразы, поэтому в покое подчёркивание не обязательно. */
+.footer a { color: var(--muted); text-decoration: none; }
+.footer a:hover { color: var(--text); text-decoration: underline; }
 
 /* --- Появление при прокрутке -------------------------------------------- */
 
