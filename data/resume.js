@@ -85,7 +85,7 @@ window.RESUME = {
     age: 25,
     city: { ru: 'Москва', en: 'Moscow' },
     github: 'akonyaev-ru',
-    updated: { ru: '29 августа 2026', en: '29 August 2026' },
+    updated: { ru: '31 августа 2026', en: '31 August 2026' },
     experienceTotal: { ru: '2 года 6 месяцев', en: '2 years 6 months' },
     employment: { ru: 'полная занятость', en: 'full-time' },
     schedule: { ru: 'Удалённо или гибрид', en: 'Remote or hybrid' },
@@ -302,6 +302,8 @@ window.RESUME = {
         { name: 'Google API' },
         { name: 'Apps Script' },
         { name: 'n8n' },
+        { name: 'RPA' },
+        { name: { ru: 'No-code платформы', en: 'No-code platforms' } },
       ],
     },
     {
