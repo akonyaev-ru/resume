@@ -680,6 +680,70 @@
     portrait.style.setProperty('--my', (event.clientY - rect.top).toFixed(0) + 'px');
   }
 
+  /* --- портрет на пальце -------------------------------------------------- */
+
+  /* На тонком указателе фотографию открывает круг под курсором, а на телефоне
+     этой механики нет вовсе. Перенести её один в один нельзя: портрет там
+     ужимается до ~200 px, а пятно проявления шире 170 px — круг накрыл бы
+     портрет целиком и вдобавок спрятался бы под пальцем. Поэтому касание
+     открывает фотографию целиком, а второе возвращает набор.
+
+     Гейт здесь только по указателю, без LESS_MOTION: открытие — смена
+     состояния, а не движение, и стили сами снимают у него плавность. А вот
+     самопоказ ниже — движение без спроса, он под LESS_MOTION не идёт. */
+  function initTouchPortrait() {
+    if (FINE_POINTER) return;
+
+    var HOLD_MS = 4000;    // сколько фотография держится открытой после касания
+    var PEEK_WAIT = 700;   // пауза после сборки страницы перед самопоказом
+    var PEEK_HOLD = 1500;  // сколько длится сам самопоказ
+    var timer = 0;
+
+    // Портрет пересобирается при смене языка, поэтому элемент ищется заново, а
+    // не держится ссылкой: старая указывала бы на выброшенный узел.
+    function hide() {
+      var host = $('.portrait');
+      if (host) host.classList.remove('is-open');
+      timer = 0;
+    }
+
+    function show(host, ms) {
+      host.classList.add('is-open');
+      if (timer) window.clearTimeout(timer);
+      timer = window.setTimeout(hide, ms);
+    }
+
+    document.addEventListener('click', function (event) {
+      var host = event.target.closest ? event.target.closest('.portrait') : null;
+      if (!host) return;
+
+      if (host.classList.contains('is-open')) {
+        if (timer) window.clearTimeout(timer);
+        hide();
+        return;
+      }
+
+      show(host, HOLD_MS);
+    });
+
+    if (LESS_MOTION) return;
+
+    /* Подписи «нажмите» на странице нет, и сам по себе набор знаков о касании
+       не намекает — без подсказки правку никто бы не нашёл. Поэтому портрет
+       один раз приоткрывается сам: на телефоне он стоит первым, до заголовка,
+       и виден сразу. Если его в кадре нет (заход по ссылке на раздел), показ
+       пропускается, а не ждёт прокрутки. */
+    window.setTimeout(function () {
+      var host = $('.portrait');
+      if (!host || host.classList.contains('is-open')) return;
+
+      var box = host.getBoundingClientRect();
+      if (box.bottom <= 0 || box.top >= window.innerHeight) return;
+
+      show(host, PEEK_HOLD);
+    }, PEEK_WAIT);
+  }
+
   /* --- портрет из символов ------------------------------------------------ */
 
   // Портрет пересобирается при каждой перерисовке страницы (например, при
@@ -1350,6 +1414,7 @@
     document.title = u('docTitle');
     render();
     initPointerFx();
+    initTouchPortrait();
     initField();
   }
 
