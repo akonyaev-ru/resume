@@ -899,7 +899,7 @@
 
   /* Фон страницы — сплошная сетка моноширинных знаков. Сама по себе она едва
      различима; курсор освещает вокруг себя круг, где символы разгораются от
-     индиго к мятному. Свет гаснет не сразу, а затухает кадр за кадром, поэтому
+     бирюзы к янтарю. Свет гаснет не сразу, а затухает кадр за кадром, поэтому
      за курсором тянется короткий шлейф.
 
      Рисуется целиком только при сборке и изменении размера окна. На каждый кадр
@@ -919,8 +919,8 @@
     var THRESH = 0.02;         // ниже этого символ считается погасшим
     var BASE = '#8791ab';      // цвет спящего символа
     var BASE_ALPHA = 0.085;
-    var ACCENT = '#7c7cff';
-    var MINT = '#3ddc97';
+    var ACCENT = '#00c5cd';   // ореол пятна
+    var EMBER = '#ffb454';    // и его самая горячая середина
     var FLICKER_MS = 130;      // как часто пересобираются случайные символы
     var FLICKER_COUNT = 5;
 
@@ -1094,7 +1094,7 @@
         } else {
           heat[index] = value;
           kept.push(index);
-          paintCell(col, row, BASE_ALPHA + value * value, value > 0.78 ? MINT : ACCENT);
+          paintCell(col, row, BASE_ALPHA + value * value, value > 0.78 ? EMBER : ACCENT);
         }
       }
 
@@ -1154,7 +1154,7 @@
         // Если ячейка сейчас освещена, её нельзя гасить до спящего цвета:
         // получалась бы тёмная точка внутри пятна на один кадр.
         var value = heat[index];
-        if (value > 0) paintCell(col, row, BASE_ALPHA + value * value, value > 0.78 ? MINT : ACCENT);
+        if (value > 0) paintCell(col, row, BASE_ALPHA + value * value, value > 0.78 ? EMBER : ACCENT);
         else paintCell(col, row, BASE_ALPHA, BASE);
       }
       ctx.globalAlpha = 1;

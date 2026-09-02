@@ -27,11 +27,13 @@
   --text-dim: #b4bbcd;
   --muted: #838da4;
 
-  --accent: #7c7cff;
-  --accent-dim: #5b5bd6;
-  --accent-wash: rgba(124, 124, 255, 0.12);
+  --accent: #00c5cd;
+  --accent-dim: #0b7a82;
+  --accent-wash: rgba(0, 197, 205, 0.10);
   --mint: #3ddc97;
   --amber: #ffb454;
+  --sky: #79c0ff;
+  --magenta: #ff86c0;
 
   --font-display: 'Unbounded', 'Golos Text', 'Segoe UI', system-ui, sans-serif;
   --font-body: 'Golos Text', -apple-system, 'Segoe UI', Roboto, Arial, sans-serif;
@@ -99,7 +101,7 @@ body {
   height: min(62vh, 760px);
   z-index: -1;
   pointer-events: none;
-  background: radial-gradient(70% 100% at 28% 100%, rgba(124, 124, 255, 0.16), transparent 72%);
+  background: radial-gradient(70% 100% at 28% 100%, rgba(0, 197, 205, 0.10), transparent 72%);
 }
 
 /* Поле символов вместо однотонного фона. Лежит под всем содержимым (#app выше
@@ -400,7 +402,7 @@ a:hover { color: var(--text); }
   z-index: -1;
   pointer-events: none;
   background:
-    radial-gradient(58% 78% at 16% 0%, rgba(124, 124, 255, 0.18), transparent 70%),
+    radial-gradient(58% 78% at 16% 0%, rgba(0, 197, 205, 0.11), transparent 70%),
     radial-gradient(48% 68% at 84% 2%, rgba(61, 220, 151, 0.08), transparent 70%);
 }
 
@@ -629,6 +631,7 @@ a:hover { color: var(--text); }
 }
 
 .metric {
+  --tone: var(--mint);
   position: relative;
   background: var(--panel);
   border: 1px solid var(--line);
@@ -641,7 +644,8 @@ a:hover { color: var(--text); }
   transition: background 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
 }
 
-/* Мятная черта над числом загорается по всей ширине при наведении. */
+/* Черта над числом — в цвет самого числа; загорается по всей ширине
+   при наведении. */
 .metric::before {
   content: '';
   position: absolute;
@@ -649,13 +653,13 @@ a:hover { color: var(--text); }
   inset-inline-start: 0;
   width: 2.5rem;
   height: 2px;
-  background: var(--mint);
+  background: var(--tone);
   transition: width 0.35s cubic-bezier(0.2, 0.7, 0.3, 1);
 }
 
 .metric:hover {
   background: var(--panel-2);
-  border-color: color-mix(in srgb, var(--mint) 40%, var(--line));
+  border-color: color-mix(in srgb, var(--tone) 40%, var(--line));
   transform: translateY(-2px);
 }
 
@@ -677,12 +681,12 @@ a:hover { color: var(--text); }
 
 .metric::after {
   background: radial-gradient(220px circle at var(--mx, 50%) var(--my, 50%),
-    rgba(61, 220, 151, 0.11), transparent 62%);
+    color-mix(in srgb, var(--tone) 11%, transparent), transparent 62%);
 }
 
 .project::after {
   background: radial-gradient(280px circle at var(--mx, 50%) var(--my, 50%),
-    rgba(124, 124, 255, 0.15), transparent 62%);
+    rgba(0, 197, 205, 0.10), transparent 62%);
 }
 
 .metric:hover::after,
@@ -701,12 +705,20 @@ a:hover { color: var(--text); }
   font-weight: 700;
   line-height: 1;
   letter-spacing: -0.05em;
-  color: var(--mint);
+  color: var(--tone);
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
 
-.metric--accent .metric__value { color: var(--amber); }
+/* Каждому показателю свой цвет — как подсветка значений в консоли Python.
+   Тон задан позицией, а не данными: цвет это оформление, в data/resume.js
+   ему не место. Пятая карточка, если появится, возьмёт мятный по умолчанию.
+   За тоном идут и черта над числом, и рамка при наведении, и блик под
+   курсором — иначе пурпурное число стояло бы под мятной чертой. */
+.metric:nth-child(1) { --tone: var(--amber); }
+.metric:nth-child(2) { --tone: var(--mint); }
+.metric:nth-child(3) { --tone: var(--sky); }
+.metric:nth-child(4) { --tone: var(--magenta); }
 
 .metric__caption {
   font-size: var(--step--1);
@@ -1222,6 +1234,8 @@ button.chip[aria-pressed='true']::after { background: #fff; }
     --accent-wash: transparent;
     --mint: #000;
     --amber: #000;
+    --sky: #000;
+    --magenta: #000;
   }
 
   @page { margin: 14mm; }
