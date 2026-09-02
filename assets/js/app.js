@@ -924,10 +924,9 @@
     var FLICKER_MS = 130;      // как часто пересобираются случайные символы
     var FLICKER_COUNT = 5;
 
-    var DROP_MIN_MS = 900;     // пауза между струйками в полях страницы
-    var DROP_MAX_MS = 2600;
-    var DROP_MAX = 3;          // сколько струек живёт одновременно
-    var DROP_SPEED = 24;       // ячеек в секунду
+    var LIFE_STEP_MS = 300;    // шаг колонии: чаще — рябит, реже — рассыпается на вспышки
+    var LIFE_FILL = 0.3;       // плотность засева
+    var LIFE_MIN_BIRTHS = 5;   // меньше рождений за шаг — колония считается замершей
 
     var SCROLL_CELLS = 70;     // столько примерно ячеек греет прокрутка за кадр
     var SCROLL_MIN_ROWS = 4;   // но полоса не ниже этой, иначе её не разглядеть
@@ -941,7 +940,7 @@
     var lit = null;            // флаг «уже в списке», чтобы не заводить дубли
     var margins = [];          // столбцы за пределами колонки с текстом
     var edges = [];            // они же, но вплотную к ней — для прокрутки
-    var drops = [];
+    var colonies = [];         // острова полей: слева и справа, у каждого своя колония
     var lastPoint = null;
     var lastFrame = 0;
     var running = false;
@@ -966,15 +965,16 @@
       heat = new Float32Array(cols * rows);
       lit = new Uint8Array(cols * rows);
       hot = [];
-      drops = [];
+      colonies = [];
 
       lastPoint = null;
       measureMargins();
+      buildColonies();
       paintAll();
     }
 
-    /* Струйки идут только по полям страницы — там, где нет текста. На узком
-       экране полей не остаётся, и дождя просто не будет. */
+    /* Колония живёт только по полям страницы — там, где нет текста. На узком
+       экране полей не остаётся, и её просто не будет. */
     function measureMargins() {
       margins = [];
       edges = [];
@@ -988,7 +988,7 @@
         var x = col * CELL_W + CELL_W / 2;
         if (x < box.left - pad || x > box.right + pad) margins.push(col);
 
-        // Струйке нужен запас, чтобы не задевать текст. Прокрутка греет вплотную
+        // Колонии нужен запас, чтобы не задевать текст. Прокрутка греет вплотную
         // к колонке: на телефоне полей нет вовсе, и с запасом не осталось бы ни
         // одного столбца — эффекта там не было бы совсем.
         if (x < box.left || x > box.right) edges.push(col);
@@ -1071,46 +1071,106 @@
       }
     }
 
-    /* Струйка: голова спускается по столбцу, зажигает ячейку и пересобирает в
-       ней знак. Хвост рисовать не нужно — его делает то же затухание, что и у
-       следа за курсором. */
-    function spawnDrop() {
-      if (!margins.length || drops.length >= DROP_MAX || document.hidden) return;
+    /* Колонии живут в столбцах за текстовой колонкой. Островов там два — слева
+       и справа, — и каждый считается отдельно: склеивать их в одну сетку
+       нельзя, соседство через весь экран породило бы связи, которых глазу не
+       видно. Остров уже трёх столбцов пропускаем: на двух «Жизнь» вырождается
+       на первом же шаге. */
+    function buildColonies() {
+      colonies = [];
+      if (!margins.length || !rows) return;
 
-      drops.push({
-        col: margins[Math.floor(Math.random() * margins.length)],
-        row: -1 - Math.random() * 8,
-        speed: DROP_SPEED * (0.55 + Math.random()),
-        head: -1,
-      });
-
-      wake();
-    }
-
-    function advanceDrops(step) {
-      for (var i = drops.length - 1; i >= 0; i -= 1) {
-        var drop = drops[i];
-        drop.row += (drop.speed * step) / 1000;
-
-        var row = Math.floor(drop.row);
-        if (row >= rows) {
-          drops.splice(i, 1);
+      var run = [margins[0]];
+      for (var i = 1; i <= margins.length; i += 1) {
+        if (i < margins.length && margins[i] === margins[i - 1] + 1) {
+          run.push(margins[i]);
           continue;
         }
-        if (row < 0 || row === drop.head) continue;
-
-        drop.head = row;
-        var index = row * cols + drop.col;
-        chars[index] = randomGlyph();
-        touch(index, 1);
+        if (run.length >= 3) {
+          var colony = { cols: run, w: run.length, h: rows, cells: new Uint8Array(run.length * rows) };
+          sprinkle(colony, LIFE_FILL, colony.w, colony.h, 0, 0);
+          colonies.push(colony);
+        }
+        if (i < margins.length) run = [margins[i]];
       }
+    }
+
+    /* Горсть живых клеток в прямоугольник от угла; поле замкнуто, поэтому за
+       краем не выходим, а заворачиваем. */
+    function sprinkle(colony, fill, w, h, x0, y0) {
+      for (var y = 0; y < h; y += 1) {
+        for (var x = 0; x < w; x += 1) {
+          if (Math.random() < fill) {
+            colony.cells[((y0 + y) % colony.h) * colony.w + (x0 + x) % colony.w] = 1;
+          }
+        }
+      }
+    }
+
+    /* Шаг «Жизни» Конвея. Поле замкнуто в тор по обеим осям: полоса шириной в
+       десяток столбцов со стенками вырождается за полминуты, а на торе фигуры
+       уходят за край и возвращаются.
+
+       Зажигаются только что родившиеся клетки, а не все живые. Во-первых,
+       дешевле: за шаг рождается несколько десятков клеток вместо сотен живых.
+       Во-вторых, честнее: тепло гаснет за те же триста миллисекунд, что идёт
+       шаг, поэтому живые клетки не светились бы ровно, а мигали. Видно
+       движение колонии, а застывшие фигуры уходят в фон — смотреть в них не на
+       что. */
+    function stepLife() {
+      if (document.hidden || !colonies.length) return;
+      var births = 0;
+
+      for (var c = 0; c < colonies.length; c += 1) {
+        var colony = colonies[c];
+        var w = colony.w;
+        var h = colony.h;
+        var cells = colony.cells;
+        var next = new Uint8Array(cells.length);
+
+        for (var y = 0; y < h; y += 1) {
+          var up = ((y - 1 + h) % h) * w;
+          var mid = y * w;
+          var down = ((y + 1) % h) * w;
+
+          for (var x = 0; x < w; x += 1) {
+            var left = (x - 1 + w) % w;
+            var right = (x + 1) % w;
+            var around = cells[up + left] + cells[up + x] + cells[up + right] +
+              cells[mid + left] + cells[mid + right] +
+              cells[down + left] + cells[down + x] + cells[down + right];
+
+            var was = cells[mid + x];
+            var alive = around === 3 || (was && around === 2) ? 1 : 0;
+            next[mid + x] = alive;
+
+            if (alive && !was) {
+              var index = y * cols + colony.cols[x];
+              chars[index] = randomGlyph();
+              touch(index, 1);
+              births += 1;
+            }
+          }
+        }
+
+        colony.cells = next;
+      }
+
+      // Колония, дожившая до неподвижных фигур, больше ничего не показывает.
+      // Подсеваем горсть, а не засеваем заново: заново — это вспышка во всё
+      // поле, а горсть заводит движение с краю старого.
+      if (births < LIFE_MIN_BIRTHS) {
+        var pick = colonies[Math.floor(Math.random() * colonies.length)];
+        sprinkle(pick, 0.45, 5, 5,
+          Math.floor(Math.random() * pick.w), Math.floor(Math.random() * pick.h));
+      }
+
+      if (births) wake();
     }
 
     function frame(now) {
       var step = lastFrame ? Math.min(now - lastFrame, 64) : 16.7;
       lastFrame = now;
-
-      advanceDrops(step);
 
       var fade = Math.pow(DECAY, step / 16.7);
       var kept = [];
@@ -1137,7 +1197,7 @@
       hot = kept;
       ctx.globalAlpha = 1;
 
-      if (hot.length || drops.length) window.requestAnimationFrame(frame);
+      if (hot.length) window.requestAnimationFrame(frame);
       else running = false;
     }
 
@@ -1203,14 +1263,9 @@
       });
     }, { passive: true });
 
-    /* Струйки запускаются по таймеру, а не в кадре: между ними поле засыпает,
-       и кадры тогда не считаются вовсе. */
-    (function scheduleDrop() {
-      window.setTimeout(function () {
-        spawnDrop();
-        scheduleDrop();
-      }, DROP_MIN_MS + Math.random() * (DROP_MAX_MS - DROP_MIN_MS));
-    })();
+    /* Колония шагает по таймеру, а не в кадре: между шагами поле засыпает, и
+       кадры тогда не считаются вовсе. */
+    window.setInterval(stepLife, LIFE_STEP_MS);
 
     /* Медленное мерцание: несколько случайных символов пересобираются и
        перерисовываются поштучно. */
