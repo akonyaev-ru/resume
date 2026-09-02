@@ -815,6 +815,34 @@ a:hover { color: var(--text); }
 .timeline__seg.is-current { background: var(--mint); }
 .timeline__seg.is-current:hover { background: color-mix(in srgb, var(--mint) 80%, #fff); }
 
+/* Метка «сейчас». Текущая работа не кончилась, но её отрезок обрывался справа
+   так же, как завершённые, и читался как «закончилось». Метка стоит ровно на
+   правом краю оси: ось и считается до текущего месяца, поэтому другого места у
+   неё быть не может. Взята засечкой почти белого — мятная на мятном отрезке
+   слилась бы, — и медленно дышит мятным кольцом.
+   Пузырь висит на `::before`: `::after` у отрезка уже занят областью нажатия
+   для пальца. */
+.timeline__seg.is-current::before {
+  content: '';
+  position: absolute;
+  inset-block: -4px;
+  inset-inline-end: -1px;
+  width: 3px;
+  border-radius: 2px;
+  background: var(--text);
+  animation: now-breath 2.6s ease-out infinite;
+}
+
+@keyframes now-breath {
+  0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--mint) 60%, transparent); }
+  70% { box-shadow: 0 0 0 8px color-mix(in srgb, var(--mint) 0%, transparent); }
+  100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--mint) 0%, transparent); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .timeline__seg.is-current::before { animation: none; }
+}
+
 .timeline__labels {
   position: relative;
   height: 2.7rem;

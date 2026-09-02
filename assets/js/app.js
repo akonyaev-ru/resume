@@ -929,6 +929,10 @@
     var DROP_MAX = 3;          // сколько струек живёт одновременно
     var DROP_SPEED = 24;       // ячеек в секунду
 
+    var SCROLL_CELLS = 70;     // столько примерно ячеек греет прокрутка за кадр
+    var SCROLL_MIN_ROWS = 4;   // но полоса не ниже этой, иначе её не разглядеть
+    var SCROLL_FULL = 900;     // прокрутка за кадр, дающая полную яркость, px
+
     var cols = 0;
     var rows = 0;
     var chars = [];
@@ -936,6 +940,7 @@
     var hot = [];              // индексы ячеек, где свет ещё есть
     var lit = null;            // флаг «уже в списке», чтобы не заводить дубли
     var margins = [];          // столбцы за пределами колонки с текстом
+    var edges = [];            // они же, но вплотную к ней — для прокрутки
     var drops = [];
     var lastPoint = null;
     var lastFrame = 0;
@@ -972,6 +977,7 @@
        экране полей не остаётся, и дождя просто не будет. */
     function measureMargins() {
       margins = [];
+      edges = [];
       var wrap = $('.wrap');
       if (!wrap) return;
 
@@ -981,6 +987,11 @@
       for (var col = 0; col < cols; col += 1) {
         var x = col * CELL_W + CELL_W / 2;
         if (x < box.left - pad || x > box.right + pad) margins.push(col);
+
+        // Струйке нужен запас, чтобы не задевать текст. Прокрутка греет вплотную
+        // к колонке: на телефоне полей нет вовсе, и с запасом не осталось бы ни
+        // одного столбца — эффекта там не было бы совсем.
+        if (x < box.left || x > box.right) edges.push(col);
       }
     }
 
@@ -1032,6 +1043,31 @@
           var value = 1 - Math.sqrt(dx * dx + dy * dy) / RADIUS;
           if (value > 0) touch(row * cols + col, value);
         }
+      }
+    }
+
+    /* Прокрутка греет полосу на переднем крае движения: крутят вниз — низ
+       экрана, вверх — верх. Гаснет она тем же затуханием, что и след за
+       курсором, поэтому свет уезжает вслед за страницей.
+
+       Высота полосы считается из числа столбцов, а не задана числом: на широком
+       экране полей много и хватает пяти рядов, на телефоне столбца всего два, и
+       там та же горсть ячеек растягивается в высокую полосу вдоль краёв.
+       Иначе на узком экране эффекта было бы не видно. */
+    function warmEdge(dir, force) {
+      if (!edges.length || !rows) return;
+
+      var band = Math.min(rows, Math.max(SCROLL_MIN_ROWS,
+        Math.round(SCROLL_CELLS / edges.length)));
+
+      for (var i = 0; i < band; i += 1) {
+        var row = dir > 0 ? rows - 1 - i : i;
+        if (row < 0 || row >= rows) continue;
+
+        var value = force * (1 - i / band);
+        if (value < THRESH) continue;
+
+        for (var m = 0; m < edges.length; m += 1) touch(row * cols + edges[m], value);
       }
     }
 
@@ -1130,6 +1166,42 @@
     }
 
     if (LESS_MOTION) return;
+
+    /* Отзыв на прокрутку. До него вся жизнь страницы висела на движении мыши:
+       свет под курсором, магниты и существа выключены на неточном указателе, и
+       на телефоне поле только мерцало само по себе. Прокрутка есть везде.
+
+       Событий приходит куда больше, чем кадров, поэтому сдвиг копится и
+       разряжается один раз в кадре — иначе на каждый пиксель прокрутки
+       перерисовывалась бы полоса. Первое событие только запоминает положение:
+       браузер восстанавливает прокрутку после загрузки, и без этого страница
+       открывалась бы вспышкой. */
+    var scrollLast = 0;
+    var scrollPrimed = false;
+    var scrollDelta = 0;
+    var scrollWaiting = false;
+
+    window.addEventListener('scroll', function () {
+      var y = window.scrollY || window.pageYOffset || 0;
+      if (!scrollPrimed) {
+        scrollPrimed = true;
+        scrollLast = y;
+        return;
+      }
+
+      scrollDelta += y - scrollLast;
+      scrollLast = y;
+      if (scrollWaiting) return;
+
+      scrollWaiting = true;
+      window.requestAnimationFrame(function () {
+        scrollWaiting = false;
+        var delta = scrollDelta;
+        scrollDelta = 0;
+        if (!delta) return;
+        warmEdge(delta > 0 ? 1 : -1, Math.min(1, Math.abs(delta) / SCROLL_FULL));
+      });
+    }, { passive: true });
 
     /* Струйки запускаются по таймеру, а не в кадре: между ними поле засыпает,
        и кадры тогда не считаются вовсе. */
