@@ -668,17 +668,22 @@ a:hover { color: var(--text); }
   transition: background 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
 }
 
-/* Черта над числом — в цвет самого числа; загорается по всей ширине
-   при наведении. */
+/* Черта над числом — в цвет самого числа; загорается по всей ширине при
+   наведении. Рисуется верхней кромкой рамки, а не прямой полоской: у карточки
+   `overflow: hidden` и скруглённый угол, и прямая полоска обрезалась дугой —
+   выглядело так, будто она не доходит до угла. Кромка идёт по самой дуге и в
+   угол заходит. Радиус на пиксель меньше карточкиного: absolute отсчитывается
+   от внутреннего края рамки, а она в 1 px. Растёт черта срезом справа, а не
+   шириной: ширина утащила бы за собой и правый угол. */
 .metric::before {
   content: '';
   position: absolute;
-  inset-block-start: 0;
-  inset-inline-start: 0;
-  width: 2.5rem;
-  height: 2px;
-  background: var(--tone);
-  transition: width 0.35s cubic-bezier(0.2, 0.7, 0.3, 1);
+  inset: 0;
+  pointer-events: none;
+  border-top: 2px solid var(--tone);
+  border-radius: calc(var(--radius) - 1px);
+  clip-path: inset(0 calc(100% - 2.5rem) 0 0);
+  transition: clip-path 0.35s cubic-bezier(0.2, 0.7, 0.3, 1);
 }
 
 .metric:hover {
@@ -687,7 +692,7 @@ a:hover { color: var(--text); }
   transform: translateY(-2px);
 }
 
-.metric:hover::before { width: 100%; }
+.metric:hover::before { clip-path: inset(0 0 0 0); }
 
 /* Блик под курсором. Точку задаёт app.js через --mx / --my; пока мышь не
    заходила на карточку, пятно лежит по центру и всё равно не видно — слой
@@ -807,19 +812,32 @@ a:hover { color: var(--text); }
   position: relative;
   height: 10px;
   background: var(--line-soft);
-  border-radius: 2px;
+  border-radius: 999px;
 }
 
+/* Отрезки считаются по датам, и подряд идущие работы стыкуются вплотную: правый
+   край «Дом-Профи» и левый край «ГалВента» — одна и та же точка. На пилюлях там
+   встречались закругления и получалась «талия». Прозрачная левая кромка
+   отодвигает заливку на 2 px, и на стыке выходит ровный зазор. Кромка именно
+   левая: справа у текущей работы стоит засечка «сейчас», и от правой заливка
+   отошла бы от неё. Ширина приходит инлайном от скрипта в процентах, а
+   `box-sizing: border-box` держит её неизменной — геометрия по датам не
+   съезжает, двигается только заливка.
+   Цвета ниже заданы через `background-color`, а не сокращённой записью:
+   сокращённая сбрасывала бы `background-clip` обратно к рамке, и обрезка
+   слетала бы у текущей работы и на наведении. */
 .timeline__seg {
   position: absolute;
   inset-block: 0;
-  border-radius: 2px;
-  background: var(--accent-dim);
-  transition: background 0.18s ease, transform 0.18s ease;
+  border-radius: 999px;
+  border-left: 2px solid transparent;
+  background-color: var(--accent-dim);
+  background-clip: padding-box;
+  transition: background-color 0.18s ease, transform 0.18s ease;
 }
 
 .timeline__seg:hover {
-  background: var(--accent);
+  background-color: var(--accent);
   transform: scaleY(1.35);
 }
 
@@ -836,8 +854,8 @@ a:hover { color: var(--text); }
   }
 }
 
-.timeline__seg.is-current { background: var(--mint); }
-.timeline__seg.is-current:hover { background: color-mix(in srgb, var(--mint) 80%, #fff); }
+.timeline__seg.is-current { background-color: var(--mint); }
+.timeline__seg.is-current:hover { background-color: color-mix(in srgb, var(--mint) 80%, #fff); }
 
 /* Метка «сейчас». Текущая работа не кончилась, но её отрезок обрывался справа
    так же, как завершённые, и читался как «закончилось». Метка стоит ровно на
@@ -852,7 +870,7 @@ a:hover { color: var(--text); }
   inset-block: -4px;
   inset-inline-end: -1px;
   width: 3px;
-  border-radius: 2px;
+  border-radius: 999px;
   background: var(--text);
   animation: now-breath 2.6s ease-out infinite;
 }
