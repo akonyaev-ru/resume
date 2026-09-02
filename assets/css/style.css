@@ -526,23 +526,6 @@ a:hover { color: var(--text); }
 
 .portrait.is-live .portrait__photo { opacity: 1; }
 
-/* Safari на iOS не порождает click на элементе, который ничем не помечен как
-   кликабельный, и делегирование на document там молча не срабатывает. Курсор
-   на пальце не виден, но именно он для Safari служит такой пометкой. */
-@media (pointer: coarse) {
-  .portrait { cursor: pointer; }
-}
-
-/* На пальце «прожектора» не выходит: на телефоне портрет ужимается до 194 px,
-   а пятно проявления шире 170 px — круг накрыл бы портрет почти весь и вдобавок
-   спрятался бы под пальцем. Поэтому касание снимает маску и открывает
-   фотографию целиком; проявление делает та же смена прозрачности. */
-.portrait.is-open .portrait__photo {
-  opacity: 1;
-  -webkit-mask-image: none;
-  mask-image: none;
-}
-
 @media (prefers-reduced-motion: reduce) {
   .portrait__photo { transition: none; }
 }
