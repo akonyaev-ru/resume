@@ -102,7 +102,7 @@ window.RESUME = {
       en: 'I move legal and operational processes out of manual mode into automatic — and write what that takes myself.',
     },
     about: {
-      ru: 'Объединяю юридическую экспертизу — два профильных образования и практику в договорной, претензионной и судебной работе — с техническими компетенциями: Python, API, интеграция LLM-моделей. Описываю процессы AS IS / TO BE, собираю требования от юристов и довожу их до работающей функциональности. Роботизировал согласование договоров, внедрил AI-агентов на базе Claude, разработал политику безопасного использования ИИ в контуре компании (Information Governance). Способен и спроектировать архитектуру автоматизации, и реализовать её руками — от постановки задачи до пользовательского тестирования.',
+      ru: 'Объединяю юридическую экспертизу — два профильных образования и практику в договорной, претензионной и судебной работе — с техническими компетенциями: Python, API, интеграция LLM. Описываю процессы AS IS / TO BE, собираю требования от юристов и довожу их до работающей функциональности. Роботизировал согласование договоров, внедрил AI-агентов на базе Claude, разработал политику безопасного использования ИИ в контуре компании (Information Governance). Способен и спроектировать архитектуру автоматизации, и реализовать её руками — от постановки задачи до пользовательского тестирования.',
       en: 'I combine legal expertise — two law degrees and hands-on practice in contract, pre-litigation and court work — with technical skills: Python, APIs, LLM integration. I map processes AS IS / TO BE, gather requirements from lawyers and carry them through to working functionality. I robotised contract approval, rolled out Claude-based AI agents and wrote the policy for safe use of AI inside the company (information governance). I can both design the automation architecture and build it myself, from framing the task to user testing.',
     },
     pullquote: {
@@ -180,14 +180,14 @@ window.RESUME = {
         {
           tags: ['bi', 'bitrix'],
           text: {
-            ru: 'Внедрил Legal Data Analytics: спроектировал BI-дашборды учёта юридических задач и нагрузки на команду по данным из Битрикс24. Убрал 80% ручного ввода и дал контроль KPI в реальном времени.',
+            ru: 'Внедрил Legal Data Analytics: спроектировал BI-дашборды по данным из Битрикс24 — учёт юридических задач и нагрузка на команду. Убрал 80% ручного ввода и дал контроль KPI в реальном времени.',
             en: 'Introduced legal data analytics: designed BI dashboards tracking legal tasks and team workload from Bitrix24 data. Removed 80% of manual entry and put KPIs under real-time control.',
           },
         },
         {
           tags: ['agents', 'llm'],
           text: {
-            ru: 'Перевёл юридическую команду на работу с ИИ-агентами: разбор и сверка документов, подготовка типовых материалов, контроль регламентных сроков. Высвободил 70% FTE штатных юристов от рутины на профильные задачи.',
+            ru: 'Перевёл юридическую команду на работу с ИИ-агентами: разбор и сверка документов, подготовка типовых материалов, контроль регламентных сроков. Высвободил 70% FTE штатных юристов от рутины для профильных задач.',
             en: 'Moved the legal team onto AI agents: parsing and cross-checking documents, drafting standard materials, tracking statutory deadlines. Freed 70% of in-house lawyer FTE from routine for professional work.',
           },
         },
@@ -211,7 +211,7 @@ window.RESUME = {
         {
           tags: ['fz275'],
           text: {
-            ru: 'Обеспечил прохождение плановой проверки прокуратуры на соблюдение 275-ФЗ с 0 замечаний, предотвратив финансовые риски в виде многомиллионных штрафов.',
+            ru: 'Обеспечил прохождение плановой проверки прокуратуры на соблюдение 275-ФЗ с 0 замечаний, сняв риск многомиллионных штрафов.',
             en: 'Took the company through a scheduled prosecutor audit of defence procurement compliance with zero findings, heading off fines running into millions.',
           },
         },
