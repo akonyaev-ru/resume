@@ -19,7 +19,6 @@
   var LANGS = ['ru', 'en'];
   var LANG = readLang();
 
-  var state = { filter: null, filterLabel: null };
   var observers = [];
 
   /* --- язык --------------------------------------------------------------- */
@@ -94,9 +93,6 @@
 
     document.documentElement.lang = lang;
     document.title = u('docTitle');
-    state.filter = null;
-    state.filterLabel = null;
-    document.body.classList.remove('is-filtering');
     render();
   }
 
@@ -407,11 +403,7 @@
           el('h3', { class: 'job__company', text: t(job.company) }),
           el('p', { class: 'job__role', text: t(job.role) }),
           el('ul', { class: 'job__bullets' }, job.bullets.map(function (bullet) {
-            return el('li', {
-              class: 'bullet',
-              'data-tags': (bullet.tags || []).join(' '),
-              text: t(bullet.text),
-            });
+            return el('li', { class: 'bullet', text: t(bullet.text) });
           })),
         ]),
       ]);
@@ -429,7 +421,7 @@
       var stat = (STATS.repos && STATS.repos[pr.repo]) || null;
       var stars = stat && typeof stat.stars === 'number' ? stat.stars : null;
       var release = stat && stat.release;
-      return el('article', { class: 'project', 'data-tags': (pr.tags || []).join(' ') }, [
+      return el('article', { class: 'project' }, [
         el('div', { class: 'project__top' }, [
           el('h3', { class: 'project__name', text: pr.name }),
           stars !== null ? el('span', { class: 'project__stars', text: '★ ' + stars }) : null,
@@ -460,128 +452,23 @@
 
   /* Чипы появляются в кадре волной: у каждого сквозной номер `--i` через все
      группы, задержку из него считает CSS. Номер сквозной, а не внутри группы:
-     группы встают одна за другой, а не все разом. */
+     группы встают одна за другой, а не все разом.
+     Связи навыка с задачами и проектами нет намеренно — решение владельца
+     2026-09-03: логика связи через теги читалась непрозрачно. */
   function buildSkills() {
     var order = 0;
     var groups = el('div', { class: 'skill-groups enter' }, R.skillGroups.map(function (group) {
       return el('div', {}, [
         el('h3', { class: 'skill-group__title', text: t(group.title) }),
         el('div', { class: 'chips' }, group.skills.map(function (skill) {
-          var name = t(skill.name);
-          var wave = '--i:' + order;
+          var chip = el('span', { class: 'chip', style: '--i:' + order, text: t(skill.name) });
           order += 1;
-          if (!skill.filter) return el('span', { class: 'chip', style: wave, text: name });
-          return el('button', {
-            class: 'chip',
-            type: 'button',
-            style: wave,
-            'data-filter': skill.filter,
-            'aria-pressed': 'false',
-            text: name,
-            onclick: function () {
-              setFilter(state.filter === skill.filter ? null : skill.filter, name);
-            },
-            onmouseenter: FINE_POINTER ? function () { peekLater(skill.filter, name); } : null,
-            onmouseleave: FINE_POINTER ? function () { peek(null, null); } : null,
-            onfocus: function () { peekLater(skill.filter, name); },
-            onblur: function () { peek(null, null); },
-          });
+          return chip;
         })),
       ]);
     }));
 
-    return section('skills', u('skillsTitle'), [
-      el('p', { class: 'section__note', text: u('skillsNote') }),
-      groups,
-      el('div', { class: 'filter-status', id: 'filter-status' }),
-    ]);
-  }
-
-  function setFilter(tag, label) {
-    peek(null, null);
-    state.filter = tag;
-    state.filterLabel = label;
-    $$('button.chip').forEach(function (btn) {
-      btn.setAttribute('aria-pressed', String(btn.getAttribute('data-filter') === tag));
-    });
-    applyFilter();
-  }
-
-  function applyFilter() {
-    var tag = state.filter;
-    document.body.classList.toggle('is-filtering', Boolean(tag));
-
-    $$('.bullet, .project').forEach(function (node) {
-      var tags = (node.getAttribute('data-tags') || '').split(' ');
-      node.classList.toggle('is-hit', Boolean(tag) && tags.indexOf(tag) !== -1);
-    });
-
-    var status = $('#filter-status');
-    if (!status) return;
-    status.textContent = '';
-
-    if (!tag) {
-      collectMagnets();
-      return;
-    }
-
-    var hits = $$('.bullet.is-hit').length + $$('.project.is-hit').length;
-    status.appendChild(el('span', {
-      text: hits ? state.filterLabel + ' — ' + hits + ' ' + plural(hits) : u('noMatches'),
-    }));
-    status.appendChild(el('button', {
-      class: 'btn', type: 'button', text: u('reset'),
-      onclick: function () { setFilter(null, null); },
-    }));
-
-    // «Сбросить» появляется и исчезает — список магнитов пересобирается.
-    collectMagnets();
-  }
-
-  /* Наведение на чип показывает, что даст нажатие: совпадающие задачи и
-     проекты разгораются, а в строке под навыками стоит их число. Остальное не
-     гаснет — подсветка только прибавляет. Задержка отсекает пробег курсора
-     вдоль ряда, иначе совпадения мигали бы на каждом чипе. Фокус с клавиатуры
-     делает то же самое. */
-  var PEEK_DELAY = 120;
-  var peekTimer = null;
-
-  function peekLater(tag, label) {
-    window.clearTimeout(peekTimer);
-    peekTimer = window.setTimeout(function () { peek(tag, label); }, PEEK_DELAY);
-  }
-
-  function peek(tag, label) {
-    window.clearTimeout(peekTimer);
-    peekTimer = null;
-
-    $$('.bullet, .project').forEach(function (node) {
-      var tags = (node.getAttribute('data-tags') || '').split(' ');
-      node.classList.toggle('is-peek', Boolean(tag) && tags.indexOf(tag) !== -1);
-    });
-
-    // Пока фильтр включён, строка состояния занята его итогом и кнопкой
-    // «Сбросить» — подсказка туда не лезет.
-    var status = $('#filter-status');
-    if (!status || state.filter) return;
-    status.textContent = '';
-    if (!tag) return;
-
-    var hits = $$('.is-peek').length;
-    status.appendChild(el('span', {
-      text: hits ? label + ' — ' + hits + ' ' + plural(hits) : u('noMatches'),
-    }));
-  }
-
-  function plural(n) {
-    var forms = u('matchForms');
-    if (LANG !== 'ru') return n === 1 ? forms[0] : forms[1];
-
-    var mod10 = n % 10;
-    var mod100 = n % 100;
-    if (mod10 === 1 && mod100 !== 11) return forms[0];
-    if (mod10 >= 2 && mod10 <= 4 && (mod100 < 10 || mod100 >= 20)) return forms[1];
-    return forms[2];
+    return section('skills', u('skillsTitle'), [groups]);
   }
 
   /* --- образование ------------------------------------------------------- */
@@ -1417,7 +1304,6 @@
   function render() {
     observers.forEach(function (observer) { observer.disconnect(); });
     observers = [];
-    window.clearTimeout(peekTimer);
 
     var app = $('#app');
     app.textContent = '';

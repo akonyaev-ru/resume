@@ -402,8 +402,8 @@ a:not(.btn):hover { color: var(--text); }
 /* Текст поверх акцентной заливки — цветом фона страницы, а не белым: белое на
    бирюзе даёт 2.13:1 при норме 4.5:1, `--void` — 9.3:1.
    В печати оба токена переворачиваются (`--accent` чернеет, `--void` белеет),
-   и правило продолжает работать само. Тем же покрашены выбранный чип навыка,
-   выбранная половина переключателя языка и ссылка «К содержанию». */
+   и правило продолжает работать само. Тем же покрашены выбранная половина
+   переключателя языка и ссылка «К содержанию». */
 .btn--primary {
   background: var(--accent);
   color: var(--void);
@@ -1067,7 +1067,6 @@ a:not(.btn):hover { color: var(--text); }
   grid-template-columns: 0.9rem minmax(0, 1fr);
   gap: 0.6rem;
   color: var(--text-dim);
-  transition: opacity 0.25s ease, color 0.25s ease;
 }
 
 .bullet::before {
@@ -1076,25 +1075,7 @@ a:not(.btn):hover { color: var(--text); }
   height: 6px;
   margin-block-start: 0.6em;
   background: var(--line);
-  transition: background 0.25s ease;
 }
-
-.bullet.is-hit::before { background: var(--accent); }
-.bullet.is-hit { color: var(--text); }
-
-.is-filtering .bullet:not(.is-hit) { opacity: 0.28; }
-.is-filtering .project:not(.is-hit) { opacity: 0.32; }
-.is-filtering .project.is-hit { border-color: var(--accent); }
-
-/* Подсветка по наведению на чип: то же, что даёт нажатие, но остальное не
-   гаснет. Поверх включённого фильтра совпадения другого чипа тоже разгораются
-   — так два навыка сравниваются без переключения фильтра. Правила стоят после
-   фильтрующих намеренно: специфичность у них равная, решает порядок. */
-.bullet.is-peek::before { background: var(--accent); }
-.bullet.is-peek { color: var(--text); }
-.project.is-peek { border-color: var(--accent); }
-.is-filtering .bullet.is-peek { opacity: 1; }
-.is-filtering .project.is-peek { opacity: 1; }
 
 /* --- Проекты ------------------------------------------------------------ */
 
@@ -1114,7 +1095,7 @@ a:not(.btn):hover { color: var(--text); }
   border: 1px solid var(--line);
   border-radius: var(--radius);
   overflow: hidden;
-  transition: border-color 0.18s ease, transform 0.18s ease, opacity 0.25s ease, background 0.18s ease;
+  transition: border-color 0.18s ease, transform 0.18s ease, background 0.18s ease;
 }
 
 .project:hover {
@@ -1225,48 +1206,6 @@ a:not(.btn):hover { color: var(--text); }
   padding: 0.34rem 0.62rem;
 }
 
-button.chip {
-  cursor: pointer;
-  transition: border-color 0.15s ease, color 0.15s ease, background 0.15s ease;
-}
-
-button.chip::after {
-  content: '';
-  display: inline-block;
-  width: 4px;
-  height: 4px;
-  margin-inline-start: 0.45rem;
-  vertical-align: 0.2em;
-  background: var(--accent);
-}
-
-button.chip:hover {
-  color: var(--text);
-  border-color: var(--accent);
-  background: var(--accent-wash);
-}
-
-/* Текст на акцентной заливке — по правилу у `.btn--primary`. */
-button.chip[aria-pressed='true'] {
-  background: var(--accent);
-  border-color: var(--accent);
-  color: var(--void);
-}
-
-button.chip[aria-pressed='true']::after { background: var(--void); }
-
-.filter-status {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  flex-wrap: wrap;
-  margin-block-start: 1.75rem;
-  font-family: var(--font-mono);
-  font-size: var(--step--2);
-  color: var(--muted);
-  min-height: 2.2rem;
-}
-
 /* --- Образование -------------------------------------------------------- */
 
 .two-col {
@@ -1371,11 +1310,10 @@ button.chip[aria-pressed='true']::after { background: var(--void); }
 
 /* Чипы навыков проявляются волной, а не разом: каждому своя задержка по
    сквозному номеру `--i`, который ставит app.js, шаг 20 мс — двадцать шесть
-   чипов встают за полсекунды. Анимация, а не переход: у кнопки-чипа свои
-   переходы на наведение, и общий список `transition` с задержкой тянул бы её
-   и в отклик. `both` держит конечное состояние, поэтому базовое `opacity: 0`
-   после волны не мешает. Специфичность у трёх правил ниже одинаковая, решает
-   порядок: тихий режим и печать стоят позже и выигрывают. */
+   чипов встают за полсекунды. Анимация с `both`: она держит конечное
+   состояние, поэтому базовое `opacity: 0` после волны не мешает.
+   Специфичность у трёх правил ниже одинаковая, решает порядок: тихий режим и
+   печать стоят позже и выигрывают. */
 .skill-groups.enter .chip { opacity: 0; }
 
 .skill-groups.is-in .chip {
@@ -1460,11 +1398,8 @@ button.chip[aria-pressed='true']::after { background: var(--void); }
   .hero__actions,
   .contact__actions,
   .section__note,
-  .filter-status,
   #field,
   .skip { display: none !important; }
-
-  button.chip::after { display: none; }
 
   .section, .contact { border-top: 1px solid #bbb; padding-block: 12pt; }
   .hero { padding-block: 0 12pt; }

@@ -3,7 +3,7 @@
  * Правка резюме = правка этого файла. Вёрстку трогать не нужно.
  *
  * Строки, которые переводятся, записаны парой { ru, en }. Всё остальное —
- * даты, цифры, ссылки, теги фильтра — общее для обоих языков, чтобы версии
+ * даты, цифры, ссылки — общее для обоих языков, чтобы версии
  * не разъезжались по фактам.
  */
 
@@ -47,13 +47,6 @@ window.RESUME = {
     openOnGithub: { ru: 'Открыть на GitHub →', en: 'Open on GitHub →' },
     releaseLabel: { ru: 'Выпуск', en: 'Release' },
     skillsTitle: { ru: 'Навыки', en: 'Skills' },
-    skillsNote: {
-      ru: 'Навык с точкой — кликабельный: страница оставит на виду те задачи и проекты, где он применялся.',
-      en: 'A skill with a dot is clickable: the page keeps only the work where it was used.',
-    },
-    noMatches: { ru: 'В опыте нет задач с этим навыком', en: 'No work listed for this skill' },
-    reset: { ru: 'Сбросить', en: 'Reset' },
-    matchForms: { ru: ['совпадение', 'совпадения', 'совпадений'], en: ['match', 'matches'] },
     educationTitle: { ru: 'Образование', en: 'Education' },
     coursesTitle: { ru: 'Повышение квалификации', en: 'Professional training' },
     languagesTitle: { ru: 'Языки', en: 'Languages' },
@@ -157,35 +150,30 @@ window.RESUME = {
       current: true,
       bullets: [
         {
-          tags: ['bitrix', 'process', 'contracts'],
           text: {
             ru: 'Автоматизировал Contract Lifecycle Management на базе Битрикс24: описал процессы AS IS / TO BE, собрал требования от юристов, перестроил маршруты проверки контрагентов и согласования договоров. Сократил SLA согласования на 60%, ускорив коммерческий цикл компании.',
             en: 'Automated contract lifecycle management on Bitrix24: mapped the processes AS IS / TO BE, gathered requirements from the lawyers, rebuilt the counterparty screening and contract approval routes. Cut the approval SLA by 60% and sped up the company commercial cycle.',
           },
         },
         {
-          tags: ['python', 'llm', 'pdn'],
           text: {
             ru: 'Разработал middleware на Python для автоматической деперсонализации данных перед отправкой в LLM. Закрыл риски по 152-ФЗ и утечке коммерческой тайны, сократил время ручной подготовки документов на 95%.',
             en: 'Built Python middleware that de-identifies data automatically before it goes to an LLM. Closed the risks under the Russian personal data law and trade secret leaks, and cut manual document preparation time by 95%.',
           },
         },
         {
-          tags: ['llm', 'pdn', 'process'],
           text: {
             ru: 'Спроектировал и внедрил корпоративную архитектуру безопасного использования LLM (Claude Code, Codex) во внутреннем контуре компании: политика Information Governance, разграничение доступов, логирование запросов, регламент работы с конфиденциальными данными.',
             en: 'Designed and rolled out the corporate architecture for safe LLM use (Claude Code, Codex) inside the company perimeter: an information governance policy, access separation, request logging and rules for handling confidential data.',
           },
         },
         {
-          tags: ['bi', 'bitrix'],
           text: {
             ru: 'Внедрил Legal Data Analytics: спроектировал BI-дашборды по данным из Битрикс24 — учёт юридических задач и нагрузка на команду. Убрал 80% ручного ввода и дал контроль KPI в реальном времени.',
             en: 'Introduced legal data analytics: designed BI dashboards tracking legal tasks and team workload from Bitrix24 data. Removed 80% of manual entry and put KPIs under real-time control.',
           },
         },
         {
-          tags: ['agents', 'llm'],
           text: {
             ru: 'Перевёл юридическую команду на работу с ИИ-агентами: разбор и сверка документов, подготовка типовых материалов, контроль регламентных сроков. Высвободил 70% FTE штатных юристов от рутины для профильных задач.',
             en: 'Moved the legal team onto AI agents: parsing and cross-checking documents, drafting standard materials, tracking statutory deadlines. Freed 70% of in-house lawyer FTE from routine for professional work.',
@@ -202,21 +190,18 @@ window.RESUME = {
       end: '2024-12',
       bullets: [
         {
-          tags: ['contracts', 'process'],
           text: {
             ru: 'Выстроил превентивную систему Legal Risk Management по госконтрактам: сквозной реестр договоров в рамках гособоронзаказа с контролем сроков и обязательств вместо разрозненных файлов. Дал руководству единую картину по портфелю.',
             en: 'Built a preventive legal risk management system for state contracts: a single register of defence procurement contracts with deadline and obligation tracking, replacing scattered files. Gave management one view of the portfolio.',
           },
         },
         {
-          tags: ['fz275'],
           text: {
             ru: 'Обеспечил прохождение плановой проверки прокуратуры на соблюдение 275-ФЗ с 0 замечаний, сняв риск многомиллионных штрафов.',
             en: 'Took the company through a scheduled prosecutor audit of defence procurement compliance with zero findings, heading off fines running into millions.',
           },
         },
         {
-          tags: ['litigation', 'process'],
           text: {
             ru: 'Стандартизировал претензионно-исковую работу и взыскание дебиторской задолженности: единый регламент, контроль стадий, прозрачная отчётность по статусам. Взыскано свыше 12 000 000 ₽, результативность 100% — 6 из 6 дел.',
             en: 'Standardised pre-litigation and debt recovery work: one set of rules, stage tracking, transparent status reporting. Recovered over 12,000,000 ₽ with a 100% success rate — 6 cases out of 6.',
@@ -233,14 +218,12 @@ window.RESUME = {
       end: '2024-05',
       bullets: [
         {
-          tags: ['litigation', 'process'],
           text: {
             ru: 'Внедрил автоматизацию массового судопроизводства: разработал генератор процессуальных документов для пакетной подачи мировым судьям — шаблонизация, автозаполнение из реестра, выгрузка пакетами. Сократил рутинные трудозатраты отдела в 3 раза.',
             en: 'Automated high-volume litigation: built a generator of court filings for batch submission to magistrates — templating, autofill from a register, batch export. Cut the department routine workload threefold.',
           },
         },
         {
-          tags: ['litigation', 'process'],
           text: {
             ru: 'Выстроил цифровые каналы взаимодействия с банками и ФССП, минимизировав сроки фактического получения средств по исполнительным листам.',
             en: 'Set up digital channels with banks and the bailiff service, cutting the time it actually takes to collect on writs of execution.',
@@ -264,7 +247,6 @@ window.RESUME = {
       },
       stack: ['Python', 'slovnet', 'PyQt', 'Windows · macOS · Linux'],
       link: 'https://github.com/akonyaev-ru/Umbra',
-      tags: ['python', 'pdn', 'llm'],
     },
     {
       name: 'Hunter CLI',
@@ -276,29 +258,27 @@ window.RESUME = {
       },
       stack: ['Python', 'TUI', 'OAuth', 'HH API'],
       link: 'https://github.com/akonyaev-ru/HunterCLI',
-      tags: ['python', 'agents', 'process'],
     },
   ],
 
-  // filter: id тега — навык кликабелен и подсвечивает свои задачи в опыте.
   skillGroups: [
     {
       title: { ru: 'Искусственный интеллект', en: 'Artificial intelligence' },
       skills: [
-        { name: 'Claude', filter: 'llm' },
-        { name: 'ChatGPT', filter: 'llm' },
+        { name: 'Claude' },
+        { name: 'ChatGPT' },
         { name: 'Perplexity' },
         { name: 'Prompt Engineering' },
         { name: 'RAG' },
-        { name: { ru: 'ИИ-агенты', en: 'AI agents' }, filter: 'agents' },
+        { name: { ru: 'ИИ-агенты', en: 'AI agents' } },
         { name: 'Antigravity' },
       ],
     },
     {
       title: { ru: 'Разработка и интеграции', en: 'Development and integrations' },
       skills: [
-        { name: 'Python', filter: 'python' },
-        { name: 'API', filter: 'python' },
+        { name: 'Python' },
+        { name: 'API' },
         { name: 'Google API' },
         { name: 'Apps Script' },
         { name: 'n8n' },
@@ -309,12 +289,9 @@ window.RESUME = {
     {
       title: { ru: 'Процессы и данные', en: 'Processes and data' },
       skills: [
-        {
-          name: { ru: 'Описание процессов AS IS / TO BE', en: 'Process mapping AS IS / TO BE' },
-          filter: 'process',
-        },
-        { name: { ru: 'Битрикс24', en: 'Bitrix24' }, filter: 'bitrix' },
-        { name: { ru: 'BI-дашборды', en: 'BI dashboards' }, filter: 'bi' },
+        { name: { ru: 'Описание процессов AS IS / TO BE', en: 'Process mapping AS IS / TO BE' } },
+        { name: { ru: 'Битрикс24', en: 'Bitrix24' } },
+        { name: { ru: 'BI-дашборды', en: 'BI dashboards' } },
         { name: { ru: 'Электронный документооборот', en: 'Electronic document flow' } },
         { name: 'Google Sheets' },
         { name: { ru: '1С: Предприятие', en: '1C: Enterprise' } },
@@ -324,16 +301,10 @@ window.RESUME = {
     {
       title: { ru: 'Юридический стек', en: 'Legal stack' },
       skills: [
-        { name: { ru: 'Договорная работа', en: 'Contract work' }, filter: 'contracts' },
-        { name: { ru: 'Претензионно-исковая работа', en: 'Pre-litigation and claims' }, filter: 'litigation' },
-        {
-          name: { ru: 'Защита персональных данных · 152-ФЗ', en: 'Personal data protection' },
-          filter: 'pdn',
-        },
-        {
-          name: { ru: 'Гособоронзаказ · 275-ФЗ', en: 'Defence procurement compliance' },
-          filter: 'fz275',
-        },
+        { name: { ru: 'Договорная работа', en: 'Contract work' } },
+        { name: { ru: 'Претензионно-исковая работа', en: 'Pre-litigation and claims' } },
+        { name: { ru: 'Защита персональных данных · 152-ФЗ', en: 'Personal data protection' } },
+        { name: { ru: 'Гособоронзаказ · 275-ФЗ', en: 'Defence procurement compliance' } },
         { name: { ru: 'КонсультантПлюс', en: 'ConsultantPlus' } },
       ],
     },
