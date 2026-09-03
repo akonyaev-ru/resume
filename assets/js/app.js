@@ -474,6 +474,10 @@
             onclick: function () {
               setFilter(state.filter === skill.filter ? null : skill.filter, name);
             },
+            onmouseenter: FINE_POINTER ? function () { peekLater(skill.filter, name); } : null,
+            onmouseleave: FINE_POINTER ? function () { peek(null, null); } : null,
+            onfocus: function () { peekLater(skill.filter, name); },
+            onblur: function () { peek(null, null); },
           });
         })),
       ]);
@@ -487,6 +491,7 @@
   }
 
   function setFilter(tag, label) {
+    peek(null, null);
     state.filter = tag;
     state.filterLabel = label;
     $$('button.chip').forEach(function (btn) {
@@ -524,6 +529,41 @@
 
     // «Сбросить» появляется и исчезает — список магнитов пересобирается.
     collectMagnets();
+  }
+
+  /* Наведение на чип показывает, что даст нажатие: совпадающие задачи и
+     проекты разгораются, а в строке под навыками стоит их число. Остальное не
+     гаснет — подсветка только прибавляет. Задержка отсекает пробег курсора
+     вдоль ряда, иначе совпадения мигали бы на каждом чипе. Фокус с клавиатуры
+     делает то же самое. */
+  var PEEK_DELAY = 120;
+  var peekTimer = null;
+
+  function peekLater(tag, label) {
+    window.clearTimeout(peekTimer);
+    peekTimer = window.setTimeout(function () { peek(tag, label); }, PEEK_DELAY);
+  }
+
+  function peek(tag, label) {
+    window.clearTimeout(peekTimer);
+    peekTimer = null;
+
+    $$('.bullet, .project').forEach(function (node) {
+      var tags = (node.getAttribute('data-tags') || '').split(' ');
+      node.classList.toggle('is-peek', Boolean(tag) && tags.indexOf(tag) !== -1);
+    });
+
+    // Пока фильтр включён, строка состояния занята его итогом и кнопкой
+    // «Сбросить» — подсказка туда не лезет.
+    var status = $('#filter-status');
+    if (!status || state.filter) return;
+    status.textContent = '';
+    if (!tag) return;
+
+    var hits = $$('.is-peek').length;
+    status.appendChild(el('span', {
+      text: hits ? label + ' — ' + hits + ' ' + plural(hits) : u('noMatches'),
+    }));
   }
 
   function plural(n) {
@@ -1370,6 +1410,7 @@
   function render() {
     observers.forEach(function (observer) { observer.disconnect(); });
     observers = [];
+    window.clearTimeout(peekTimer);
 
     var app = $('#app');
     app.textContent = '';

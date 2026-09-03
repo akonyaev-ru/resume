@@ -1086,6 +1086,16 @@ a:not(.btn):hover { color: var(--text); }
 .is-filtering .project:not(.is-hit) { opacity: 0.32; }
 .is-filtering .project.is-hit { border-color: var(--accent); }
 
+/* Подсветка по наведению на чип: то же, что даёт нажатие, но остальное не
+   гаснет. Поверх включённого фильтра совпадения другого чипа тоже разгораются
+   — так два навыка сравниваются без переключения фильтра. Правила стоят после
+   фильтрующих намеренно: специфичность у них равная, решает порядок. */
+.bullet.is-peek::before { background: var(--accent); }
+.bullet.is-peek { color: var(--text); }
+.project.is-peek { border-color: var(--accent); }
+.is-filtering .bullet.is-peek { opacity: 1; }
+.is-filtering .project.is-peek { opacity: 1; }
+
 /* --- Проекты ------------------------------------------------------------ */
 
 .projects {
