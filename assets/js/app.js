@@ -921,9 +921,14 @@
      бирюзы к янтарю. Свет гаснет не сразу, а затухает кадр за кадром, поэтому
      за курсором тянется короткий шлейф.
 
+     Поля по бокам живут отдельно: они отстают от прокрутки на четверть, и
+     плоский фон становится дальним планом. Отстающая полоса перерисовывается
+     целиком, остальное поле — нет.
+
      Рисуется целиком только при сборке и изменении размера окна. На каждый кадр
-     перерисовывается лишь квадрат вокруг курсора — иначе четыре с лишним тысячи
-     символов пришлось бы выводить по шестьдесят раз в секунду. */
+     перерисовывается лишь квадрат вокруг курсора да полосы полей — иначе четыре
+     с лишним тысячи символов пришлось бы выводить по шестьдесят раз в
+     секунду. */
   function initField() {
     var canvas = $('#field');
     if (!canvas) return;
@@ -943,10 +948,10 @@
     var FLICKER_MS = 130;      // как часто пересобираются случайные символы
     var FLICKER_COUNT = 5;
 
-    var DROP_MIN_MS = 900;     // пауза между струйками в полях страницы
-    var DROP_MAX_MS = 2600;
-    var DROP_MAX = 3;          // сколько струек живёт одновременно
-    var DROP_SPEED = 24;       // ячеек в секунду
+    /* Доля прокрутки, на которую отстают поля. Четверть: видно, что они едут
+       медленнее страницы, но взгляд за них не цепляется. При отключённой в
+       системе анимации — ноль: глубина есть движение, пусть и от руки. */
+    var PARALLAX = LESS_MOTION ? 0 : 0.25;
 
     var SCROLL_CELLS = 70;     // столько примерно ячеек греет прокрутка за кадр
     var SCROLL_MIN_ROWS = 4;   // но полоса не ниже этой, иначе её не разглядеть
@@ -958,9 +963,10 @@
     var heat = null;           // сколько «света» осталось в каждой ячейке
     var hot = [];              // индексы ячеек, где свет ещё есть
     var lit = null;            // флаг «уже в списке», чтобы не заводить дубли
-    var margins = [];          // столбцы за пределами колонки с текстом
-    var edges = [];            // они же, но вплотную к ней — для прокрутки
-    var drops = [];
+    var edges = [];            // столбцы за пределами колонки с текстом
+    var inMargin = null;       // они же, но по номеру столбца
+    var shiftPx = 0;           // насколько поля отстали: остаток внутри ячейки
+    var shiftRows = 0;         // и целые ячейки
     var lastPoint = null;
     var lastFrame = 0;
     var running = false;
@@ -985,32 +991,33 @@
       heat = new Float32Array(cols * rows);
       lit = new Uint8Array(cols * rows);
       hot = [];
-      drops = [];
 
       lastPoint = null;
       measureMargins();
+      updateShift();
       paintAll();
     }
 
-    /* Струйки идут только по полям страницы — там, где нет текста. На узком
-       экране полей не остаётся, и дождя просто не будет. */
+    /* Поля — столбцы за пределами колонки с текстом. Ими кормятся двое:
+       отклик на прокрутку греет их с переднего края, глубина двигает их
+       содержимое. Граница идёт ровно по краю колонки, без запаса: тогда стык
+       едущего со стоящим совпадает с краем текста, где глаз перелом и так
+       ждёт. На узком экране полей не остаётся, и оба эффекта молча гаснут. */
     function measureMargins() {
-      margins = [];
       edges = [];
+      inMargin = new Uint8Array(cols);
+
       var wrap = $('.wrap');
       if (!wrap) return;
 
       var box = wrap.getBoundingClientRect();
-      var pad = CELL_W * 2;
 
       for (var col = 0; col < cols; col += 1) {
         var x = col * CELL_W + CELL_W / 2;
-        if (x < box.left - pad || x > box.right + pad) margins.push(col);
-
-        // Струйке нужен запас, чтобы не задевать текст. Прокрутка греет вплотную
-        // к колонке: на телефоне полей нет вовсе, и с запасом не осталось бы ни
-        // одного столбца — эффекта там не было бы совсем.
-        if (x < box.left || x > box.right) edges.push(col);
+        if (x < box.left || x > box.right) {
+          edges.push(col);
+          inMargin[col] = 1;
+        }
       }
     }
 
@@ -1020,12 +1027,59 @@
       ctx.fillText(chars[row * cols + col], col * CELL_W + 2, row * CELL_H + 3);
     }
 
+    /* Отставание считается от абсолютного положения прокрутки, а не копится по
+       событиям: тогда оно верно и сразу после перезагрузки, когда браузер
+       возвращает страницу на прежнее место. Целые ячейки и остаток разведены —
+       остаток сдвигает отрисовку в пикселях, целые сдвигают содержимое.
+       Содержимое берётся из тех же `chars` по кругу: знаки там случайные, и
+       повтор через экран от нового набора не отличить. */
+    function updateShift() {
+      var moved = Math.round((window.scrollY || window.pageYOffset || 0) * PARALLAX);
+      var px = ((moved % CELL_H) + CELL_H) % CELL_H;
+      var whole = Math.floor(moved / CELL_H);
+
+      if (px === shiftPx && whole === shiftRows) return false;
+      shiftPx = px;
+      shiftRows = whole;
+      return true;
+    }
+
+    /* Поля рисуются полосой целиком, а не по ячейке: съехавший знак заходит в
+       соседнюю ячейку, и почистить одну — значит оставить от него хвост.
+       Замерено: столбцы полей разом стоят 0.4 мс на 1280 и 2.5 мс на 1920 при
+       бюджете кадра 16.7 — экономить не на чем. Ряды сверху и снизу лишние: они
+       закрывают щель, которую открывает сдвиг. */
+    function paintMargins() {
+      if (!rows || !edges.length) return;
+
+      for (var m = 0; m < edges.length; m += 1) {
+        var col = edges[m];
+        ctx.clearRect(col * CELL_W, 0, CELL_W, rows * CELL_H);
+
+        for (var row = -1; row <= rows; row += 1) {
+          var src = (((row + shiftRows) % rows) + rows) % rows;
+          var value = row >= 0 && row < rows ? heat[row * cols + col] : 0;
+          var burning = value > THRESH;
+
+          ctx.globalAlpha = burning ? BASE_ALPHA + value * value : BASE_ALPHA;
+          ctx.fillStyle = burning ? (value > 0.78 ? EMBER : ACCENT) : BASE;
+          ctx.fillText(chars[src * cols + col], col * CELL_W + 2,
+            row * CELL_H + 3 - shiftPx);
+        }
+      }
+
+      ctx.globalAlpha = 1;
+    }
+
     function paintAll() {
       ctx.clearRect(0, 0, window.innerWidth, window.innerHeight);
       for (var row = 0; row < rows; row += 1) {
-        for (var col = 0; col < cols; col += 1) paintCell(col, row, BASE_ALPHA, BASE);
+        for (var col = 0; col < cols; col += 1) {
+          if (!inMargin[col]) paintCell(col, row, BASE_ALPHA, BASE);
+        }
       }
       ctx.globalAlpha = 1;
+      paintMargins();
     }
 
     function wake() {
@@ -1090,49 +1144,14 @@
       }
     }
 
-    /* Струйка: голова спускается по столбцу, зажигает ячейку и пересобирает в
-       ней знак. Хвост рисовать не нужно — его делает то же затухание, что и у
-       следа за курсором. */
-    function spawnDrop() {
-      if (!margins.length || drops.length >= DROP_MAX || document.hidden) return;
-
-      drops.push({
-        col: margins[Math.floor(Math.random() * margins.length)],
-        row: -1 - Math.random() * 8,
-        speed: DROP_SPEED * (0.55 + Math.random()),
-        head: -1,
-      });
-
-      wake();
-    }
-
-    function advanceDrops(step) {
-      for (var i = drops.length - 1; i >= 0; i -= 1) {
-        var drop = drops[i];
-        drop.row += (drop.speed * step) / 1000;
-
-        var row = Math.floor(drop.row);
-        if (row >= rows) {
-          drops.splice(i, 1);
-          continue;
-        }
-        if (row < 0 || row === drop.head) continue;
-
-        drop.head = row;
-        var index = row * cols + drop.col;
-        chars[index] = randomGlyph();
-        touch(index, 1);
-      }
-    }
-
     function frame(now) {
       var step = lastFrame ? Math.min(now - lastFrame, 64) : 16.7;
       lastFrame = now;
 
-      advanceDrops(step);
-
+      var moved = updateShift();
       var fade = Math.pow(DECAY, step / 16.7);
       var kept = [];
+      var marginLit = false;
 
       for (var i = 0; i < hot.length; i += 1) {
         var index = hot[i];
@@ -1140,23 +1159,32 @@
         var row = (index / cols) | 0;
         var col = index - row * cols;
 
-        ctx.clearRect(col * CELL_W, row * CELL_H, CELL_W, CELL_H);
-
         if (value < THRESH) {
           heat[index] = 0;
           lit[index] = 0;
-          paintCell(col, row, BASE_ALPHA, BASE);
         } else {
           heat[index] = value;
           kept.push(index);
-          paintCell(col, row, BASE_ALPHA + value * value, value > 0.78 ? EMBER : ACCENT);
         }
+
+        // Ячейки полей не трогаем поштучно — их закроет полоса целиком.
+        if (inMargin[col]) {
+          marginLit = true;
+          continue;
+        }
+
+        ctx.clearRect(col * CELL_W, row * CELL_H, CELL_W, CELL_H);
+
+        if (value < THRESH) paintCell(col, row, BASE_ALPHA, BASE);
+        else paintCell(col, row, BASE_ALPHA + value * value, value > 0.78 ? EMBER : ACCENT);
       }
+
+      if (moved || marginLit) paintMargins();
 
       hot = kept;
       ctx.globalAlpha = 1;
 
-      if (hot.length || drops.length) window.requestAnimationFrame(frame);
+      if (hot.length) window.requestAnimationFrame(frame);
       else running = false;
     }
 
@@ -1219,17 +1247,12 @@
         scrollDelta = 0;
         if (!delta) return;
         warmEdge(delta > 0 ? 1 : -1, Math.min(1, Math.abs(delta) / SCROLL_FULL));
+
+        // Отклик мог не зажечь ни одной ячейки — сдвиг был меньше порога, — а
+        // поля всё равно обязаны доехать. Поэтому кадр будим сами.
+        wake();
       });
     }, { passive: true });
-
-    /* Струйки запускаются по таймеру, а не в кадре: между ними поле засыпает,
-       и кадры тогда не считаются вовсе. */
-    (function scheduleDrop() {
-      window.setTimeout(function () {
-        spawnDrop();
-        scheduleDrop();
-      }, DROP_MIN_MS + Math.random() * (DROP_MAX_MS - DROP_MIN_MS));
-    })();
 
     /* Медленное мерцание: несколько случайных символов пересобираются и
        перерисовываются поштучно. */
@@ -1239,6 +1262,11 @@
         var index = Math.floor(Math.random() * chars.length);
         var row = Math.floor(index / cols);
         var col = index % cols;
+
+        // В полях знаки не мерцают: они там едут, и подмена одной ячейки поверх
+        // съехавшей полосы оставила бы от знака хвост.
+        if (inMargin[col]) continue;
+
         chars[index] = randomGlyph();
         ctx.clearRect(col * CELL_W, row * CELL_H, CELL_W, CELL_H);
 
