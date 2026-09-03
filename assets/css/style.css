@@ -177,13 +177,14 @@ a:hover { color: var(--text); }
 
 .skip { position: absolute; left: -9999px; }
 
+/* Текст на акцентной заливке — по правилу у `.btn--primary`. */
 .skip:focus {
   left: 1rem;
   top: 1rem;
   z-index: 100;
   padding: 0.5rem 0.9rem;
   background: var(--accent);
-  color: #fff;
+  color: var(--void);
 }
 
 /* --- Существо ----------------------------------------------------------- */
@@ -348,7 +349,8 @@ a:hover { color: var(--text); }
   transition: color 0.2s ease;
 }
 
-.lang__btn[aria-pressed='true'] { color: #fff; }
+/* Текст на акцентной заливке — по правилу у `.btn--primary`. */
+.lang__btn[aria-pressed='true'] { color: var(--void); }
 .lang__btn:not([aria-pressed='true']):hover { color: var(--text); }
 
 /* --- Кнопки ------------------------------------------------------------- */
@@ -390,9 +392,16 @@ a:hover { color: var(--text); }
   gap: 0.5rem;
 }
 
+/* Текст поверх акцентной заливки — цветом фона страницы, а не белым: белое на
+   бирюзе даёт 2.13:1 при норме 4.5:1, `--void` — 9.3:1. На наведении заливка
+   темнеет до `--accent-dim`, и там проходит уже белый (5.1:1), а `--void` бы
+   провалился (3.88:1) — потому на покое и на наведении цвета разные.
+   В печати оба токена переворачиваются (`--accent` чернеет, `--void` белеет),
+   и правило продолжает работать само. Тем же покрашены выбранный чип навыка,
+   выбранная половина переключателя языка и ссылка «К содержанию». */
 .btn--primary {
   background: var(--accent);
-  color: #fff;
+  color: var(--void);
   border-color: var(--accent);
 }
 
@@ -1222,13 +1231,14 @@ button.chip:hover {
   background: var(--accent-wash);
 }
 
+/* Текст на акцентной заливке — по правилу у `.btn--primary`. */
 button.chip[aria-pressed='true'] {
   background: var(--accent);
   border-color: var(--accent);
-  color: #fff;
+  color: var(--void);
 }
 
-button.chip[aria-pressed='true']::after { background: #fff; }
+button.chip[aria-pressed='true']::after { background: var(--void); }
 
 .filter-status {
   display: flex;
