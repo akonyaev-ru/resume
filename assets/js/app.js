@@ -458,16 +458,23 @@
 
   /* --- навыки ------------------------------------------------------------ */
 
+  /* Чипы появляются в кадре волной: у каждого сквозной номер `--i` через все
+     группы, задержку из него считает CSS. Номер сквозной, а не внутри группы:
+     группы встают одна за другой, а не все разом. */
   function buildSkills() {
+    var order = 0;
     var groups = el('div', { class: 'skill-groups enter' }, R.skillGroups.map(function (group) {
       return el('div', {}, [
         el('h3', { class: 'skill-group__title', text: t(group.title) }),
         el('div', { class: 'chips' }, group.skills.map(function (skill) {
           var name = t(skill.name);
-          if (!skill.filter) return el('span', { class: 'chip', text: name });
+          var wave = '--i:' + order;
+          order += 1;
+          if (!skill.filter) return el('span', { class: 'chip', style: wave, text: name });
           return el('button', {
             class: 'chip',
             type: 'button',
+            style: wave,
             'data-filter': skill.filter,
             'aria-pressed': 'false',
             text: name,

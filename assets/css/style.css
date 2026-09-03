@@ -1369,6 +1369,29 @@ button.chip[aria-pressed='true']::after { background: var(--void); }
   .enter { opacity: 1; transform: none; }
 }
 
+/* Чипы навыков проявляются волной, а не разом: каждому своя задержка по
+   сквозному номеру `--i`, который ставит app.js, шаг 20 мс — двадцать шесть
+   чипов встают за полсекунды. Анимация, а не переход: у кнопки-чипа свои
+   переходы на наведение, и общий список `transition` с задержкой тянул бы её
+   и в отклик. `both` держит конечное состояние, поэтому базовое `opacity: 0`
+   после волны не мешает. Специфичность у трёх правил ниже одинаковая, решает
+   порядок: тихий режим и печать стоят позже и выигрывают. */
+.skill-groups.enter .chip { opacity: 0; }
+
+.skill-groups.is-in .chip {
+  animation: chip-in 0.35s ease both;
+  animation-delay: calc(var(--i, 0) * 20ms);
+}
+
+@keyframes chip-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skill-groups.enter .chip { opacity: 1; animation: none; }
+}
+
 /* --- Печать ------------------------------------------------------------- */
 
 @media print {
@@ -1448,6 +1471,7 @@ button.chip[aria-pressed='true']::after { background: var(--void); }
   .job, .project, .metric, .record { break-inside: avoid; }
   .job__meta { position: static; }
   .enter { opacity: 1; transform: none; }
+  .skill-groups.enter .chip { opacity: 1; animation: none; }
   .projects { grid-template-columns: 1fr 1fr; }
   a { text-decoration: none; color: #000; }
 
