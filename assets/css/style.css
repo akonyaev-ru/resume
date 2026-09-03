@@ -554,31 +554,66 @@ a:hover { color: var(--text); }
   .portrait__photo { transition: none; }
 }
 
-/* Анкета лентой под первым экраном */
+/* Анкета бегущей лентой под первым экраном */
 
-/* Колонки заданы явно и по числу пунктов: при автоподборе последний висел в
-   отдельном ряду. Пунктов пять — город, формат, переезд, опыт, почта. */
+/* Пять пунктов — город, формат, переезд, опыт, почта — идут одной строкой по
+   кругу. Сетка из пяти колонок отменена: на узком экране она разваливалась на
+   три ряда, а значения ломались переносом посреди фразы.
+   Лента склеена из двух одинаковых групп; сдвиг дорожки на половину её ширины
+   ставит вторую группу ровно на место первой, и шов не виден. Промежуток между
+   группами держит концевой отступ самой группы, а не `gap` дорожки: `gap`
+   прибавился бы к ширине дорожки, половина перестала бы равняться группе — и
+   шов бы поехал. */
 .facts {
-  display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: 1.35rem 2rem;
+  --facts-gap: 2.5rem;
+  --facts-fade: 3rem;
+  /* Круг группы шириной около 950 px за 38 с — это примерно 25 px/с. Быстрее
+     читать на ходу уже неудобно. */
+  --facts-cycle: 38s;
+
+  overflow: hidden;
   margin-block-start: clamp(2rem, 4vw, 3rem);
   padding-block-start: clamp(1.25rem, 3vw, 1.75rem);
   border-block-start: 1px solid var(--line);
+  -webkit-mask-image: linear-gradient(to right, transparent, #000 var(--facts-fade),
+    #000 calc(100% - var(--facts-fade)), transparent);
+  mask-image: linear-gradient(to right, transparent, #000 var(--facts-fade),
+    #000 calc(100% - var(--facts-fade)), transparent);
 }
 
-@media (max-width: 1080px) {
-  .facts { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.facts__track {
+  display: flex;
+  width: max-content;
+  animation: facts-run var(--facts-cycle) linear infinite;
 }
 
-@media (max-width: 620px) {
-  .facts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  /* Пунктов пять: последний остаётся один в ряду — пусть занимает его целиком,
-     тем более что почта из них самая длинная. */
-  .facts .fact:last-child { grid-column: 1 / -1; }
+/* Наведение и фокус с клавиатуры останавливают ленту. Без этого почта —
+   движущаяся мишень, в которую надо попасть курсором. */
+.facts:hover .facts__track,
+.facts:focus-within .facts__track { animation-play-state: paused; }
+
+.facts__group {
+  display: flex;
+  flex: none;
+  gap: var(--facts-gap);
+  padding-inline-end: var(--facts-gap);
 }
 
-.fact { display: grid; gap: 0.15rem; }
+@keyframes facts-run {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+
+/* Движение выключено — лента становится обычной строкой, которую листают
+   пальцем или колесом. Дубль убран: без движения он читался бы повтором. */
+@media (prefers-reduced-motion: reduce) {
+  .facts { overflow-x: auto; overflow-y: hidden; }
+  .facts__track { animation: none; }
+  .facts__group + .facts__group { display: none; }
+}
+
+/* Значение в одну строку: перенос посреди фразы на едущей ленте нечитаем. */
+.fact { display: grid; gap: 0.15rem; white-space: nowrap; }
 
 .fact__key {
   font-family: var(--font-mono);
@@ -1336,6 +1371,30 @@ button.chip[aria-pressed='true']::after { background: #fff; }
     mask-image: none !important;
     -webkit-mask-image: none !important;
   }
+
+  /* На листе ленты нет: дубль убран, движение и размытые края сняты, пункты
+     снова стоят сеткой в три колонки — ровно как стояли до ленты. Флексом их
+     тут не оставить: группа не сжимается (`flex: none`) и уезжает за поле
+     страницы, унося с собой правые пункты. */
+  .facts {
+    overflow: visible;
+    mask-image: none !important;
+    -webkit-mask-image: none !important;
+  }
+
+  .facts__track { display: block; width: auto; animation: none; }
+
+  .facts__group {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 1.35rem 2rem;
+    padding-inline-end: 0;
+  }
+
+  .facts__group + .facts__group { display: none; }
+
+  /* Значение переносится по словам: в одну строку оно уедет за поле листа. */
+  .fact { white-space: normal; }
 
   .topbar,
   .hero__actions,

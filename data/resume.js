@@ -85,7 +85,7 @@ window.RESUME = {
     age: 25,
     city: { ru: 'Москва', en: 'Moscow' },
     github: 'akonyaev-ru',
-    updated: { ru: '2 сентября 2026', en: '2 September 2026' },
+    updated: { ru: '3 сентября 2026', en: '3 September 2026' },
     experienceTotal: { ru: '2 года 6 месяцев', en: '2 years 6 months' },
     employment: { ru: 'полная занятость', en: 'full-time' },
     schedule: { ru: 'Удалённо или гибрид', en: 'Remote or hybrid' },

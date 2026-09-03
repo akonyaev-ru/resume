@@ -246,19 +246,38 @@
       [u('factExperience'), t(p.experienceTotal)],
     ];
 
-    return el('div', { class: 'wrap facts' }, rows.map(function (row) {
-      return el('div', { class: 'fact' }, [
-        el('span', { class: 'fact__key', text: row[0] }),
-        el('span', { class: 'fact__val', text: row[1] }),
-      ]);
-    }).concat([
-      el('div', { class: 'fact' }, [
+    /* Две одинаковые группы подряд: пока первая уходит влево, вторая занимает
+       её место. Дубль — чистая декорация, поэтому он скрыт от чтения с экрана,
+       а ссылка в нём вынута из обхода по Tab: иначе почта попадалась бы
+       дважды. */
+    function group(isCopy) {
+      var items = rows.map(function (row) {
+        return el('div', { class: 'fact' }, [
+          el('span', { class: 'fact__key', text: row[0] }),
+          el('span', { class: 'fact__val', text: row[1] }),
+        ]);
+      });
+
+      items.push(el('div', { class: 'fact' }, [
         el('span', { class: 'fact__key', text: u('factEmail') }),
         el('span', { class: 'fact__val' }, [
-          el('a', { href: p.contacts.email.href, text: p.contacts.email.label }),
+          el('a', {
+            href: p.contacts.email.href,
+            text: p.contacts.email.label,
+            tabindex: isCopy ? '-1' : null,
+          }),
         ]),
-      ]),
-    ]));
+      ]));
+
+      return el('div', {
+        class: 'facts__group',
+        'aria-hidden': isCopy ? 'true' : null,
+      }, items);
+    }
+
+    return el('div', { class: 'wrap facts' }, [
+      el('div', { class: 'facts__track' }, [group(false), group(true)]),
+    ]);
   }
 
   /* Тег выпуска показывается без ведущей `v`: рядом со словом «Выпуск» она
