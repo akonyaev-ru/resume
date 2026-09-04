@@ -329,6 +329,8 @@ FICUS_CROWN = [(5, 8), (3, 10), (2, 11), (1, 11), (1, 11), (2, 11), (2, 10),
                (3, 9), (4, 8)]
 # Вырезы по краю: без них крона читается ровным комом.
 FICUS_NOTCH = [(3, 1), (11, 3), (1, 4), (10, 6), (3, 7)]
+# И просветы внутри светлой половины — намёк на отдельные листья.
+FICUS_GAPS = [(4, 2), (6, 4), (3, 5), (7, 6)]
 
 
 def ficus():
@@ -343,14 +345,18 @@ def ficus():
         x0, x1 = FICUS_CROWN[y]
         rect(g, x0, y, x1, y, 'm')               # низ кроны тоже в тени
 
+    for x, y in FICUS_GAPS:
+        g[y][x] = 'm'
     for x, y in FICUS_NOTCH:
         g[y][x] = '.'
 
     rect(g, 6, len(FICUS_CROWN), 7, FICUS_POT - 1, 's')    # ствол
-    rect(g, 6, len(FICUS_CROWN), 6, FICUS_POT - 1, 'l')    # светлая грань
+    rect(g, 6, len(FICUS_CROWN), 6, FICUS_POT - 1, 'b')    # его светлая грань
 
     rect(g, 2, FICUS_POT, FICUS_W - 3, FICUS_POT, 'r')     # обод кадки
+    rect(g, 3, FICUS_POT, FICUS_W - 4, FICUS_POT, 'n')     # земля внутри обода
     rect(g, 3, FICUS_POT + 1, FICUS_W - 4, FICUS_H - 1, 'p')
+    rect(g, 3, FICUS_POT + 1, 3, FICUS_H - 2, 'w')         # светлая грань кадки
 
     return g
 
@@ -369,10 +375,13 @@ PLANT_LEAVES = [(5, 1, 'l'), (2, 4, 'm'), (9, 3, 'm'), (10, 7, 'l')]
 
 
 def leaf(g, cx, cy, color):
-    """Овал пять на три с сужением к краям."""
+    """Овал пять на три с сужением к краям и бликом слева сверху: свет на
+    странице всюду падает слева, и листья не исключение."""
     rect(g, cx - 1, cy - 1, cx + 1, cy - 1, color)
     rect(g, cx - 2, cy, cx + 2, cy, color)
     rect(g, cx - 1, cy + 1, cx + 1, cy + 1, color)
+    rect(g, cx - 1, cy - 1, cx - 1, cy - 1, 'h')
+    rect(g, cx - 2, cy, cx - 2, cy, 'h')
 
 
 def plant():
@@ -386,7 +395,9 @@ def plant():
         leaf(g, cx, cy, color)
 
     rect(g, 1, POT_TOP, PLANT_W - 2, POT_TOP, 'r')          # обод
+    rect(g, 2, POT_TOP, PLANT_W - 3, POT_TOP, 'n')          # земля внутри обода
     rect(g, 2, POT_TOP + 1, PLANT_W - 3, PLANT_H - 2, 'p')  # корпус
+    rect(g, 2, POT_TOP + 1, 2, PLANT_H - 2, 'w')            # светлая грань
     rect(g, 3, PLANT_H - 1, PLANT_W - 4, PLANT_H - 1, 'p')  # книзу уже
 
     return g
