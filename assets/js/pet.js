@@ -99,8 +99,8 @@
       c: '#5e7787',          // подушки посветлее
       h: '#7a8fa0',          // светлые кромки: верх спинки и подлокотников
       d: '#3a4a56',          // швы, пуговицы и тени
-      p: '#b06a4e',          // думка — единственное тёплое пятно
-      q: '#c98a6a',          // и её светлая кромка
+      p: '#b06a4e',          // плед на подлокотнике — единственное тёплое пятно
+      q: '#c98a6a',          // и его светлая складка
       k: '#2a3038',          // ножки
     },
     shelf: {
@@ -690,12 +690,12 @@
         '....fccccccccdcccccccf....',
         '....fccccccccdcccccccf....',
         '....fcccdccccdcccdcccf....',
-        '.hhhfccccccccdcccccccfhhh.',
-        'fffdfcqqqqcccdcccccccfdfff',
-        'fffdfcppppcccdcccccccfdfff',
-        'fffdffppppffffffffffffdfff',
-        'fffdccppppcccdccccccccdfff',
-        'fffdcccccccccdccccccccdfff',
+        'qqqqfccccccccdcccccccfhhh.',
+        'ppppfccccccccdcccccccfdfff',
+        'ppppfccccccccdcccccccfdfff',
+        'fqpdffffffffffffffffffdfff',
+        'fqpdcccccccccdccccccccdfff',
+        'fqpdcccccccccdccccccccdfff',
         'ffffddddddddddddddddddffff',
         '.kk....................kk.',
       ];
