@@ -96,9 +96,18 @@
     },
     cooler: {
       w: '#4fa3cc',          // вода в бутыли
-      g: '#8fd0ea',          // блик на стекле и светлая грань корпуса
-      b: '#9aa2b2',          // корпус
-      c: '#5b6474',          // краны, поддон, ножки, шов дверцы
+      g: '#8fd0ea',          // блик, рёбра бутыли и светлая грань корпуса
+      b: '#c6ccd8',          // корпус белый, как на фотографии
+      n: '#4a5162',          // ниша, куда подставляют стакан
+      c: '#3f7fbf',          // холодный кран и поддон
+      r: '#c25b5b',          // горячий кран
+    },
+    cabinet: {
+      f: '#4c4238',          // корпус и столешница
+      e: '#5d5145',          // фасады ящиков
+      h: '#9aa2b2',          // ручки
+      g: '#5a4f43',          // светлая грань слева
+      k: '#332c26',          // ножки
     },
     shelf: {
       f: '#39404f',          // корпус и полки
@@ -684,28 +693,46 @@
         '...ppppppp...',
       ];
 
-  // Кулер: бутыль горлышком вниз и корпус на ножках.
+  // Кулер: высокая бутыль горлышком вниз и приземистый корпус.
   var COOLER = [
-        '...cccc...',
         '..wwwwww..',
+        '.wwwwwwww.',
         '.wgwwwwww.',
         '.wgwwwwww.',
+        '.gggggggg.',
         '.wgwwwwww.',
+        '.wgwwwwww.',
+        '.gggggggg.',
         '.wgwwwwww.',
         '.wwwwwwww.',
         '..wwwwww..',
         '...wwww...',
+        '...wwww...',
         'bbbbbbbbbb',
-        '.gbbbbbbb.',
-        '.gbbbbbbb.',
-        '.gbbccbbb.',
-        '.gbbccbbb.',
-        '.gbbbbbbb.',
-        '.gbccccbb.',
-        '.gbbbbbbb.',
-        '.gccccccb.',
-        '.gbbbbbbb.',
-        '.cc....cc.',
+        'bgbbbbbbbb',
+        'bgnrnncnbb',
+        'bgnrnncnbb',
+        'bgnnnnnnbb',
+        'bgccccccbb',
+        'bbbbbbbbbb',
+      ];
+
+  // Тумбочка с тремя ящиками — на ней стоит кулер.
+  var CABINET = [
+        'ffffffffffffff',
+        'ffffffffffffff',
+        '.gfffffffffff.',
+        '.gfeeehheeeff.',
+        '.gfeeeeeeeeff.',
+        '.gfffffffffff.',
+        '.gfeeehheeeff.',
+        '.gfeeeeeeeeff.',
+        '.gfffffffffff.',
+        '.gfeeehheeeff.',
+        '.gfeeeeeeeeff.',
+        '.gfffffffffff.',
+        '.fkkffffffkkf.',
+        '.fkkffffffkkf.',
       ];
 
   /* --- сборка кадров ----------------------------------------------------- */
@@ -1346,18 +1373,45 @@
       wake();
     }
 
-    /* Пока стоит на полу — кадр не считается вовсе. Иначе мебель тратила бы
-       время в каждом кадре, ничего не делая. */
+    /* На чём предмет стоит: на полу или на верхе другого, который ниже и
+       перекрывается с ним по горизонтали. Отсюда и кулер на тумбочке: одним
+       предметом они не склеены, просто один стоит на другом. Увели тумбочку —
+       опоры не стало, и кулер падает. */
+    function support() {
+      var level = 0;
+
+      things.forEach(function (other) {
+        if (other === me || other.hidden) return;
+        if (me.x + canvas.width <= other.x) return;
+        if (other.x + other.canvas.width <= me.x) return;
+
+        var top = other.y + other.canvas.height;
+        if (top <= me.y + 1 && top > level) level = top;
+      });
+
+      return level;
+    }
+
+    /* Пока стоит на своей опоре — кадр не считается вовсе. Иначе мебель
+       тратила бы время в каждом кадре, ничего не делая. */
     function update(now, step) {
-      if (me.grab || (me.y <= 0 && me.vy === 0)) return;
+      if (me.grab) return;
+
+      var floor = support();
+
+      if (me.vy === 0 && me.y <= floor) {
+        // Опора могла подъехать под предмет — тогда он встаёт на неё.
+        if (me.y !== floor) { me.y = floor; place(); }
+        return;
+      }
 
       var dt = step / 1000;
 
       me.vy -= GRAVITY * dt;
       me.y += me.vy * dt;
 
-      if (me.y <= 0) {
-        me.y = 0;
+      if (me.y <= floor) {
+        me.y = floor;
         var back = Math.min(-me.vy * THING_BOUNCE, THING_HOP);
         me.vy = back > THING_STICK ? back : 0;
       }
@@ -1396,16 +1450,29 @@
      загрузке: 0 — вплотную к левому краю, 1 — к правому. Считается от полосы,
      а не от ширины окна, поэтому широкий предмет у правого края не уезжает за
      него. Расставлены по бокам — середина оставлена пустой, чтобы обстановка
-     не лезла в глаза посреди страницы. Следующий предмет добавляется строкой. */
+     не лезла в глаза посреди страницы.
+
+     `on` — предмет стоит не на полу, а на другом: кулер на тумбочке. Одним
+     предметом их не делаем нарочно — владелец просил, чтобы растащить их можно
+     было в любую сторону. Следующий предмет добавляется строкой. */
   var things = [
-    { art: SHELF, skin: SKIN.shelf, title: 'Подвинуть полку', at: 0.06 },
-    { art: COOLER, skin: SKIN.cooler, title: 'Подвинуть кулер', at: 0.78 },
-    { art: PLANT, skin: SKIN.plant, title: 'Подвинуть растение', at: 0.95 },
+    { name: 'shelf', art: SHELF, skin: SKIN.shelf, title: 'Подвинуть полку', at: 0.06 },
+    { name: 'cabinet', art: CABINET, skin: SKIN.cabinet, title: 'Подвинуть тумбочку', at: 0.78 },
+    { name: 'cooler', art: COOLER, skin: SKIN.cooler, title: 'Подвинуть кулер', on: 'cabinet' },
+    { name: 'plant', art: PLANT, skin: SKIN.plant, title: 'Подвинуть растение', at: 0.95 },
   ].map(function (spec) {
     var thing = makeThing(spec);
+    thing.name = spec.name;
     thing.at = spec.at;
+    thing.on = spec.on;
     return thing;
   });
+
+  function thingNamed(name) {
+    var found = null;
+    things.forEach(function (t) { if (t.name === name) found = t; });
+    return found;
+  }
 
   // Знакомим их друг с другом: каждому нужно знать, где второй, чтобы не
   // пройти сквозь него.
@@ -1591,7 +1658,16 @@
   olivia.x = clamp(otto.x + SPAN + 96, EDGE, olivia.limit());
   pets.forEach(function (p) { p.place(); });
   things.forEach(function (t) {
+    if (t.on) return;
     t.x = clamp(EDGE + (t.limit() - EDGE) * t.at, EDGE, t.limit());
+    t.place();
+  });
+  // Стоящие на другом предмете встают по его середине и на его высоту.
+  things.forEach(function (t) {
+    if (!t.on) return;
+    var base = thingNamed(t.on);
+    t.x = clamp(base.x + (base.canvas.width - t.canvas.width) / 2, EDGE, t.limit());
+    t.y = base.y + base.canvas.height;
     t.place();
   });
 

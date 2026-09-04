@@ -351,11 +351,16 @@ check('загрузка', function () {
     seen.add(name);
 
     if (!thing.layers.length) fail(name + ': предмет не нарисован');
-    if (at.y !== 0) fail(name + ': при загрузке висит в воздухе, y = ' + at.y);
+
+    const rest = restLevel(world, thing, at.x, at.y);
+    if (at.y !== rest) {
+      fail(name + ': при загрузке стоит на ' + at.y + ', а опора на ' + rest);
+    }
     if (at.x < NUM.EDGE || at.x > world.wide() - thing.width) {
       fail(name + ': при загрузке стоит за краем окна, x = ' + at.x);
     }
-    return name.replace('Подвинуть ', '') + ' на ' + at.x;
+    return name.replace('Подвинуть ', '') + ' на ' + at.x +
+      (at.y ? ' (на высоте ' + at.y + ')' : '');
   });
 
   return titles.join(', ') + '; ' + spots.join(', ');
@@ -420,6 +425,26 @@ check('работают оба', function () {
     ', у Оливии ' + seen[1].size;
 });
 
+/* На чём предмет стоит в точке `x`: на полу или на верхе другого предмета,
+   который с ним перекрывается. Тем же правилом живёт `pet.js`, и проверки
+   считают его отдельно — иначе они сверяли бы скрипт сам с собой. */
+function restLevel(world, thing, x, y) {
+  let level = 0;
+
+  world.things.forEach(function (other) {
+    if (other === thing) return;
+    const at = other.spot();
+    if (x + thing.width <= at.x || at.x + other.width <= x) return;
+
+    // Опора — только то, что стоит ниже: предмет, стоящий сверху, опорой не
+    // считается, иначе тумбочка «стояла бы» на собственном кулере.
+    const top = at.y + other.height;
+    if (top <= y + 1 && top > level) level = top;
+  });
+
+  return level;
+}
+
 /* Каждому предмету обстановки — свой прогон: уроненный предмет не должен
    мешать следующему, а проверка обязана покрывать все, а не первый. */
 function world_of_things() {
@@ -469,6 +494,7 @@ check('обстановку двигают, и она падает вниз', fu
     world.win('mouseup', hand(lifted.x, lifted.y));
 
     const dropped = thing.spot().x;
+    const rest = restLevel(world, thing, dropped, thing.spot().y);
     let sideways = 0;
     let landed = null;
     let peak = 0;
@@ -477,21 +503,66 @@ check('обстановку двигают, и она падает вниз', fu
       const now = thing.spot();
       sideways = Math.max(sideways, Math.abs(now.x - dropped));
       if (landed === null) {
-        if (now.y === 0) landed = t;
+        if (now.y === rest) landed = t;
         return;
       }
-      peak = Math.max(peak, now.y);
+      peak = Math.max(peak, now.y - rest);
     });
 
-    if (landed === null) fail(name + ': за четыре секунды не лёг на пол');
+    if (landed === null) fail(name + ': за четыре секунды не дошёл до опоры на ' + rest);
     if (sideways > 0) fail(name + ': уехал вбок на ' + sideways + ' px — падать должен отвесно');
     if (peak > 12) fail(name + ': отскочил на ' + peak + ' px — отскок должен быть еле заметным');
-    if (thing.spot().y !== 0) fail(name + ': после отскока не улёгся, y = ' + thing.spot().y);
+    if (thing.spot().y !== rest) fail(name + ': после отскока не улёгся, y = ' + thing.spot().y);
 
     notes.push(name + ': с ' + lifted.y + ' px за ' + sec(landed) + ', отскок ' + peak);
   });
 
   return notes.join('; ');
+});
+
+/* Кулер стоит на тумбочке, но одним предметом они не склеены: увели тумбочку —
+   опоры не стало, и кулер падает на пол сам. Это и просил владелец: «в начале
+   вместе, но чтобы разъединялись». */
+check('кулер стоит на тумбочке и падает без неё', function () {
+  const world = open({ seed: 6 });
+
+  const cabinet = world.things.find(function (t) { return t.title === 'Подвинуть тумбочку'; });
+  const cooler = world.things.find(function (t) { return t.title === 'Подвинуть кулер'; });
+  if (!cabinet || !cooler) fail('в обстановке нет тумбочки или кулера');
+
+  world.step(500);
+  const stood = cooler.spot();
+  const under = cabinet.spot();
+
+  if (stood.y !== cabinet.height) {
+    fail('кулер стоит не на тумбочке: его низ на ' + stood.y +
+      ', а верх тумбочки на ' + cabinet.height);
+  }
+  if (stood.x + cooler.width <= under.x || under.x + cabinet.width <= stood.x) {
+    fail('кулер стоит не над тумбочкой: он на ' + stood.x + ', она на ' + under.x);
+  }
+
+  // Уводим тумбочку далеко в сторону — кулер остаётся без опоры.
+  const box = cabinet.getBoundingClientRect();
+  cabinet.fire('mousedown', event(box.left + 8, box.top + 8));
+  world.step(FRAME_MS);
+  world.win('mousemove', event(box.left + 8 - 320, box.top + 8));
+  world.step(33);
+  world.win('mouseup', event(box.left + 8 - 320, box.top + 8));
+
+  let fell = null;
+  world.step(3000, function (t) {
+    if (fell === null && cooler.spot().y === 0) fell = t;
+  });
+
+  if (fell === null) {
+    fail('тумбочку увели, а кулер остался висеть на ' + cooler.spot().y);
+  }
+  if (cooler.spot().x !== stood.x) {
+    fail('кулер поехал вбок вслед за тумбочкой: было ' + stood.x + ', стало ' + cooler.spot().x);
+  }
+
+  return 'стоял на ' + stood.y + ', без тумбочки упал за ' + sec(fell);
 });
 
 /* На узком экране стили прячут обоих, и кадры считаться не должны. Окно могли
@@ -878,6 +949,14 @@ const BREAKS = [
     ]],
   },
   {
+    name: 'опоры под предметом не существует',
+    red: 'кулер стоит на тумбочке и падает без неё',
+    parts: [[
+      '      var floor = support();',
+      '      var floor = 0;',
+    ]],
+  },
+  {
     name: 'полка отскакивает, как существо',
     red: 'обстановку двигают, и она падает вниз',
     parts: [[
@@ -886,11 +965,11 @@ const BREAKS = [
     ]],
   },
   {
-    name: 'полка падает сквозь пол',
+    name: 'предмет проваливается сквозь опору',
     red: 'обстановку двигают, и она падает вниз',
     parts: [[
-      '      if (me.y <= 0) {\n        me.y = 0;',
-      '      if (false) {\n        me.y = 0;',
+      '      if (me.y <= floor) {\n        me.y = floor;',
+      '      if (false) {\n        me.y = floor;',
     ]],
   },
   {

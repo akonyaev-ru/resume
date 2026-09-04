@@ -263,12 +263,13 @@ SHELF_BOOKS = [
 ]
 
 
-# Кулер: бутыль горлышком вниз и корпус на ножках. Узкий и высокий — силуэт
-# нарочно не похож ни на полку (широкая), ни на растение (кустистое): три
-# предмета в ряд должны различаться издали, а не по деталям.
+# Кулер настольный, по фотографии от владельца: бутыль занимает две трети
+# высоты, корпус приземистый и белый, серой крышки нет вовсе — сверху та же
+# вода. Первый заход был наоборот (корпус в пол-роста, бутыль коротышка) и на
+# кулер не походил.
 COOLER_W = 10
 COOLER_H = 20
-COOLER_BODY = 9              # с какой строки начинается корпус
+COOLER_BODY = 13             # с какой строки начинается корпус
 
 
 def cooler():
@@ -277,23 +278,49 @@ def cooler():
     right = COOLER_W - 1
     floor = COOLER_H - 1
 
-    # Бутыль: широкая сверху, к корпусу сужается двумя ступеньками.
-    rect(g, 3, 0, 6, 0, 'c')                 # пробка
-    rect(g, 2, 1, 7, 1, 'w')
-    rect(g, 1, 2, 8, 6, 'w')
-    rect(g, 2, 7, 7, 7, 'w')
-    rect(g, 3, 8, 6, 8, 'w')                 # горлышко
-    rect(g, 2, 2, 2, 5, 'g')                 # блик по левому боку
+    # Бутыль: скруглена сверху, книзу сужается в горлышко, поперёк — рёбра.
+    rect(g, 2, 0, 7, 0, 'w')
+    rect(g, 1, 1, 8, 9, 'w')
+    rect(g, 2, 10, 7, 10, 'w')
+    rect(g, 3, 11, 6, COOLER_BODY - 1, 'w')      # горлышко
+    rect(g, 2, 2, 2, 8, 'g')                     # блик по левому боку
+    rect(g, 1, 4, 8, 4, 'g')                     # рёбра
+    rect(g, 1, 7, 8, 7, 'g')
 
-    # Корпус: кромка шире самого ящика, ниже дверца, краны и поддон.
-    rect(g, 0, COOLER_BODY, right, COOLER_BODY, 'b')
-    rect(g, 1, COOLER_BODY + 1, right - 1, floor - 1, 'b')
+    # Корпус: белый ящик с нишей, двумя кранами и поддоном.
+    rect(g, 0, COOLER_BODY, right, floor, 'b')
     rect(g, 1, COOLER_BODY + 1, 1, floor - 1, 'g')       # светлая грань слева
-    rect(g, 4, COOLER_BODY + 3, 5, COOLER_BODY + 4, 'c')  # краны
-    rect(g, 3, COOLER_BODY + 6, 6, COOLER_BODY + 6, 'c')  # поддон
-    rect(g, 2, COOLER_BODY + 8, right - 2, COOLER_BODY + 8, 'c')  # шов дверцы
-    rect(g, 1, floor, 2, floor, 'c')                     # ножки
-    rect(g, right - 2, floor, right - 1, floor, 'c')
+    rect(g, 2, COOLER_BODY + 2, right - 2, floor - 1, 'n')   # ниша
+    rect(g, 3, COOLER_BODY + 2, 3, COOLER_BODY + 3, 'r')     # горячий кран
+    rect(g, 6, COOLER_BODY + 2, 6, COOLER_BODY + 3, 'c')     # холодный
+    rect(g, 2, floor - 1, right - 2, floor - 1, 'c')         # поддон
+
+    return g
+
+
+# Тумбочка с ящиками: столешница со свесом, три фасада с ручками, ножки. На
+# ней при загрузке стоит кулер — но это не одно целое, а два предмета, и
+# растащить их можно в любую сторону.
+CABINET_W = 14
+CABINET_H = 14
+
+
+def cabinet():
+    g = [['.'] * CABINET_W for _ in range(CABINET_H)]
+    right = CABINET_W - 1
+    floor = CABINET_H - 1
+
+    rect(g, 0, 0, right, 1, 'f')                  # столешница со свесом
+    rect(g, 1, 2, right - 1, floor, 'f')          # корпус
+    rect(g, 1, 2, 1, floor - 2, 'g')              # светлая грань слева
+
+    for i in range(3):                            # три ящика
+        top = 3 + i * 3
+        rect(g, 3, top, right - 3, top + 1, 'e')
+        rect(g, 6, top, 7, top, 'h')              # ручка
+
+    rect(g, 2, floor - 1, 3, floor, 'k')          # ножки
+    rect(g, right - 3, floor - 1, right - 2, floor, 'k')
 
     return g
 
@@ -429,6 +456,7 @@ TYPE_FRAMES = [tentacles(laptop(3), True), tentacles(laptop(3), False)]
 SHELF_FRAME = shelf()
 PLANT_FRAME = plant()
 COOLER_FRAME = cooler()
+CABINET_FRAME = cabinet()
 
 HEAD = '  /* --- кадры ------------------------------------------------------------- */'
 TAIL = '  /* --- сборка кадров ----------------------------------------------------- */'
@@ -479,8 +507,10 @@ def art() -> str:
             + '  var SHELF = ' + grid_js(SHELF_FRAME) + ';\n\n'
             + '  // Растение в кадке: четыре листа на стеблях. Кадр тоже один.\n'
             + '  var PLANT = ' + grid_js(PLANT_FRAME) + ';\n\n'
-            + '  // Кулер: бутыль горлышком вниз и корпус на ножках.\n'
-            + '  var COOLER = ' + grid_js(COOLER_FRAME) + ';\n\n')
+            + '  // Кулер: высокая бутыль горлышком вниз и приземистый корпус.\n'
+            + '  var COOLER = ' + grid_js(COOLER_FRAME) + ';\n\n'
+            + '  // Тумбочка с тремя ящиками — на ней стоит кулер.\n'
+            + '  var CABINET = ' + grid_js(CABINET_FRAME) + ';\n\n')
 
 
 def main() -> int:
@@ -500,7 +530,8 @@ def main() -> int:
 
     print(f'{path.name}: кадры перерисованы, существо {BODY_W}x{H}, '
           f'предмет {PROP_W}x{H}, полка {SHELF_W}x{SHELF_H}, '
-          f'растение {PLANT_W}x{PLANT_H}, кулер {COOLER_W}x{COOLER_H}')
+          f'растение {PLANT_W}x{PLANT_H}, кулер {COOLER_W}x{COOLER_H}, '
+          f'тумбочка {CABINET_W}x{CABINET_H}')
     return 0
 
 
