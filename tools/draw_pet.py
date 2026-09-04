@@ -261,6 +261,41 @@ SHELF_BOOKS = [
 ]
 
 
+# Кулер: бутыль горлышком вниз и корпус на ножках. Узкий и высокий — силуэт
+# нарочно не похож ни на полку (широкая), ни на растение (кустистое): три
+# предмета в ряд должны различаться издали, а не по деталям.
+COOLER_W = 10
+COOLER_H = 20
+COOLER_BODY = 9              # с какой строки начинается корпус
+
+
+def cooler():
+    """Кадр один: кулер не шевелится, его только двигают."""
+    g = [['.'] * COOLER_W for _ in range(COOLER_H)]
+    right = COOLER_W - 1
+    floor = COOLER_H - 1
+
+    # Бутыль: широкая сверху, к корпусу сужается двумя ступеньками.
+    rect(g, 3, 0, 6, 0, 'c')                 # пробка
+    rect(g, 2, 1, 7, 1, 'w')
+    rect(g, 1, 2, 8, 6, 'w')
+    rect(g, 2, 7, 7, 7, 'w')
+    rect(g, 3, 8, 6, 8, 'w')                 # горлышко
+    rect(g, 2, 2, 2, 5, 'g')                 # блик по левому боку
+
+    # Корпус: кромка шире самого ящика, ниже дверца, краны и поддон.
+    rect(g, 0, COOLER_BODY, right, COOLER_BODY, 'b')
+    rect(g, 1, COOLER_BODY + 1, right - 1, floor - 1, 'b')
+    rect(g, 1, COOLER_BODY + 1, 1, floor - 1, 'g')       # светлая грань слева
+    rect(g, 4, COOLER_BODY + 3, 5, COOLER_BODY + 4, 'c')  # краны
+    rect(g, 3, COOLER_BODY + 6, 6, COOLER_BODY + 6, 'c')  # поддон
+    rect(g, 2, COOLER_BODY + 8, right - 2, COOLER_BODY + 8, 'c')  # шов дверцы
+    rect(g, 1, floor, 2, floor, 'c')                     # ножки
+    rect(g, right - 2, floor, right - 1, floor, 'c')
+
+    return g
+
+
 # Растение в кадке: четыре листа-овала на стеблях из середины кадки. Листья
 # нарочно пятнами, а не штрихами: тонкие линии на этом размере сливаются в
 # кашу — пробовали, кончилось нечитаемым веером.
@@ -391,6 +426,7 @@ PET_FRAMES = [pet_hand(False), pet_hand(True)]
 TYPE_FRAMES = [tentacles(laptop(3), True), tentacles(laptop(3), False)]
 SHELF_FRAME = shelf()
 PLANT_FRAME = plant()
+COOLER_FRAME = cooler()
 
 HEAD = '  /* --- кадры ------------------------------------------------------------- */'
 TAIL = '  /* --- сборка кадров ----------------------------------------------------- */'
@@ -440,7 +476,9 @@ def art() -> str:
             + '  // она не шевелится, её только двигают.\n'
             + '  var SHELF = ' + grid_js(SHELF_FRAME) + ';\n\n'
             + '  // Растение в кадке: четыре листа на стеблях. Кадр тоже один.\n'
-            + '  var PLANT = ' + grid_js(PLANT_FRAME) + ';\n\n')
+            + '  var PLANT = ' + grid_js(PLANT_FRAME) + ';\n\n'
+            + '  // Кулер: бутыль горлышком вниз и корпус на ножках.\n'
+            + '  var COOLER = ' + grid_js(COOLER_FRAME) + ';\n\n')
 
 
 def main() -> int:
@@ -460,7 +498,7 @@ def main() -> int:
 
     print(f'{path.name}: кадры перерисованы, существо {BODY_W}x{H}, '
           f'предмет {PROP_W}x{H}, полка {SHELF_W}x{SHELF_H}, '
-          f'растение {PLANT_W}x{PLANT_H}')
+          f'растение {PLANT_W}x{PLANT_H}, кулер {COOLER_W}x{COOLER_H}')
     return 0
 
 

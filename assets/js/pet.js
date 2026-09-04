@@ -94,6 +94,12 @@
       r: '#a9694c',          // обод кадки
       p: '#8a5340',          // и её корпус
     },
+    cooler: {
+      w: '#4fa3cc',          // вода в бутыли
+      g: '#8fd0ea',          // блик на стекле и светлая грань корпуса
+      b: '#9aa2b2',          // корпус
+      c: '#5b6474',          // краны, поддон, ножки, шов дверцы
+    },
     shelf: {
       f: '#39404f',          // корпус и полки
       e: '#171c28',          // задняя стенка
@@ -676,6 +682,30 @@
         '..ppppppppp..',
         '..ppppppppp..',
         '...ppppppp...',
+      ];
+
+  // Кулер: бутыль горлышком вниз и корпус на ножках.
+  var COOLER = [
+        '...cccc...',
+        '..wwwwww..',
+        '.wgwwwwww.',
+        '.wgwwwwww.',
+        '.wgwwwwww.',
+        '.wgwwwwww.',
+        '.wwwwwwww.',
+        '..wwwwww..',
+        '...wwww...',
+        'bbbbbbbbbb',
+        '.gbbbbbbb.',
+        '.gbbbbbbb.',
+        '.gbbccbbb.',
+        '.gbbccbbb.',
+        '.gbbbbbbb.',
+        '.gbccccbb.',
+        '.gbbbbbbb.',
+        '.gccccccb.',
+        '.gbbbbbbb.',
+        '.cc....cc.',
       ];
 
   /* --- сборка кадров ----------------------------------------------------- */
@@ -1369,6 +1399,7 @@
      не лезла в глаза посреди страницы. Следующий предмет добавляется строкой. */
   var things = [
     { art: SHELF, skin: SKIN.shelf, title: 'Подвинуть полку', at: 0.06 },
+    { art: COOLER, skin: SKIN.cooler, title: 'Подвинуть кулер', at: 0.78 },
     { art: PLANT, skin: SKIN.plant, title: 'Подвинуть растение', at: 0.95 },
   ].map(function (spec) {
     var thing = makeThing(spec);
