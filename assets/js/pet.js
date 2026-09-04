@@ -94,20 +94,11 @@
       r: '#a9694c',          // обод кадки
       p: '#8a5340',          // и её корпус
     },
-    cooler: {
-      w: '#4fa3cc',          // вода в бутыли
-      g: '#8fd0ea',          // блик, рёбра бутыли и светлая грань корпуса
-      b: '#c6ccd8',          // корпус белый, как на фотографии
-      n: '#4a5162',          // ниша, куда подставляют стакан
-      c: '#3f7fbf',          // холодный кран и поддон
-      r: '#c25b5b',          // горячий кран
-    },
-    cabinet: {
-      f: '#4c4238',          // корпус и столешница
-      e: '#5d5145',          // фасады ящиков
-      h: '#9aa2b2',          // ручки
-      g: '#5a4f43',          // светлая грань слева
-      k: '#332c26',          // ножки
+    sofa: {
+      f: '#4e6472',          // обивка
+      c: '#5e7787',          // подушки посветлее
+      g: '#6f8494',          // блик на подлокотнике
+      k: '#2a3038',          // ножки
     },
     shelf: {
       f: '#39404f',          // корпус и полки
@@ -675,13 +666,11 @@
 
   // Растение в кадке: четыре листа на стеблях. Кадр тоже один.
   var PLANT = [
-        '.............',
         '....lll......',
         '...lllll.....',
-        '....lll......',
-        '.....s..mmm..',
+        '....lll.mmm..',
         '.mmm.s.mmmmm.',
-        'mmmmm.s.mmm..',
+        'mmmmms..mmm..',
         '.mmm..s.s....',
         '....s.ss.lll.',
         '.....ssslllll',
@@ -689,50 +678,23 @@
         '.rrrrrrrrrrr.',
         '..ppppppppp..',
         '..ppppppppp..',
-        '..ppppppppp..',
         '...ppppppp...',
       ];
 
-  // Кулер: высокая бутыль горлышком вниз и приземистый корпус.
-  var COOLER = [
-        '..wwwwww..',
-        '.wwwwwwww.',
-        '.wgwwwwww.',
-        '.wgwwwwww.',
-        '.gggggggg.',
-        '.wgwwwwww.',
-        '.wgwwwwww.',
-        '.gggggggg.',
-        '.wgwwwwww.',
-        '.wwwwwwww.',
-        '..wwwwww..',
-        '...wwww...',
-        '...wwww...',
-        'bbbbbbbbbb',
-        'bgbbbbbbbb',
-        'bgnrnncnbb',
-        'bgnrnncnbb',
-        'bgnnnnnnbb',
-        'bgccccccbb',
-        'bbbbbbbbbb',
-      ];
-
-  // Тумбочка с тремя ящиками — на ней стоит кулер.
-  var CABINET = [
-        'ffffffffffffff',
-        'ffffffffffffff',
-        '.gfffffffffff.',
-        '.gfeeehheeeff.',
-        '.gfeeeeeeeeff.',
-        '.gfffffffffff.',
-        '.gfeeehheeeff.',
-        '.gfeeeeeeeeff.',
-        '.gfffffffffff.',
-        '.gfeeehheeeff.',
-        '.gfeeeeeeeeff.',
-        '.gfffffffffff.',
-        '.fkkffffffkkf.',
-        '.fkkffffffkkf.',
+  // Диван: низкий и широкий, с подушками и подлокотниками.
+  var SOFA = [
+        '..ffffffffffffffffffffff..',
+        '..fcccccccccfcccccccccff..',
+        'gffcccccccccfcccccccccffff',
+        'gffcccccccccfcccccccccffff',
+        'fffcccccccccfcccccccccffff',
+        'ffffffffffffffffffffffffff',
+        'fffcccccccccfcccccccccffff',
+        'fffcccccccccfcccccccccffff',
+        'ffffffffffffffffffffffffff',
+        'ffffffffffffffffffffffffff',
+        '.kk....................kk.',
+        '.kk....................kk.',
       ];
 
   /* --- сборка кадров ----------------------------------------------------- */
@@ -1457,9 +1419,8 @@
      было в любую сторону. Следующий предмет добавляется строкой. */
   var things = [
     { name: 'shelf', art: SHELF, skin: SKIN.shelf, title: 'Подвинуть полку', at: 0.06 },
-    { name: 'cabinet', art: CABINET, skin: SKIN.cabinet, title: 'Подвинуть тумбочку', at: 0.78 },
-    { name: 'cooler', art: COOLER, skin: SKIN.cooler, title: 'Подвинуть кулер', on: 'cabinet' },
-    { name: 'plant', art: PLANT, skin: SKIN.plant, title: 'Подвинуть растение', at: 0.95 },
+    { name: 'sofa', art: SOFA, skin: SKIN.sofa, title: 'Подвинуть диван', at: 0.72 },
+    { name: 'plant', art: PLANT, skin: SKIN.plant, title: 'Подвинуть растение', at: 0.98 },
   ].map(function (spec) {
     var thing = makeThing(spec);
     thing.name = spec.name;

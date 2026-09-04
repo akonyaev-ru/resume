@@ -520,49 +520,68 @@ check('обстановку двигают, и она падает вниз', fu
   return notes.join('; ');
 });
 
-/* Кулер стоит на тумбочке, но одним предметом они не склеены: увели тумбочку —
-   опоры не стало, и кулер падает на пол сам. Это и просил владелец: «в начале
-   вместе, но чтобы разъединялись». */
-check('кулер стоит на тумбочке и падает без неё', function () {
+/* Предмет, поставленный на другой, стоит на его верху — и падает, когда опору
+   увели. Проверяем на любой паре, где нижний шире верхнего: пара «тумбочка с
+   кулером» была в обстановке недолго, а правило осталось общим. */
+check('предмет стоит на другом и падает без него', function () {
   const world = open({ seed: 6 });
-
-  const cabinet = world.things.find(function (t) { return t.title === 'Подвинуть тумбочку'; });
-  const cooler = world.things.find(function (t) { return t.title === 'Подвинуть кулер'; });
-  if (!cabinet || !cooler) fail('в обстановке нет тумбочки или кулера');
-
   world.step(500);
-  const stood = cooler.spot();
-  const under = cabinet.spot();
 
-  if (stood.y !== cabinet.height) {
-    fail('кулер стоит не на тумбочке: его низ на ' + stood.y +
-      ', а верх тумбочки на ' + cabinet.height);
-  }
-  if (stood.x + cooler.width <= under.x || under.x + cabinet.width <= stood.x) {
-    fail('кулер стоит не над тумбочкой: он на ' + stood.x + ', она на ' + under.x);
+  // Нижний — самый широкий, верхний — самый узкий: так они точно перекроются.
+  const sorted = world.things.slice().sort(function (a, b) { return b.width - a.width; });
+  const under = sorted[0];
+  const over = sorted[sorted.length - 1];
+  if (under === over) fail('в обстановке меньше двух предметов');
+
+  const hold = { dx: 6, dy: 6 };
+  function hand(thing, x, y) {
+    return event(x + hold.dx, world.high() - y - thing.height + hold.dy);
   }
 
-  // Уводим тумбочку далеко в сторону — кулер остаётся без опоры.
-  const box = cabinet.getBoundingClientRect();
-  cabinet.fire('mousedown', event(box.left + 8, box.top + 8));
+  // Верхний предмет поднимаем и опускаем на середину нижнего.
+  const target = under.spot().x + Math.round((under.width - over.width) / 2);
+  let box = over.getBoundingClientRect();
+  over.fire('mousedown', event(box.left + hold.dx, box.top + hold.dy));
   world.step(FRAME_MS);
-  world.win('mousemove', event(box.left + 8 - 320, box.top + 8));
+  world.win('mousemove', hand(over, target, 260));
   world.step(33);
-  world.win('mouseup', event(box.left + 8 - 320, box.top + 8));
+  world.win('mouseup', hand(over, target, 260));
 
-  let fell = null;
+  let stood = null;
+  const droppedAt = world.at();
   world.step(3000, function (t) {
-    if (fell === null && cooler.spot().y === 0) fell = t;
+    if (stood === null && over.spot().y === under.height) stood = t - droppedAt;
   });
 
-  if (fell === null) {
-    fail('тумбочку увели, а кулер остался висеть на ' + cooler.spot().y);
-  }
-  if (cooler.spot().x !== stood.x) {
-    fail('кулер поехал вбок вслед за тумбочкой: было ' + stood.x + ', стало ' + cooler.spot().x);
+  if (stood === null) {
+    fail(over.title + ' не встал на ' + under.title + ': он на ' + over.spot().y +
+      ', а верх опоры на ' + under.height);
   }
 
-  return 'стоял на ' + stood.y + ', без тумбочки упал за ' + sec(fell);
+  const kept = over.spot().x;
+
+  // Теперь уводим опору — верхний обязан упасть на пол и не поехать вбок.
+  box = under.getBoundingClientRect();
+  under.fire('mousedown', event(box.left + hold.dx, box.top + hold.dy));
+  world.step(FRAME_MS);
+  world.win('mousemove', hand(under, Math.max(NUM.EDGE, under.spot().x - 320), 0));
+  world.step(33);
+  world.win('mouseup', hand(under, Math.max(NUM.EDGE, under.spot().x - 320), 0));
+
+  let fell = null;
+  const movedAt = world.at();
+  world.step(3000, function (t) {
+    if (fell === null && over.spot().y === 0) fell = t - movedAt;
+  });
+
+  if (fell === null) fail('опору увели, а ' + over.title + ' остался висеть на ' + over.spot().y);
+  if (over.spot().x !== kept) {
+    fail('верхний поехал вбок вслед за опорой: было ' + kept + ', стало ' + over.spot().x);
+  }
+
+  return over.title.replace('Подвинуть ', '') + ' встал на ' +
+    under.title.replace('Подвинуть ', '') + ' за ' + sec(stood) +
+    ', без опоры упал за ' + sec(fell);
 });
 
 /* На узком экране стили прячут обоих, и кадры считаться не должны. Окно могли
@@ -950,7 +969,7 @@ const BREAKS = [
   },
   {
     name: 'опоры под предметом не существует',
-    red: 'кулер стоит на тумбочке и падает без неё',
+    red: 'предмет стоит на другом и падает без него',
     parts: [[
       '      var floor = support();',
       '      var floor = 0;',

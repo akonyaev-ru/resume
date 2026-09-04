@@ -263,64 +263,33 @@ SHELF_BOOKS = [
 ]
 
 
-# Кулер настольный, по фотографии от владельца: бутыль занимает две трети
-# высоты, корпус приземистый и белый, серой крышки нет вовсе — сверху та же
-# вода. Первый заход был наоборот (корпус в пол-роста, бутыль коротышка) и на
-# кулер не походил.
-COOLER_W = 10
-COOLER_H = 20
-COOLER_BODY = 13             # с какой строки начинается корпус
+# Диван: низкий и широкий — двадцать шесть клеток на двенадцать. Масштаб задан
+# существом: оно тринадцать клеток ростом, значит диван ему по плечо, а полка
+# выше в полтора раза. До этого предметы рисовались каждый сам по себе, и
+# владелец справедливо сказал, что «с размерами беда».
+SOFA_W = 26
+SOFA_H = 12
 
 
-def cooler():
-    """Кадр один: кулер не шевелится, его только двигают."""
-    g = [['.'] * COOLER_W for _ in range(COOLER_H)]
-    right = COOLER_W - 1
-    floor = COOLER_H - 1
+def sofa():
+    '''Спинка с двумя подушками, подлокотники, сиденье, юбка и ножки.'''
+    g = [['.'] * SOFA_W for _ in range(SOFA_H)]
+    right = SOFA_W - 1
+    floor = SOFA_H - 1
 
-    # Бутыль: скруглена сверху, книзу сужается в горлышко, поперёк — рёбра.
-    rect(g, 2, 0, 7, 0, 'w')
-    rect(g, 1, 1, 8, 9, 'w')
-    rect(g, 2, 10, 7, 10, 'w')
-    rect(g, 3, 11, 6, COOLER_BODY - 1, 'w')      # горлышко
-    rect(g, 2, 2, 2, 8, 'g')                     # блик по левому боку
-    rect(g, 1, 4, 8, 4, 'g')                     # рёбра
-    rect(g, 1, 7, 8, 7, 'g')
+    rect(g, 2, 0, right - 2, 5, 'f')              # спинка
+    rect(g, 0, 2, 1, floor - 2, 'f')              # подлокотники
+    rect(g, right - 1, 2, right, floor - 2, 'f')
+    rect(g, 2, 6, right - 2, floor - 2, 'f')      # сиденье и юбка
 
-    # Корпус: белый ящик с нишей, двумя кранами и поддоном.
-    rect(g, 0, COOLER_BODY, right, floor, 'b')
-    rect(g, 1, COOLER_BODY + 1, 1, floor - 1, 'g')       # светлая грань слева
-    rect(g, 2, COOLER_BODY + 2, right - 2, floor - 1, 'n')   # ниша
-    rect(g, 3, COOLER_BODY + 2, 3, COOLER_BODY + 3, 'r')     # горячий кран
-    rect(g, 6, COOLER_BODY + 2, 6, COOLER_BODY + 3, 'c')     # холодный
-    rect(g, 2, floor - 1, right - 2, floor - 1, 'c')         # поддон
+    for i in range(2):
+        x = 3 + i * 10
+        rect(g, x, 1, x + 8, 4, 'c')              # подушка спинки
+        rect(g, x, 6, x + 8, 7, 'c')              # и сиденья
 
-    return g
-
-
-# Тумбочка с ящиками: столешница со свесом, три фасада с ручками, ножки. На
-# ней при загрузке стоит кулер — но это не одно целое, а два предмета, и
-# растащить их можно в любую сторону.
-CABINET_W = 14
-CABINET_H = 14
-
-
-def cabinet():
-    g = [['.'] * CABINET_W for _ in range(CABINET_H)]
-    right = CABINET_W - 1
-    floor = CABINET_H - 1
-
-    rect(g, 0, 0, right, 1, 'f')                  # столешница со свесом
-    rect(g, 1, 2, right - 1, floor, 'f')          # корпус
-    rect(g, 1, 2, 1, floor - 2, 'g')              # светлая грань слева
-
-    for i in range(3):                            # три ящика
-        top = 3 + i * 3
-        rect(g, 3, top, right - 3, top + 1, 'e')
-        rect(g, 6, top, 7, top, 'h')              # ручка
-
-    rect(g, 2, floor - 1, 3, floor, 'k')          # ножки
-    rect(g, right - 3, floor - 1, right - 2, floor, 'k')
+    rect(g, 0, 2, 0, 3, 'g')                      # блик на левом подлокотнике
+    rect(g, 1, floor - 1, 2, floor, 'k')          # ножки
+    rect(g, right - 2, floor - 1, right - 1, floor, 'k')
 
     return g
 
@@ -329,13 +298,13 @@ def cabinet():
 # нарочно пятнами, а не штрихами: тонкие линии на этом размере сливаются в
 # кашу — пробовали, кончилось нечитаемым веером.
 PLANT_W = 13
-PLANT_H = 16
-POT_TOP = 11                     # верхняя кромка кадки
+PLANT_H = 13                     # вровень с существом: оно тоже тринадцать
+POT_TOP = 9                      # верхняя кромка кадки
 PLANT_ROOT = (6, POT_TOP - 1)    # откуда растут стебли
 
 # Листья: центр по x, центр по y, цвет. Светлые и тёмные вперемешку — так
 # видно, что их несколько, а не одно пятно.
-PLANT_LEAVES = [(5, 2, 'l'), (2, 6, 'm'), (9, 5, 'm'), (10, 9, 'l')]
+PLANT_LEAVES = [(5, 1, 'l'), (2, 4, 'm'), (9, 3, 'm'), (10, 7, 'l')]
 
 
 def leaf(g, cx, cy, color):
@@ -455,8 +424,7 @@ PET_FRAMES = [pet_hand(False), pet_hand(True)]
 TYPE_FRAMES = [tentacles(laptop(3), True), tentacles(laptop(3), False)]
 SHELF_FRAME = shelf()
 PLANT_FRAME = plant()
-COOLER_FRAME = cooler()
-CABINET_FRAME = cabinet()
+SOFA_FRAME = sofa()
 
 HEAD = '  /* --- кадры ------------------------------------------------------------- */'
 TAIL = '  /* --- сборка кадров ----------------------------------------------------- */'
@@ -507,10 +475,8 @@ def art() -> str:
             + '  var SHELF = ' + grid_js(SHELF_FRAME) + ';\n\n'
             + '  // Растение в кадке: четыре листа на стеблях. Кадр тоже один.\n'
             + '  var PLANT = ' + grid_js(PLANT_FRAME) + ';\n\n'
-            + '  // Кулер: высокая бутыль горлышком вниз и приземистый корпус.\n'
-            + '  var COOLER = ' + grid_js(COOLER_FRAME) + ';\n\n'
-            + '  // Тумбочка с тремя ящиками — на ней стоит кулер.\n'
-            + '  var CABINET = ' + grid_js(CABINET_FRAME) + ';\n\n')
+            + '  // Диван: низкий и широкий, с подушками и подлокотниками.\n'
+            + '  var SOFA = ' + grid_js(SOFA_FRAME) + ';\n\n')
 
 
 def main() -> int:
@@ -530,8 +496,7 @@ def main() -> int:
 
     print(f'{path.name}: кадры перерисованы, существо {BODY_W}x{H}, '
           f'предмет {PROP_W}x{H}, полка {SHELF_W}x{SHELF_H}, '
-          f'растение {PLANT_W}x{PLANT_H}, кулер {COOLER_W}x{COOLER_H}, '
-          f'тумбочка {CABINET_W}x{CABINET_H}')
+          f'растение {PLANT_W}x{PLANT_H}, диван {SOFA_W}x{SOFA_H}')
     return 0
 
 
