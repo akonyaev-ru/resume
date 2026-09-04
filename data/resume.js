@@ -60,7 +60,6 @@ window.RESUME = {
       en: 'Tell me about the process that slows your team down. I will tell you how long automating it would take and what it would take — or say plainly that automation is not the answer here.',
     },
     writeEmail: { ru: 'Написать на почту', en: 'Send an email' },
-    callPhone: { ru: 'Позвонить', en: 'Call' },
     sourceCode: { ru: 'Исходный код страницы', en: 'Source code of this page' },
     updatedAt: { ru: 'Обновлено', en: 'Updated' },
     langLabel: { ru: 'Язык страницы', en: 'Page language' },
@@ -71,14 +70,14 @@ window.RESUME = {
     name: { ru: 'Алексей Коняев', en: 'Alexey Konyaev' },
     role: {
       // \u00A0 перед AI: иначе союз «и» повисает в конце строки заголовка.
-      ru: 'Специалист по автоматизации процессов и\u00A0AI-разработке',
-      en: 'Process automation and AI engineering specialist',
+      ru: 'Специалист по автоматизации и\u00A0AI-разработке',
+      en: 'Automation and AI engineering specialist',
     },
     // Термины, которые подсвечиваются акцентом внутри заголовка. Порядок важен:
     // roleNode ищет их последовательно, отрезая уже разобранное начало.
     roleAccent: {
-      ru: ['автоматизации', 'AI-разработке'],
-      en: ['Process automation', 'AI engineering'],
+      ru: ['AI-разработке'],
+      en: ['AI engineering'],
     },
     photo: 'assets/img/portrait.webp',
     age: 25,
@@ -97,7 +96,7 @@ window.RESUME = {
       en: ['Business analyst', 'Product manager'],
     },
     lede: {
-      ru: 'Перевожу ручные бизнес-процессы в автоматические — и сам пишу то, что для этого нужно.',
+      ru: 'Перевожу ручные бизнес-процессы в автоматические — и сам пишу то, что\u00A0для этого нужно.',
       en: 'I move manual business processes into automatic ones — and write what that takes myself.',
     },
     about: {
@@ -113,7 +112,6 @@ window.RESUME = {
         label: { ru: 'Написать в Telegram', en: 'Message on Telegram' },
         href: 'https://t.me/konyaev929',
       },
-      phone: { label: '+7 (929) 990-29-29', href: 'tel:+79299902929' },
       email: { label: 'inbox@akonyaev.ru', href: 'mailto:inbox@akonyaev.ru' },
       github: { label: 'github.com/akonyaev-ru', href: 'https://github.com/akonyaev-ru' },
     },

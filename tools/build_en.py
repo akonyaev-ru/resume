@@ -25,19 +25,19 @@ STRINGS = [
     ('<html lang="ru">', '<html lang="en">'),
     ("<title>Резюме Алексея Коняева</title>", "<title>Alexey Konyaev — CV</title>"),
     (
-        'content="Специалист по автоматизации процессов и AI-разработке.'
+        'content="Специалист по автоматизации и AI-разработке.'
         " Автоматизирую ручные бизнес-процессы и внедряю ИИ: Python, LLM,"
         ' Битрикс24. Опыт, результаты, продукты."',
-        'content="Process automation and AI engineering specialist. Automating'
+        'content="Automation and AI engineering specialist. Automating'
         " manual business processes and rolling out AI: Python, LLM, Bitrix24."
         ' Experience, results, products."',
     ),
     ('content="Алексей Коняев"', 'content="Alexey Konyaev"'),
     ('content="Резюме Алексея Коняева"', 'content="Alexey Konyaev — CV"'),
     (
-        'content="Специалист по автоматизации процессов и AI-разработке:'
+        'content="Специалист по автоматизации и AI-разработке:'
         ' автоматизация ручных процессов, внедрение ИИ."',
-        'content="Process automation and AI engineering specialist: automating'
+        'content="Automation and AI engineering specialist: automating'
         ' manual processes, rolling out AI."',
     ),
     # Машиночитаемый блок schema.org: у него свои строки, каждая с ключом
@@ -46,8 +46,8 @@ STRINGS = [
     ('"name": "Алексей Коняев"', '"name": "Alexey Konyaev"'),
     ('"alternateName": "Alexey Konyaev"', '"alternateName": "Алексей Коняев"'),
     (
-        '"jobTitle": "Специалист по автоматизации процессов и AI-разработке"',
-        '"jobTitle": "Process automation and AI engineering specialist"',
+        '"jobTitle": "Специалист по автоматизации и AI-разработке"',
+        '"jobTitle": "Automation and AI engineering specialist"',
     ),
     (
         '"description": "Автоматизация бизнес-процессов и внедрение ИИ: Python,'
@@ -60,13 +60,12 @@ STRINGS = [
     (">К содержанию<", ">Skip to content<"),
     ("<h1>Алексей Коняев</h1>", "<h1>Alexey Konyaev</h1>"),
     (
-        "<p>Специалист по автоматизации процессов и AI-разработке. Москва,"
+        "<p>Специалист по автоматизации и AI-разработке. Москва,"
         " удалённо или гибрид.</p>",
-        "<p>Process automation and AI engineering specialist. Moscow, remote or"
+        "<p>Automation and AI engineering specialist. Moscow, remote or"
         " hybrid.</p>",
     ),
     (">Написать в Telegram<", ">Message me on Telegram<"),
-    ("Телефон: <a", "Phone: <a"),
     ("Почта: <a", "Email: <a"),
     (
         "<p>Страница собирается на JavaScript — включите его, чтобы увидеть"

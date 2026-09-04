@@ -526,10 +526,6 @@
             class: 'btn btn--primary', href: p.contacts.telegram.href,
             target: '_blank', rel: 'noopener', text: t(p.contacts.telegram.label),
           }),
-          el('a', {
-            class: 'btn btn--ghost', href: p.contacts.phone.href,
-            text: p.contacts.phone.label, 'aria-label': u('callPhone') + ' ' + p.contacts.phone.label,
-          }),
           el('a', { class: 'btn btn--ghost', href: p.contacts.email.href, text: u('writeEmail') }),
           el('a', {
             class: 'btn btn--ghost', href: p.contacts.github.href,
@@ -538,8 +534,7 @@
         ]),
         el('p', {
           class: 'print-only fact__val',
-          text: p.contacts.phone.label + ' · ' +
-            p.contacts.email.href.replace('mailto:', '') + ' · ' +
+          text: p.contacts.email.href.replace('mailto:', '') + ' · ' +
             p.contacts.telegram.href.replace('https://', '') + ' · ' + p.contacts.github.label,
         }),
       ]),
