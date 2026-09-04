@@ -228,6 +228,9 @@ function open(options) {
       world.win('resize', {});
     },
     hide: function (flag) { opt.petsHidden = flag; },
+    // Размеры окна нужны проверкам, чтобы считать, куда вести курсор.
+    wide: function () { return opt.width; },
+    high: function () { return opt.height; },
     /* Шаг времени. `watch` зовётся после каждого кадра — проверки копят
        по нему своё, а не держат в памяти весь прогон. */
     step: function (ms, watch) {
@@ -250,9 +253,12 @@ function open(options) {
     return world;
   }
 
-  world.pets = appended;
-  world.otto = appended[0];
-  world.olivia = appended[1];
+  // Существа создаются первыми, мебель следом: делим по классу холста, а не
+  // по порядку — порядок легко переставить, класс держит вёрстка.
+  world.pets = appended.filter(function (el) { return el.className === 'pet'; });
+  world.things = appended.filter(function (el) { return el.className === 'thing'; });
+  world.otto = world.pets[0];
+  world.olivia = world.pets[1];
   return world;
 }
 
@@ -330,14 +336,24 @@ check('загрузка', function () {
   if (titles[0] !== 'Погладить Отто' || titles[1] !== 'Погладить Оливию') {
     fail('подписи не те: ' + titles.join(' / '));
   }
-  if (world.pets.some(function (el) { return el.className !== 'pet'; })) {
-    fail('холст без класса pet — стили до него не дойдут');
-  }
   if (world.pets.some(function (el) { return look(el).body === null; })) {
     fail('кто-то не нарисован сразу после загрузки');
   }
 
-  return titles.join(', ');
+  if (world.things.length !== 1) {
+    fail('предметов обстановки ' + world.things.length + ', а ждали один');
+  }
+
+  const shelf = world.things[0];
+  const at = shelf.spot();
+  if (shelf.title !== 'Подвинуть полку') fail('подпись полки не та: ' + shelf.title);
+  if (!shelf.layers.length) fail('полка не нарисована');
+  if (at.y !== 0) fail('полка при загрузке висит в воздухе: y = ' + at.y);
+  if (at.x < NUM.EDGE || at.x > world.wide() - shelf.width) {
+    fail('полка при загрузке стоит за краем окна: x = ' + at.x);
+  }
+
+  return titles.join(', ') + ', полка на ' + at.x + ' px';
 });
 
 /* Поза покоя для просивших меньше движения: оба стоят при своём деле — он с
@@ -360,6 +376,10 @@ check('тихий режим', function () {
   const lid = shapeOf(world, otto.prop);
   const sheet = shapeOf(world, olivia.prop);
   if (lid === sheet) fail('дело у обоих одно и то же: рисунок предмета совпал');
+
+  // Мебель в тихом режиме стоит нарисованной: двигать её нельзя, а исчезать
+  // ей незачем.
+  if (!world.things[0].layers.length) fail('в тихом режиме полка не нарисована');
 
   world.step(5000);
   if (world.frames() !== 0) fail('запрошено кадров: ' + world.frames() + ', а движения не просили');
@@ -393,6 +413,63 @@ check('работают оба', function () {
 
   return 'за три минуты кадров дела: у Отто ' + seen[0].size +
     ', у Оливии ' + seen[1].size;
+});
+
+/* Полку можно подвинуть, и падает она не как существо: строго вниз и почти без
+   отскока. Поднимаем её к середине экрана, отпускаем в движении вбок — и
+   смотрим три вещи: по горизонтали она с места отпускания не сдвинулась, до
+   пола дошла, а при ударе подскочила на считаные пиксели. Рука при этом идёт
+   быстро: существо с такой скоростью улетело бы через полокна. */
+check('полку двигают, и она падает вниз', function () {
+  const world = open({ seed: 5 });
+  const shelf = world.things[0];
+  const from = shelf.spot().x;
+
+  // Куда попали курсором внутри холста — от этой точки скрипт и считает сдвиг.
+  const hold = { dx: 8, dy: 8 };
+  const box = shelf.getBoundingClientRect();
+
+  function hand(x, y) {
+    // x — левый край полки, y — высота над полом; переводим в точку курсора.
+    return event(x + hold.dx, world.high() - y - shelf.height + hold.dy);
+  }
+
+  shelf.fire('mousedown', event(box.left + hold.dx, box.top + hold.dy));
+  world.step(FRAME_MS);
+
+  [[from + 60, 90], [from + 140, 170], [from + 220, 240]].forEach(function (pt) {
+    world.win('mousemove', hand(pt[0], pt[1]));
+    world.step(33);
+  });
+
+  const lifted = shelf.spot();
+  if (lifted.y < 100) fail('полку не подняли: y = ' + lifted.y);
+  if (lifted.x - from < 100) fail('полку не сдвинули вбок: x = ' + lifted.x);
+
+  world.win('mouseup', hand(lifted.x, lifted.y));
+
+  const dropped = shelf.spot().x;
+  let sideways = 0;
+  let landed = null;
+  let peak = 0;
+
+  world.step(4000, function (t) {
+    const now = shelf.spot();
+    sideways = Math.max(sideways, Math.abs(now.x - dropped));
+    if (landed === null) {
+      if (now.y === 0) landed = t;
+      return;
+    }
+    peak = Math.max(peak, now.y);
+  });
+
+  if (landed === null) fail('за четыре секунды полка так и не легла на пол');
+  if (sideways > 0) fail('полка уехала вбок на ' + sideways + ' px — падать должна отвесно');
+  if (peak > 12) fail('полка отскочила на ' + peak + ' px — отскок должен быть еле заметным');
+  if (shelf.spot().y !== 0) fail('после отскока полка не улеглась: y = ' + shelf.spot().y);
+
+  return 'подняли на ' + lifted.y + ' px, легла за ' + sec(landed) +
+    ', вбок 0, отскок ' + peak + ' px';
 });
 
 /* На узком экране стили прячут обоих, и кадры считаться не должны. Окно могли
@@ -768,6 +845,30 @@ const BREAKS = [
     parts: [[
       '      } else if (roll < 0.8 && spec.prop) {',
       '      } else if (false) {',
+    ]],
+  },
+  {
+    name: 'полку забыли нарисовать',
+    red: 'тихий режим',
+    parts: [[
+      '    document.body.appendChild(canvas);\n    draw();',
+      '    document.body.appendChild(canvas);',
+    ]],
+  },
+  {
+    name: 'полка отскакивает, как существо',
+    red: 'полку двигают, и она падает вниз',
+    parts: [[
+      'var back = Math.min(-me.vy * THING_BOUNCE, THING_HOP);',
+      'var back = -me.vy * BOUNCE;',
+    ]],
+  },
+  {
+    name: 'полка падает сквозь пол',
+    red: 'полку двигают, и она падает вниз',
+    parts: [[
+      '      if (me.y <= 0) {\n        me.y = 0;',
+      '      if (false) {\n        me.y = 0;',
     ]],
   },
   {

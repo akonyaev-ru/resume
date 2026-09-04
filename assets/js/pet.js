@@ -42,6 +42,13 @@
   var STICK = 130;           // ниже этой скорости отскок прекращается, px/с
   var THROW_MAX = 1200;      // предел скорости броска, px/с
   var DRAG_PX = 3;           // с какого сдвига считаем, что это перетаскивание
+  /* Мебель падает иначе, чем существо: строго вниз и почти без отскока.
+     Отскок вдобавок подрезан сверху — с высоты в пол-экрана «честный» отскок
+     превращал полку в мячик. */
+  var THING_BOUNCE = 0.18;   // сколько скорости остаётся после удара о пол
+  var THING_HOP = 160;       // и не больше этого, px/с — предел отскока
+  var THING_STICK = 90;      // ниже этой скорости отскок прекращается
+
   var LAND_MS = 200;         // сколько лежит осевшим после падения
   var SWEAR_MS = 1900;       // сколько висит пузырь с восклицательными
   var PET_MS = 2800;         // сколько гладит упавшую
@@ -77,6 +84,17 @@
       w: '#e7eaf2',
       p: '#12141c',
       k: '#838da4',          // кромка стопки — тот же серый, что у ноутбука
+    },
+    /* Обстановка: корпус приглушённый, книги разноцветные, но ни одна не
+       спорит с акцентом страницы — мебель стоит фоном, а не в центре. */
+    shelf: {
+      f: '#39404f',          // корпус и полки
+      e: '#171c28',          // задняя стенка
+      1: '#5a7fd6',
+      2: '#c96fa0',
+      3: '#2f9aa3',
+      4: '#c39a4e',
+      5: '#7d6bb0',
     },
   };
 
@@ -608,6 +626,29 @@
         'wwpwpwpww',
         '.wwwwwww.',
         '..ww.....',
+      ];
+
+  // Книжная полка: корпус, три отсека с книгами, ножки. Кадр один —
+  // она не шевелится, её только двигают.
+  var SHELF = [
+        'ffffffffffffff',
+        'f11ee33e55eeef',
+        'f11223345511ef',
+        'f11223345511ef',
+        'f11223345511ef',
+        'ffffffffffffff',
+        'fee511ee3344ef',
+        'f44511223344ef',
+        'f44511223344ef',
+        'f44511223344ef',
+        'ffffffffffffff',
+        'f55ee1122e55ef',
+        'f55331122455ef',
+        'f55331122455ef',
+        'f55331122455ef',
+        'ffffffffffffff',
+        'fff........fff',
+        'fff........fff',
       ];
 
   /* --- сборка кадров ----------------------------------------------------- */
@@ -1158,6 +1199,131 @@
     return me;
   }
 
+  /* --- обстановка --------------------------------------------------------- */
+
+  /* Мебель — не существо: она никуда не идёт, кадров не тратит, пока стоит, и
+     на курсор не отзывается. Общего с существами три вещи: холст, прибитый к
+     низу окна, перетаскивание мышью и падение. Падает она по-своему — строго
+     вниз и почти без отскока: скорость руки не учитывается вовсе, иначе полку
+     можно было бы зашвырнуть, как Оливию. */
+  function makeThing(spec) {
+    var art = render(spec.art, false, spec.skin);
+
+    var canvas = document.createElement('canvas');
+    canvas.className = 'thing';
+    canvas.width = art.width;
+    canvas.height = art.height;
+    canvas.setAttribute('aria-hidden', 'true');
+    canvas.title = spec.title;
+
+    var ctx = canvas.getContext('2d');
+
+    var me = {
+      x: 0,
+      y: 0,                  // высота над нижним краем окна
+      vy: 0,
+      grab: null,
+      hidden: false,
+      canvas: canvas,
+    };
+
+    function limit() {
+      return Math.max(EDGE, window.innerWidth - canvas.width - EDGE);
+    }
+
+    function ceiling() {
+      return Math.max(0, window.innerHeight - canvas.height);
+    }
+
+    function place() {
+      canvas.style.transform = 'translate(' + Math.round(me.x) + 'px,' +
+        Math.round(-me.y) + 'px)';
+    }
+
+    function draw() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(art, 0, 0);
+    }
+
+    function checkHidden() {
+      me.hidden = window.getComputedStyle(canvas).display === 'none';
+    }
+
+    // Холст прозрачен для щелчков, пока курсор не на самой полке: иначе она
+    // съедала бы нажатия по странице под собой.
+    function hover(x, y) {
+      if (me.grab) return;
+
+      var box = canvas.getBoundingClientRect();
+      var on = x > box.left && x < box.right && y > box.top && y < box.bottom;
+
+      canvas.style.pointerEvents = on ? 'auto' : 'none';
+    }
+
+    function take(event) {
+      if (LESS_MOTION || me.hidden) return;
+      event.preventDefault();
+
+      var box = canvas.getBoundingClientRect();
+      me.grab = { dx: event.clientX - box.left, dy: event.clientY - box.top };
+      me.vy = 0;
+      canvas.classList.add('is-held');
+      wake();
+    }
+
+    function haul(event) {
+      if (!me.grab) return;
+
+      me.x = clamp(event.clientX - me.grab.dx, EDGE, limit());
+      me.y = clamp(window.innerHeight - (event.clientY - me.grab.dy) - canvas.height,
+        0, ceiling());
+      place();
+    }
+
+    function drop() {
+      if (!me.grab) return;
+
+      me.grab = null;
+      me.vy = 0;             // скорость руки не в счёт: полка падает, а не летит
+      canvas.classList.remove('is-held');
+      wake();
+    }
+
+    /* Пока стоит на полу — кадр не считается вовсе. Иначе мебель тратила бы
+       время в каждом кадре, ничего не делая. */
+    function update(now, step) {
+      if (me.grab || (me.y <= 0 && me.vy === 0)) return;
+
+      var dt = step / 1000;
+
+      me.vy -= GRAVITY * dt;
+      me.y += me.vy * dt;
+
+      if (me.y <= 0) {
+        me.y = 0;
+        var back = Math.min(-me.vy * THING_BOUNCE, THING_HOP);
+        me.vy = back > THING_STICK ? back : 0;
+      }
+
+      me.x = Math.min(limit(), Math.max(EDGE, me.x));
+      place();
+    }
+
+    canvas.addEventListener('mousedown', take);
+    document.body.appendChild(canvas);
+    draw();
+
+    me.limit = limit;
+    me.place = place;
+    me.hover = hover;
+    me.haul = haul;
+    me.drop = drop;
+    me.update = update;
+    me.checkHidden = checkHidden;
+
+    return me;
+  }
+
   // Подпись всплывает при наведении — у каждого своя, с именем.
   var otto = makePet({
     title: 'Погладить Отто', skin: SKIN.otto, aside: -1,
@@ -1168,6 +1334,16 @@
     prop: { open: PAPERS, busy: PAPERS_LEAF },
   });
   var pets = [otto, olivia];
+
+  /* Обстановка офиса. `at` — доля ширины окна, где предмет стоит при загрузке;
+     дальше его двигает человек. Следующий предмет добавляется сюда строкой. */
+  var things = [
+    { art: SHELF, skin: SKIN.shelf, title: 'Подвинуть полку', at: 0.62 },
+  ].map(function (spec) {
+    var thing = makeThing(spec);
+    thing.at = spec.at;
+    return thing;
+  });
 
   // Знакомим их друг с другом: каждому нужно знать, где второй, чтобы не
   // пройти сквозь него.
@@ -1334,6 +1510,7 @@
       p.update(now, step);
       p.pick(now);
     });
+    things.forEach(function (t) { t.update(now, step); });
 
     window.requestAnimationFrame(frame);
   }
@@ -1346,10 +1523,15 @@
   }
 
   pets.forEach(function (p) { p.checkHidden(); });
+  things.forEach(function (t) { t.checkHidden(); });
 
   otto.x = clamp(64, EDGE, otto.limit());
   olivia.x = clamp(otto.x + SPAN + 96, EDGE, olivia.limit());
   pets.forEach(function (p) { p.place(); });
+  things.forEach(function (t) {
+    t.x = clamp(window.innerWidth * t.at, EDGE, t.limit());
+    t.place();
+  });
 
   if (LESS_MOTION) {
     pets.forEach(function (p) { p.rest(true); });
@@ -1361,10 +1543,12 @@
 
   window.addEventListener('mousemove', function (event) {
     pets.forEach(function (p) { p.haul(event); });
+    things.forEach(function (t) { t.haul(event); });
   }, { passive: true });
 
   window.addEventListener('mouseup', function () {
     pets.forEach(function (p) { p.toss(); });
+    things.forEach(function (t) { t.drop(); });
   });
 
   if (FINE_POINTER) {
@@ -1373,6 +1557,7 @@
         p.watch(event.clientX, event.clientY);
         p.hover(event.clientX, event.clientY);
       });
+      things.forEach(function (t) { t.hover(event.clientX, event.clientY); });
     }, { passive: true });
   }
 
@@ -1381,6 +1566,11 @@
       p.checkHidden();
       p.x = Math.min(p.limit(), p.x);
       p.place();
+    });
+    things.forEach(function (t) {
+      t.checkHidden();
+      t.x = Math.min(t.limit(), t.x);
+      t.place();
     });
     // Окно могли растянуть с телефонной ширины обратно — тогда они появляются
     // снова, и их надо разбудить.
