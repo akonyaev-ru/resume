@@ -95,9 +95,12 @@
       p: '#8a5340',          // и её корпус
     },
     sofa: {
-      f: '#4e6472',          // обивка
+      f: '#4e6472',          // рама и обивка
       c: '#5e7787',          // подушки посветлее
-      g: '#6f8494',          // блик на подлокотнике
+      h: '#7a8fa0',          // светлые кромки: верх спинки и подлокотников
+      d: '#3a4a56',          // швы, пуговицы и тени
+      p: '#b06a4e',          // думка — единственное тёплое пятно
+      q: '#c98a6a',          // и её светлая кромка
       k: '#2a3038',          // ножки
     },
     shelf: {
@@ -683,17 +686,17 @@
 
   // Диван: низкий и широкий, с подушками и подлокотниками.
   var SOFA = [
-        '..ffffffffffffffffffffff..',
-        '..fcccccccccfcccccccccff..',
-        'gffcccccccccfcccccccccffff',
-        'gffcccccccccfcccccccccffff',
-        'fffcccccccccfcccccccccffff',
-        'ffffffffffffffffffffffffff',
-        'fffcccccccccfcccccccccffff',
-        'fffcccccccccfcccccccccffff',
-        'ffffffffffffffffffffffffff',
-        'ffffffffffffffffffffffffff',
-        '.kk....................kk.',
+        '.....hhhhhhhhhhhhhhhh.....',
+        '....fccccccccdcccccccf....',
+        '....fccccccccdcccccccf....',
+        '....fcccdccccdcccdcccf....',
+        '.hhhfccccccccdcccccccfhhh.',
+        'fffdfcqqqqcccdcccccccfdfff',
+        'fffdfcppppcccdcccccccfdfff',
+        'fffdffppppffffffffffffdfff',
+        'fffdccppppcccdccccccccdfff',
+        'fffdcccccccccdccccccccdfff',
+        'ffffddddddddddddddddddffff',
         '.kk....................kk.',
       ];
 
