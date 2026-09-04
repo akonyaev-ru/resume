@@ -317,33 +317,40 @@ def sofa():
     return g
 
 
-# Кактус: столбик с двумя руками, цветок на макушке и кадка. Силуэт нарочно не
-# похож на первое растение — то куст пятнами, этот столбик с отростками, — и он
-# самый маленький в обстановке: девять клеток на одиннадцать.
-CACTUS_W = 9
-CACTUS_H = 11
-CACTUS_POT = 8                   # с какой строки начинается кадка
+# Фикус: деревце — тонкий ствол и густая крона. Силуэт нарочно не такой, как у
+# первого растения: то куст из отдельных листьев на стеблях, этот сплошная
+# крона. Свет падает слева, как у существ, поэтому правая треть кроны темнее.
+FICUS_W = 13
+FICUS_H = 16
+FICUS_POT = 12                   # с какой строки кадка
+
+# Крона по строкам: левый и правый столбец заливки.
+FICUS_CROWN = [(5, 8), (3, 10), (2, 11), (1, 11), (1, 11), (2, 11), (2, 10),
+               (3, 9), (4, 8)]
+# Вырезы по краю: без них крона читается ровным комом.
+FICUS_NOTCH = [(3, 1), (11, 3), (1, 4), (10, 6), (3, 7)]
 
 
-def cactus():
-    g = [['.'] * CACTUS_W for _ in range(CACTUS_H)]
-    right = CACTUS_W - 1
+def ficus():
+    g = [['.'] * FICUS_W for _ in range(FICUS_H)]
 
-    rect(g, 3, 1, 5, CACTUS_POT - 1, 'g')      # ствол
-    rect(g, 3, 1, 3, CACTUS_POT - 1, 'l')      # светлая грань слева
+    for y, (x0, x1) in enumerate(FICUS_CROWN):
+        rect(g, x0, y, x1, y, 'l')
+        edge = x1 - max(1, (x1 - x0) // 3)
+        rect(g, edge, y, x1, y, 'm')             # правая треть в тени
 
-    rect(g, 1, 3, 2, 5, 'g')                   # левая рука
-    rect(g, 1, 3, 1, 5, 'l')
-    rect(g, 2, 5, 3, 5, 'g')                   # перемычка к стволу
+    for y in range(len(FICUS_CROWN) - 2, len(FICUS_CROWN)):
+        x0, x1 = FICUS_CROWN[y]
+        rect(g, x0, y, x1, y, 'm')               # низ кроны тоже в тени
 
-    rect(g, 6, 2, 7, 4, 'g')                   # правая рука
-    rect(g, 6, 2, 6, 4, 'l')
-    rect(g, 5, 4, 6, 4, 'g')
+    for x, y in FICUS_NOTCH:
+        g[y][x] = '.'
 
-    rect(g, 4, 0, 4, 0, 'f')                   # цветок на макушке
+    rect(g, 6, len(FICUS_CROWN), 7, FICUS_POT - 1, 's')    # ствол
+    rect(g, 6, len(FICUS_CROWN), 6, FICUS_POT - 1, 'l')    # светлая грань
 
-    rect(g, 1, CACTUS_POT, right - 1, CACTUS_POT, 'r')        # обод кадки
-    rect(g, 2, CACTUS_POT + 1, right - 2, CACTUS_H - 1, 'p')  # корпус
+    rect(g, 2, FICUS_POT, FICUS_W - 3, FICUS_POT, 'r')     # обод кадки
+    rect(g, 3, FICUS_POT + 1, FICUS_W - 4, FICUS_H - 1, 'p')
 
     return g
 
@@ -479,7 +486,7 @@ TYPE_FRAMES = [tentacles(laptop(3), True), tentacles(laptop(3), False)]
 SHELF_FRAME = shelf()
 PLANT_FRAME = plant()
 SOFA_FRAME = sofa()
-CACTUS_FRAME = cactus()
+FICUS_FRAME = ficus()
 
 HEAD = '  /* --- кадры ------------------------------------------------------------- */'
 TAIL = '  /* --- сборка кадров ----------------------------------------------------- */'
@@ -532,8 +539,8 @@ def art() -> str:
             + '  var PLANT = ' + grid_js(PLANT_FRAME) + ';\n\n'
             + '  // Диван: низкий и широкий, с подушками и подлокотниками.\n'
             + '  var SOFA = ' + grid_js(SOFA_FRAME) + ';\n\n'
-            + '  // Кактус: столбик с двумя руками и цветком, в кадке.\n'
-            + '  var CACTUS = ' + grid_js(CACTUS_FRAME) + ';\n\n')
+            + '  // Фикус: деревце со стволом и густой кроной.\n'
+            + '  var FICUS = ' + grid_js(FICUS_FRAME) + ';\n\n')
 
 
 def main() -> int:
@@ -554,7 +561,7 @@ def main() -> int:
     print(f'{path.name}: кадры перерисованы, существо {BODY_W}x{H}, '
           f'предмет {PROP_W}x{H}, полка {SHELF_W}x{SHELF_H}, '
           f'растение {PLANT_W}x{PLANT_H}, диван {SOFA_W}x{SOFA_H}, '
-          f'кактус {CACTUS_W}x{CACTUS_H}')
+          f'фикус {FICUS_W}x{FICUS_H}')
     return 0
 
 

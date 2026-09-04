@@ -94,11 +94,11 @@
       r: '#a9694c',          // обод кадки
       p: '#8a5340',          // и её корпус
     },
-    cactus: {
-      g: '#4e8f5e',          // тело
-      l: '#66ab72',          // светлая грань слева
-      f: '#d9739b',          // цветок на макушке
-      r: '#a9694c',          // обод кадки — тот же, что у растения
+    ficus: {
+      l: '#5fae74',          // крона на свету
+      m: '#3f8259',          // и в тени — те же зелёные, что у растения
+      s: '#7a5a3c',          // ствол
+      r: '#a9694c',          // обод кадки
       p: '#8a5340',          // и её корпус
     },
     sofa: {
@@ -707,19 +707,24 @@
         '.kk....................kk.',
       ];
 
-  // Кактус: столбик с двумя руками и цветком, в кадке.
-  var CACTUS = [
-        '....f....',
-        '...lgg...',
-        '...lgglg.',
-        '.lglgglg.',
-        '.lglgggg.',
-        '.lgggg...',
-        '...lgg...',
-        '...lgg...',
-        '.rrrrrrr.',
-        '..ppppp..',
-        '..ppppp..',
+  // Фикус: деревце со стволом и густой кроной.
+  var FICUS = [
+        '.....llmm....',
+        '....llllmmm..',
+        '..llllllmmmm.',
+        '.lllllllmmm..',
+        '..llllllmmmm.',
+        '..llllllmmmm.',
+        '..llllllmm...',
+        '....mmmmmm...',
+        '....mmmmm....',
+        '......ls.....',
+        '......ls.....',
+        '......ls.....',
+        '..rrrrrrrrr..',
+        '...ppppppp...',
+        '...ppppppp...',
+        '...ppppppp...',
       ];
 
   /* --- сборка кадров ----------------------------------------------------- */
@@ -1446,7 +1451,7 @@
     { name: 'shelf', art: SHELF, skin: SKIN.shelf, title: 'Подвинуть полку', at: 0.06 },
     { name: 'sofa', art: SOFA, skin: SKIN.sofa, title: 'Подвинуть диван', at: 0.72 },
     { name: 'plant', art: PLANT, skin: SKIN.plant, title: 'Подвинуть растение', at: 0.98 },
-    { name: 'cactus', art: CACTUS, skin: SKIN.cactus, title: 'Подвинуть кактус', on: 'shelf' },
+    { name: 'ficus', art: FICUS, skin: SKIN.ficus, title: 'Подвинуть фикус', at: 0.22 },
   ].map(function (spec) {
     var thing = makeThing(spec);
     thing.name = spec.name;
