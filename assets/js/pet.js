@@ -94,6 +94,13 @@
       r: '#a9694c',          // обод кадки
       p: '#8a5340',          // и её корпус
     },
+    cactus: {
+      g: '#4e8f5e',          // тело
+      l: '#66ab72',          // светлая грань слева
+      f: '#d9739b',          // цветок на макушке
+      r: '#a9694c',          // обод кадки — тот же, что у растения
+      p: '#8a5340',          // и её корпус
+    },
     sofa: {
       f: '#4e6472',          // рама и обивка
       c: '#5e7787',          // подушки посветлее
@@ -698,6 +705,21 @@
         'fqpdcccccccccdccccccccdfff',
         'ffffddddddddddddddddddffff',
         '.kk....................kk.',
+      ];
+
+  // Кактус: столбик с двумя руками и цветком, в кадке.
+  var CACTUS = [
+        '....f....',
+        '...lgg...',
+        '...lgglg.',
+        '.lglgglg.',
+        '.lglgggg.',
+        '.lgggg...',
+        '...lgg...',
+        '...lgg...',
+        '.rrrrrrr.',
+        '..ppppp..',
+        '..ppppp..',
       ];
 
   /* --- сборка кадров ----------------------------------------------------- */
@@ -1424,6 +1446,7 @@
     { name: 'shelf', art: SHELF, skin: SKIN.shelf, title: 'Подвинуть полку', at: 0.06 },
     { name: 'sofa', art: SOFA, skin: SKIN.sofa, title: 'Подвинуть диван', at: 0.72 },
     { name: 'plant', art: PLANT, skin: SKIN.plant, title: 'Подвинуть растение', at: 0.98 },
+    { name: 'cactus', art: CACTUS, skin: SKIN.cactus, title: 'Подвинуть кактус', on: 'shelf' },
   ].map(function (spec) {
     var thing = makeThing(spec);
     thing.name = spec.name;
