@@ -106,8 +106,8 @@
       c: '#5e7787',          // подушки посветлее
       h: '#7a8fa0',          // светлые кромки: верх спинки и подлокотников
       d: '#3a4a56',          // швы, пуговицы и тени
-      p: '#b06a4e',          // плед на подлокотнике — единственное тёплое пятно
-      q: '#c98a6a',          // и его светлая складка
+      p: '#c9a227',          // плед горчичный — выбор владельца из четырёх
+      q: '#e6c65f',          // и его светлые складки
       k: '#2a3038',          // ножки
     },
     shelf: {
@@ -698,11 +698,11 @@
         '....fccccccccdcccccccf....',
         '....fcccdccccdcccdcccf....',
         'qqqqfccccccccdcccccccfhhh.',
-        'ppppfccccccccdcccccccfdfff',
-        'ppppfccccccccdcccccccfdfff',
-        'fqpdffffffffffffffffffdfff',
-        'fqpdcccccccccdccccccccdfff',
-        'fqpdcccccccccdccccccccdfff',
+        'ppqpfccccccccdcccccccfdfff',
+        'ppqpfccccccccdcccccccfdfff',
+        'fpppffffffffffffffffffdfff',
+        'fpppcccccccccdccccccccdfff',
+        'fpfqcccccccccdccccccccdfff',
         'ffffddddddddddddddddddffff',
         '.kk....................kk.',
       ];
