@@ -261,6 +261,43 @@ SHELF_BOOKS = [
 ]
 
 
+# Растение в кадке: четыре листа-овала на стеблях из середины кадки. Листья
+# нарочно пятнами, а не штрихами: тонкие линии на этом размере сливаются в
+# кашу — пробовали, кончилось нечитаемым веером.
+PLANT_W = 13
+PLANT_H = 16
+POT_TOP = 11                     # верхняя кромка кадки
+PLANT_ROOT = (6, POT_TOP - 1)    # откуда растут стебли
+
+# Листья: центр по x, центр по y, цвет. Светлые и тёмные вперемешку — так
+# видно, что их несколько, а не одно пятно.
+PLANT_LEAVES = [(5, 2, 'l'), (2, 6, 'm'), (9, 5, 'm'), (10, 9, 'l')]
+
+
+def leaf(g, cx, cy, color):
+    """Овал пять на три с сужением к краям."""
+    rect(g, cx - 1, cy - 1, cx + 1, cy - 1, color)
+    rect(g, cx - 2, cy, cx + 2, cy, color)
+    rect(g, cx - 1, cy + 1, cx + 1, cy + 1, color)
+
+
+def plant():
+    """Кадка, стебли и листья. Кадр один: растение не шевелится."""
+    g = [['.'] * PLANT_W for _ in range(PLANT_H)]
+
+    for cx, cy, _ in PLANT_LEAVES:
+        line(g, PLANT_ROOT[0], PLANT_ROOT[1], cx, cy, 's')
+
+    for cx, cy, color in PLANT_LEAVES:
+        leaf(g, cx, cy, color)
+
+    rect(g, 1, POT_TOP, PLANT_W - 2, POT_TOP, 'r')          # обод
+    rect(g, 2, POT_TOP + 1, PLANT_W - 3, PLANT_H - 2, 'p')  # корпус
+    rect(g, 3, PLANT_H - 1, PLANT_W - 4, PLANT_H - 1, 'p')  # книзу уже
+
+    return g
+
+
 def shelf():
     """Корпус, три отсека с книгами и ножки. Кадр один: полка не шевелится,
     её только двигают."""
@@ -353,6 +390,7 @@ LEAF_FRAMES = [paper(3), paper(2)]
 PET_FRAMES = [pet_hand(False), pet_hand(True)]
 TYPE_FRAMES = [tentacles(laptop(3), True), tentacles(laptop(3), False)]
 SHELF_FRAME = shelf()
+PLANT_FRAME = plant()
 
 HEAD = '  /* --- кадры ------------------------------------------------------------- */'
 TAIL = '  /* --- сборка кадров ----------------------------------------------------- */'
@@ -400,7 +438,9 @@ def art() -> str:
             + '  var BUBBLE = ' + grid_js(BUBBLE) + ';\n\n'
             + '  // Книжная полка: корпус, три отсека с книгами, ножки. Кадр один —\n'
             + '  // она не шевелится, её только двигают.\n'
-            + '  var SHELF = ' + grid_js(SHELF_FRAME) + ';\n\n')
+            + '  var SHELF = ' + grid_js(SHELF_FRAME) + ';\n\n'
+            + '  // Растение в кадке: четыре листа на стеблях. Кадр тоже один.\n'
+            + '  var PLANT = ' + grid_js(PLANT_FRAME) + ';\n\n')
 
 
 def main() -> int:
@@ -419,7 +459,8 @@ def main() -> int:
     path.write_text(text[:start] + art() + text[end:], encoding='utf-8', newline='\n')
 
     print(f'{path.name}: кадры перерисованы, существо {BODY_W}x{H}, '
-          f'предмет {PROP_W}x{H}, полка {SHELF_W}x{SHELF_H}')
+          f'предмет {PROP_W}x{H}, полка {SHELF_W}x{SHELF_H}, '
+          f'растение {PLANT_W}x{PLANT_H}')
     return 0
 
 

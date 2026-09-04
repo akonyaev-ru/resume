@@ -339,20 +339,26 @@ check('загрузка', function () {
     fail('кто-то не нарисован сразу после загрузки');
   }
 
-  if (world.things.length !== 1) {
-    fail('предметов обстановки ' + world.things.length + ', а ждали один');
-  }
+  if (!world.things.length) fail('обстановки на странице нет вовсе');
 
-  const shelf = world.things[0];
-  const at = shelf.spot();
-  if (shelf.title !== 'Подвинуть полку') fail('подпись полки не та: ' + shelf.title);
-  if (!shelf.layers.length) fail('полка не нарисована');
-  if (at.y !== 0) fail('полка при загрузке висит в воздухе: y = ' + at.y);
-  if (at.x < NUM.EDGE || at.x > world.wide() - shelf.width) {
-    fail('полка при загрузке стоит за краем окна: x = ' + at.x);
-  }
+  const seen = new Set();
+  const spots = world.things.map(function (thing) {
+    const at = thing.spot();
+    const name = thing.title;
 
-  return titles.join(', ') + ', полка на ' + at.x + ' px';
+    if (!name) fail('у предмета обстановки нет подписи');
+    if (seen.has(name)) fail('две подписи «' + name + '» — предметы не различить');
+    seen.add(name);
+
+    if (!thing.layers.length) fail(name + ': предмет не нарисован');
+    if (at.y !== 0) fail(name + ': при загрузке висит в воздухе, y = ' + at.y);
+    if (at.x < NUM.EDGE || at.x > world.wide() - thing.width) {
+      fail(name + ': при загрузке стоит за краем окна, x = ' + at.x);
+    }
+    return name.replace('Подвинуть ', '') + ' на ' + at.x;
+  });
+
+  return titles.join(', ') + '; ' + spots.join(', ');
 });
 
 /* Поза покоя для просивших меньше движения: оба стоят при своём деле — он с
@@ -414,61 +420,78 @@ check('работают оба', function () {
     ', у Оливии ' + seen[1].size;
 });
 
-/* Полку можно подвинуть, и падает она не как существо: строго вниз и почти без
-   отскока. Поднимаем её к середине экрана, отпускаем в движении вбок — и
+/* Каждому предмету обстановки — свой прогон: уроненный предмет не должен
+   мешать следующему, а проверка обязана покрывать все, а не первый. */
+function world_of_things() {
+  const sample = open({ seed: 5 });
+  return sample.things.map(function (_, i) {
+    const world = open({ seed: 5 });
+    return { world: world, thing: world.things[i] };
+  });
+}
+
+/* Обстановку можно подвинуть, и падает она не как существо: строго вниз и почти
+   без отскока. Поднимаем её к середине экрана, отпускаем в движении вбок — и
    смотрим три вещи: по горизонтали она с места отпускания не сдвинулась, до
    пола дошла, а при ударе подскочила на считаные пиксели. Рука при этом идёт
    быстро: существо с такой скоростью улетело бы через полокна. */
-check('полку двигают, и она падает вниз', function () {
-  const world = open({ seed: 5 });
-  const shelf = world.things[0];
-  const from = shelf.spot().x;
+check('обстановку двигают, и она падает вниз', function () {
+  const notes = [];
 
-  // Куда попали курсором внутри холста — от этой точки скрипт и считает сдвиг.
-  const hold = { dx: 8, dy: 8 };
-  const box = shelf.getBoundingClientRect();
+  world_of_things().forEach(function (one) {
+    const world = one.world;
+    const thing = one.thing;
+    const name = thing.title.replace('Подвинуть ', '');
+    const from = thing.spot().x;
 
-  function hand(x, y) {
-    // x — левый край полки, y — высота над полом; переводим в точку курсора.
-    return event(x + hold.dx, world.high() - y - shelf.height + hold.dy);
-  }
+    // Куда попали курсором внутри холста — от этой точки и считается сдвиг.
+    const hold = { dx: 8, dy: 8 };
+    const box = thing.getBoundingClientRect();
 
-  shelf.fire('mousedown', event(box.left + hold.dx, box.top + hold.dy));
-  world.step(FRAME_MS);
-
-  [[from + 60, 90], [from + 140, 170], [from + 220, 240]].forEach(function (pt) {
-    world.win('mousemove', hand(pt[0], pt[1]));
-    world.step(33);
-  });
-
-  const lifted = shelf.spot();
-  if (lifted.y < 100) fail('полку не подняли: y = ' + lifted.y);
-  if (lifted.x - from < 100) fail('полку не сдвинули вбок: x = ' + lifted.x);
-
-  world.win('mouseup', hand(lifted.x, lifted.y));
-
-  const dropped = shelf.spot().x;
-  let sideways = 0;
-  let landed = null;
-  let peak = 0;
-
-  world.step(4000, function (t) {
-    const now = shelf.spot();
-    sideways = Math.max(sideways, Math.abs(now.x - dropped));
-    if (landed === null) {
-      if (now.y === 0) landed = t;
-      return;
+    function hand(x, y) {
+      // x — левый край предмета, y — высота над полом; переводим в точку курсора.
+      return event(x + hold.dx, world.high() - y - thing.height + hold.dy);
     }
-    peak = Math.max(peak, now.y);
+
+    thing.fire('mousedown', event(box.left + hold.dx, box.top + hold.dy));
+    world.step(FRAME_MS);
+
+    const back = from > 300 ? -1 : 1;      // ведём в ту сторону, где есть место
+    [[60, 90], [140, 170], [220, 240]].forEach(function (pt) {
+      world.win('mousemove', hand(from + back * pt[0], pt[1]));
+      world.step(33);
+    });
+
+    const lifted = thing.spot();
+    if (lifted.y < 100) fail(name + ': не подняли, y = ' + lifted.y);
+    if (Math.abs(lifted.x - from) < 100) fail(name + ': не сдвинули вбок, x = ' + lifted.x);
+
+    world.win('mouseup', hand(lifted.x, lifted.y));
+
+    const dropped = thing.spot().x;
+    let sideways = 0;
+    let landed = null;
+    let peak = 0;
+
+    world.step(4000, function (t) {
+      const now = thing.spot();
+      sideways = Math.max(sideways, Math.abs(now.x - dropped));
+      if (landed === null) {
+        if (now.y === 0) landed = t;
+        return;
+      }
+      peak = Math.max(peak, now.y);
+    });
+
+    if (landed === null) fail(name + ': за четыре секунды не лёг на пол');
+    if (sideways > 0) fail(name + ': уехал вбок на ' + sideways + ' px — падать должен отвесно');
+    if (peak > 12) fail(name + ': отскочил на ' + peak + ' px — отскок должен быть еле заметным');
+    if (thing.spot().y !== 0) fail(name + ': после отскока не улёгся, y = ' + thing.spot().y);
+
+    notes.push(name + ': с ' + lifted.y + ' px за ' + sec(landed) + ', отскок ' + peak);
   });
 
-  if (landed === null) fail('за четыре секунды полка так и не легла на пол');
-  if (sideways > 0) fail('полка уехала вбок на ' + sideways + ' px — падать должна отвесно');
-  if (peak > 12) fail('полка отскочила на ' + peak + ' px — отскок должен быть еле заметным');
-  if (shelf.spot().y !== 0) fail('после отскока полка не улеглась: y = ' + shelf.spot().y);
-
-  return 'подняли на ' + lifted.y + ' px, легла за ' + sec(landed) +
-    ', вбок 0, отскок ' + peak + ' px';
+  return notes.join('; ');
 });
 
 /* На узком экране стили прячут обоих, и кадры считаться не должны. Окно могли
@@ -856,7 +879,7 @@ const BREAKS = [
   },
   {
     name: 'полка отскакивает, как существо',
-    red: 'полку двигают, и она падает вниз',
+    red: 'обстановку двигают, и она падает вниз',
     parts: [[
       'var back = Math.min(-me.vy * THING_BOUNCE, THING_HOP);',
       'var back = -me.vy * BOUNCE;',
@@ -864,7 +887,7 @@ const BREAKS = [
   },
   {
     name: 'полка падает сквозь пол',
-    red: 'полку двигают, и она падает вниз',
+    red: 'обстановку двигают, и она падает вниз',
     parts: [[
       '      if (me.y <= 0) {\n        me.y = 0;',
       '      if (false) {\n        me.y = 0;',
