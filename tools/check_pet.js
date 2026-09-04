@@ -106,12 +106,15 @@ function open(options) {
 
   function makeCanvas() {
     const layers = [];
+    const paint = [];
     const handlers = Object.create(null);
     const classes = new Set();
 
     const ctx = {
       fillStyle: '',
-      fillRect: function () {},
+      // Из чего собран сам кадр: по этому следу проверки отличают трубку от
+      // ноутбука, а не по безымянному номеру холста.
+      fillRect: function (x, y) { paint.push({ x: x, y: y }); },
       // Кадр начинается с очистки — значит в `layers` всегда текущий кадр.
       clearRect: function () { layers.length = 0; },
       drawImage: function (image, dx, dy) {
@@ -132,6 +135,7 @@ function open(options) {
         contains: function (name) { return classes.has(name); },
       },
       layers: layers,
+      paint: paint,
       setAttribute: function () {},
       getContext: function () { return ctx; },
       addEventListener: function (type, fn) {
@@ -267,6 +271,27 @@ function look(el) {
   return out;
 }
 
+/* Насколько высоко забирается рисунок: у поднятой трубки верхняя клетка выше,
+   чем у откинутой крышки ноутбука. Так и различаем два дела, не заглядывая в
+   палитру. */
+function topOf(world, id) {
+  const el = world.made[id];
+  if (!el || !el.paint.length) fail('кадр ' + id + ' пуст — рисовать нечем');
+  return el.paint.reduce(function (top, cell) { return Math.min(top, cell.y); }, Infinity);
+}
+
+/* Квадратик, которым гладят упавшего, — единственный кадр предмета всего в
+   четыре клетки: у трубки их шесть и больше, у ноутбука восемь и больше. По
+   размеру рисунка его и узнаём. Раньше приметой было «у Оливии в слое
+   предмета вообще хоть что-то», но с 2026-09-04 она говорит по телефону, и
+   примета сломалась: стоя от него ровно в корпусе, она попадала под неё
+   посреди разговора. */
+const PET_CELLS = 4;
+
+function petting(world, prop) {
+  return prop !== null && world.made[prop].paint.length === PET_CELLS;
+}
+
 /* Схватить, потрясти и отпустить. Скорость броска скрипт считает по последнему
    отрезку руки, поэтому между движениями обязано идти время. */
 function toss(world, el, points) {
@@ -315,9 +340,11 @@ check('загрузка', function () {
   return titles.join(', ');
 });
 
-/* Тот самый дефект 30 августа: `rest()` лез в предмет, которого у Оливии нет,
-   скрипт падал до отрисовки, и у просивших меньше движения не было видно
-   вообще никого. В обычном режиме эта ветка не исполняется совсем. */
+/* Поза покоя для просивших меньше движения: оба стоят при своём деле — он с
+   раскрытым ноутбуком, она с поднятой трубкой, — и кадров не просят. В
+   обычном режиме эта ветка не исполняется совсем. Проверка сторожит и старый
+   дефект 30 августа: тогда `rest()` падал до отрисовки и не было видно
+   вообще никого. */
 check('тихий режим', function () {
   const world = open({ lessMotion: true });
   if (world.error) fail('скрипт упал при prefers-reduced-motion: ' + world.error.message);
@@ -328,12 +355,47 @@ check('тихий режим', function () {
   if (otto.body === null) fail('Отто не нарисован');
   if (olivia.body === null) fail('Оливия не нарисована');
   if (otto.prop === null) fail('у Отто не раскрыт ноутбук');
-  if (olivia.prop !== null) fail('у Оливии взялся предмет, которого у неё нет');
+  if (olivia.prop === null) fail('у Оливии не поднята трубка');
+
+  const lid = topOf(world, otto.prop);
+  const handset = topOf(world, olivia.prop);
+  if (handset >= lid) {
+    fail('трубка не поднята к голове: её верх на ' + handset +
+      ', а крышка ноутбука начинается с ' + lid);
+  }
 
   world.step(5000);
   if (world.frames() !== 0) fail('запрошено кадров: ' + world.frames() + ', а движения не просили');
 
-  return 'оба стоят, кадров не просят';
+  return 'оба при деле, трубка выше крышки (' + handset + ' против ' + lid +
+    '), кадров не просят';
+});
+
+/* Работают оба, и работа идёт полным кругом: предмет поднимается, идёт само
+   дело, предмет убирается. Кадров предмета за это время набирается не меньше
+   шести — у Отто четыре на крышку и два на щупальца по клавишам, у Оливии
+   четыре на подъём трубки и четыре на речь. Пока она танцевала, в этом слое
+   у неё не было ни одного кадра, так что проверка сторожит именно занятие,
+   а не рисунок. Квадратик поглаживания в счёт не идёт: он не дело. */
+check('работают оба', function () {
+  const world = open({ seed: 7 });
+  const seen = [new Set(), new Set()];
+
+  world.step(180000, function (t, pets) {
+    pets.forEach(function (pet, i) {
+      if (pet.prop !== null && !petting(world, pet.prop)) seen[i].add(pet.prop);
+    });
+  });
+
+  ['Отто', 'Оливия'].forEach(function (name, i) {
+    if (seen[i].size < 6) {
+      fail(name + ' за три минуты показал кадров дела ' + seen[i].size +
+        ', а полный круг — это шесть и больше');
+    }
+  });
+
+  return 'за три минуты кадров дела: у Отто ' + seen[0].size +
+    ', у Оливии ' + seen[1].size;
 });
 
 /* На узком экране стили прячут обоих, и кадры считаться не должны. Окно могли
@@ -476,9 +538,9 @@ check('бросок кончается приземлением', function () {
   return 'полёт, приземление на ' + sec(landed) + ', щелчок вдогонку не мешает';
 });
 
-/* Кого бросили, к тому второй бежит утешать. Бросаем Отто: у Оливии предмета
-   нет вовсе, поэтому любой второй слой на её холсте — это и есть тот самый
-   квадратик, которым она гладит. */
+/* Кого бросили, к тому второй бежит утешать. Второй слой на её холсте бывает
+   теперь и трубкой, поэтому поглаживание узнаём по самому кадру — квадратику
+   в четыре клетки, — а место проверяем отдельно. */
 check('прибегает утешать', function () {
   const world = open({ seed: 3 });
   world.step(2000);
@@ -503,10 +565,10 @@ check('прибегает утешать', function () {
       return;
     }
 
-    if (her.prop !== null) strokes.add(her.prop);
-    if (beside === null && Math.abs(her.x - (him.x - SPAN)) <= 3 && her.prop !== null) {
-      beside = t;
-    }
+    if (!petting(world, her.prop)) return;
+
+    strokes.add(her.prop);
+    if (beside === null && Math.abs(her.x - (him.x - SPAN)) <= 3) beside = t;
   });
 
   if (beside === null) fail('за двенадцать секунд никто не подошёл утешать');
@@ -556,11 +618,13 @@ check('удивляется тот, кто прибежал', function () {
 /* Сцена обязана кончаться сама, а не по предохранителю: `SCENE_MAX` поставлен
    на случай беды и в норме не срабатывает никогда. Поэтому меряем не
    «разошлись когда-нибудь», а сколько длилось поглаживание и тронулись ли оба
-   потом с места. Предмета у Оливии нет вовсе, так что второй слой на её холсте
-   — это ровно поглаживание, и конец его виден. */
+   потом с места. Поглаживание опознаётся по кадру в четыре клетки, так что
+   начало и конец видны точно, а не «появился хоть какой-то предмет». */
 check('сцена не подвисает', function () {
   const world = open({ seed: 3 });
   world.step(2000);
+
+  const SPAN = bodySpan(world);
 
   toss(world, world.otto, [
     { x: 520, y: 700 },
@@ -589,12 +653,13 @@ check('сцена не подвисает', function () {
     });
 
     if (from === null) {
-      if (pets[1].prop !== null) from = t;
+      if (petting(world, pets[1].prop) &&
+        Math.abs(pets[1].x - (pets[0].x - SPAN)) <= 3) from = t;
       return;
     }
 
     if (till === null) {
-      if (pets[1].prop === null) {
+      if (!petting(world, pets[1].prop)) {
         till = t;
         pets.forEach(function (pet, i) { stood[i] = pet.x; });
       }
@@ -685,11 +750,27 @@ check('окно сузили', function () {
    чего писалась, и чинить надо её, а не pet.js. */
 const BREAKS = [
   {
-    name: 'rest() лезет в предмет, которого у Оливии нет',
+    name: 'в тихом режиме оба стоят без дела',
     red: 'тихий режим',
     parts: [[
       "draw('idle', 0, open && prop ? prop[openLast] : null);",
-      "draw('idle', 0, open ? prop[openLast] : null);",
+      "draw('idle', 0, null);",
+    ]],
+  },
+  {
+    name: 'Оливия вместо трубки садится за ноутбук',
+    red: 'тихий режим',
+    parts: [[
+      "    prop: { open: PHONE, busy: PHONE_TALK },",
+      "    prop: { open: LAPTOP, busy: LAPTOP_TYPE },",
+    ]],
+  },
+  {
+    name: 'дело больше не выпадает — оба только гуляют',
+    red: 'работают оба',
+    parts: [[
+      '      } else if (roll < 0.8 && spec.prop) {',
+      '      } else if (false) {',
     ]],
   },
   {
