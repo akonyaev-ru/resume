@@ -138,7 +138,7 @@ def body(legs='stand', eyes=True, lift=0, crouch=0, step=0, hang=False):
         if x1 < x0 or x0 < 0:
             continue
         short = 1 if step and (i % 2 == (step - 1)) else 0
-        bottom = GROUND if hang else GROUND - lift - short
+        bottom = (GROUND if hang else GROUND - lift) - short
         rect(g, x0, top, x1, bottom, 'd')
 
     if eyes is False:
@@ -565,9 +565,11 @@ BODY_FRAMES = [
     ('hop', [lambda: body(legs='tuck', lift=2)]),
     # Сидит на диване: тело осело, щупальца подобраны и свисают короче. Два
     # кадра — то же дыхание, что и стоя, иначе сидящий выглядит картинкой.
+    # Сидит на диване и качает ногами: щупальца свисают с сиденья, и две пары
+    # попеременно поджимаются — тот же приём, что у щупалец на клавишах.
     ('sit', [
-        lambda: body(legs='tuck'),
-        lambda: body(legs='tuck', crouch=1),
+        lambda: body(lift=1, hang=True, step=1),
+        lambda: body(lift=1, hang=True, step=2),
     ]),
     # Танцует на месте: приседает и подскакивает, щупальца перебирают вбок.
     # Качать вбок само тело нельзя — крайний столбец срезало бы краем рамки.
