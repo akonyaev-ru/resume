@@ -317,6 +317,37 @@ def sofa():
     return g
 
 
+# Ковёр: единственный плоский предмет обстановки — тридцать четыре клетки в
+# ширину и пять в высоту. Кайма, узор ромбами и бахрома по торцам. Стоять на
+# нём другие предметы не должны (иначе висели бы на его толщине), поэтому в
+# списке он помечен `flat`.
+RUG_W = 34
+RUG_H = 5
+
+
+def rug():
+    g = [['.'] * RUG_W for _ in range(RUG_H)]
+    right = RUG_W - 1
+
+    rect(g, 2, 0, right - 2, RUG_H - 1, 'f')          # полотно
+    rect(g, 2, 0, right - 2, 0, 'd')                  # кайма
+    rect(g, 2, RUG_H - 1, right - 2, RUG_H - 1, 'd')
+    rect(g, 2, 1, 2, RUG_H - 2, 'd')
+    rect(g, right - 2, 1, right - 2, RUG_H - 2, 'd')
+
+    for x in range(4, right - 3, 4):                  # узор ромбами
+        rect(g, x, 2, x, 2, 'p')
+        rect(g, x + 1, 1, x + 1, 1, 'p')
+        rect(g, x + 1, 3, x + 1, 3, 'p')
+        rect(g, x + 2, 2, x + 2, 2, 'p')
+
+    for y in range(1, RUG_H - 1, 2):                  # бахрома по торцам
+        rect(g, 0, y, 1, y, 'g')
+        rect(g, right - 1, y, right, y, 'g')
+
+    return g
+
+
 # Фикус: деревце — тонкий ствол и густая крона. Силуэт нарочно не такой, как у
 # первого растения: то куст из отдельных листьев на стеблях, этот сплошная
 # крона. Свет падает слева, как у существ, поэтому правая треть кроны темнее.
@@ -497,6 +528,7 @@ TYPE_FRAMES = [tentacles(laptop(3), True), tentacles(laptop(3), False)]
 SHELF_FRAME = shelf()
 PLANT_FRAME = plant()
 SOFA_FRAME = sofa()
+RUG_FRAME = rug()
 FICUS_FRAME = ficus()
 
 HEAD = '  /* --- кадры ------------------------------------------------------------- */'
@@ -550,6 +582,8 @@ def art() -> str:
             + '  var PLANT = ' + grid_js(PLANT_FRAME) + ';\n\n'
             + '  // Диван: низкий и широкий, с подушками и подлокотниками.\n'
             + '  var SOFA = ' + grid_js(SOFA_FRAME) + ';\n\n'
+            + '  // Ковёр: кайма, узор ромбами и бахрома по торцам.\n'
+            + '  var RUG = ' + grid_js(RUG_FRAME) + ';\n\n'
             + '  // Фикус: деревце со стволом и густой кроной.\n'
             + '  var FICUS = ' + grid_js(FICUS_FRAME) + ';\n\n')
 
@@ -572,7 +606,7 @@ def main() -> int:
     print(f'{path.name}: кадры перерисованы, существо {BODY_W}x{H}, '
           f'предмет {PROP_W}x{H}, полка {SHELF_W}x{SHELF_H}, '
           f'растение {PLANT_W}x{PLANT_H}, диван {SOFA_W}x{SOFA_H}, '
-          f'фикус {FICUS_W}x{FICUS_H}')
+          f'фикус {FICUS_W}x{FICUS_H}, ковёр {RUG_W}x{RUG_H}')
     return 0
 
 
