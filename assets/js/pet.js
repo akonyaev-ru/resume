@@ -1512,7 +1512,7 @@
     { name: 'board', art: BOARD, skin: SKIN.board, title: 'Перевесить доску',
       at: 0.02, wall: 64, side: 'left', gap: 8 },
     { name: 'clock', art: CLOCK, skin: SKIN.clock, title: 'Перевесить часы',
-      at: 0.97, wall: 66, side: 'right', gap: 8 },
+      at: 0.97, wall: 66, between: ['sofa', 'plant'] },
     { name: 'shelf', art: SHELF, skin: SKIN.shelf, title: 'Подвинуть полку', at: 0 },
     { name: 'ficus', art: FICUS, skin: SKIN.ficus, title: 'Подвинуть фикус', at: 0.045 },
     { name: 'sofa', art: SOFA, skin: SKIN.sofa, title: 'Подвинуть диван', at: 0.92 },
@@ -1526,6 +1526,7 @@
     thing.hangs = spec.wall || 0;
     thing.side = spec.side || null;
     thing.gap = spec.gap || 0;
+    thing.between = spec.between || null;
     return thing;
   });
 
@@ -1731,6 +1732,21 @@
   olivia.x = clamp(otto.x + SPAN + 96, EDGE, olivia.limit());
   pets.forEach(function (p) { p.place(); });
   function hangSpot(t) {
+    /* Висеть можно двумя способами: по краю текстовой колонки или над
+       промежутком между двумя предметами обстановки. Второе — для часов: они
+       висят над проёмом между диваном и растением, и на любой ширине это
+       читается одинаково, потому что оба предмета двигаются вместе с окном. */
+    if (t.between) {
+      var a = thingNamed(t.between[0]);
+      var b = thingNamed(t.between[1]);
+
+      if (a && b) {
+        var left = Math.min(a.x + a.canvas.width, b.x + b.canvas.width);
+        var right = Math.max(a.x, b.x);
+        return (left + right) / 2 - t.canvas.width / 2;
+      }
+    }
+
     var edges = t.side && columnEdges();
     if (!edges) return EDGE + (t.limit() - EDGE) * t.at;
 
@@ -1744,11 +1760,18 @@
      app.js по этому же событию, и на первый раз колонки ещё нет. Переставленное
      руками не трогаем. */
   function anchorWalls() {
-    things.forEach(function (t) {
-      if (t.on || t.moved) return;
-      t.x = clamp(hangSpot(t), EDGE, t.limit());
-      if (t.wall) t.y = t.hangs;
-      t.place();
+    // Два прохода: сперва те, кто стоит сам по себе, потом висящие над
+    // промежутком между ними — иначе часы считали бы проём по нерасставленным
+    // предметам и уезжали к левому краю.
+    [false, true].forEach(function (second) {
+      things.forEach(function (t) {
+        if (t.on || t.moved) return;
+        if (!!t.between !== second) return;
+
+        t.x = clamp(hangSpot(t), EDGE, t.limit());
+        if (t.wall) t.y = t.hangs;
+        t.place();
+      });
     });
   }
 
