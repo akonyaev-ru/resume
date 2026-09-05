@@ -721,20 +721,16 @@
 
   // Доска на стене: полотно, две кривые и полочка.
   var BOARD = [
-        'rrrrrrrrrrrrrrrrrrrrrr',
-        'rwwwwwwwwwwwwwwwwwwwwr',
-        'rwwwwwwwwwwwwwwwwwwgwr',
-        'rwwwwwwwewwwwwwwwggwwr',
-        'rweewweewewwwwwggwwwwr',
-        'rwwweewwwewwwggwwwwwwr',
-        'rwwwwwwwwweggwwwwwwwwr',
-        'rwwwwwwwwwgeewwwwwwwwr',
-        'rwwwwggwwgwwweewwwwwwr',
-        'rwwggwwggwwwwwweewwwwr',
-        'rwgwwwwwwwwwwwwwweewwr',
-        'rwwwwwwwwwwwwwwwwwwewr',
-        'rrrrrrrrrrrrrrrrrrrrrr',
-        '......rrrrrrrrrr......',
+        'rrrrrrrrrrrrrrrr',
+        'rwwwwwwwwwwwwwwr',
+        'rwwwwwwwwwwggwwr',
+        'rwwwwggwwwwggwwr',
+        'rwwwwggwwwwggwwr',
+        'rwggwggwwwwggwwr',
+        'rwggwggweewggwwr',
+        'rwggwggweewggwwr',
+        'rrrrrrrrrrrrrrrr',
+        '.....rrrrrr.....',
       ];
 
   // Фикус: деревце со стволом и густой кроной.
