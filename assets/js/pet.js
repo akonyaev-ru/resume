@@ -1506,11 +1506,11 @@
      предметом их не делаем нарочно — владелец просил, чтобы растащить их можно
      было в любую сторону. Следующий предмет добавляется строкой. */
   var things = [
-    // Доска и часы висят по краям текстовой колонки: доска слева от неё,
-    // часы справа. `at` остаётся запасным значением на случай, если колонки
-    // не найти.
+    // Доска висит слева над полкой, чуть правее и ниже её — так владелец её и
+    // утвердил. К текстовой колонке её привязывали 2026-09-05 и вернули
+    // обратно: на широком экране от этого она уезжала на треть окна вправо.
     { name: 'board', art: BOARD, skin: SKIN.board, title: 'Перевесить доску',
-      at: 0.02, wall: 64, side: 'left', gap: 8 },
+      at: 0.02, wall: 64 },
     { name: 'clock', art: CLOCK, skin: SKIN.clock, title: 'Перевесить часы',
       at: 0.97, wall: 66, between: ['sofa', 'plant'] },
     { name: 'shelf', art: SHELF, skin: SKIN.shelf, title: 'Подвинуть полку', at: 0 },
@@ -1524,23 +1524,9 @@
     thing.at = spec.at;
     thing.on = spec.on;
     thing.hangs = spec.wall || 0;
-    thing.side = spec.side || null;
-    thing.gap = spec.gap || 0;
     thing.between = spec.between || null;
     return thing;
   });
-
-  /* Края текстовой колонки: по ним ставится висящее. Разметку к этому времени
-     уже собрал app.js — он подключён раньше. Если колонки нет (проверочный
-     прогон под заглушками), вернём null, и висящее встанет по доле окна. */
-  function columnEdges() {
-    if (!document.querySelector) return null;
-    var wrap = document.querySelector('.wrap');
-    if (!wrap) return null;
-
-    var box = wrap.getBoundingClientRect();
-    return { left: box.left, right: box.right };
-  }
 
   function thingNamed(name) {
     var found = null;
@@ -1732,10 +1718,11 @@
   olivia.x = clamp(otto.x + SPAN + 96, EDGE, olivia.limit());
   pets.forEach(function (p) { p.place(); });
   function hangSpot(t) {
-    /* Висеть можно двумя способами: по краю текстовой колонки или над
-       промежутком между двумя предметами обстановки. Второе — для часов: они
-       висят над проёмом между диваном и растением, и на любой ширине это
-       читается одинаково, потому что оба предмета двигаются вместе с окном. */
+    /* Висеть можно двумя способами: по доле свободной полосы, как стоит всё
+       остальное, или над промежутком между двумя предметами обстановки.
+       Второе — для часов: они висят над проёмом между диваном и растением, и
+       на любой ширине это читается одинаково, потому что оба предмета
+       двигаются вместе с окном. */
     if (t.between) {
       var a = thingNamed(t.between[0]);
       var b = thingNamed(t.between[1]);
@@ -1747,17 +1734,10 @@
       }
     }
 
-    var edges = t.side && columnEdges();
-    if (!edges) return EDGE + (t.limit() - EDGE) * t.at;
-
-    return t.side === 'right'
-      ? edges.right + t.gap
-      : edges.left - t.canvas.width - t.gap;
+    return EDGE + (t.limit() - EDGE) * t.at;
   }
 
-  /* Развесить висящее по краям колонки. Зовётся дважды: сейчас — чтобы предмет
-     сразу был на месте, и после DOMContentLoaded — потому что разметку собирает
-     app.js по этому же событию, и на первый раз колонки ещё нет. Переставленное
+  /* Расставить всё, что стоит само по себе, и развесить висящее. Переставленное
      руками не трогаем. */
   function anchorWalls() {
     // Два прохода: сперва те, кто стоит сам по себе, потом висящие над
@@ -1776,10 +1756,6 @@
   }
 
   anchorWalls();
-
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', anchorWalls);
-  }
   // Стоящие на другом предмете встают по его середине и на его высоту.
   things.forEach(function (t) {
     if (!t.on) return;
@@ -1825,9 +1801,10 @@
     });
     things.forEach(function (t) {
       t.checkHidden();
-      // Колонка при смене ширины уезжает, и висящее держится за неё — но
-      // только пока его не трогали руками: переставленное остаётся где повесили.
-      if (t.side && !t.moved) t.x = clamp(hangSpot(t), EDGE, t.limit());
+      // Мебель при смене ширины разъезжается, и висящее над промежутком идёт
+      // за ней — но только пока его не трогали руками: переставленное
+      // остаётся там, где повесили.
+      if (t.between && !t.moved) t.x = clamp(hangSpot(t), EDGE, t.limit());
       t.x = Math.min(t.limit(), t.x);
       t.place();
     });
