@@ -1460,9 +1460,9 @@
      было в любую сторону. Следующий предмет добавляется строкой. */
   var things = [
     { name: 'shelf', art: SHELF, skin: SKIN.shelf, title: 'Подвинуть полку', at: 0 },
-    { name: 'ficus', art: FICUS, skin: SKIN.ficus, title: 'Подвинуть фикус', at: 0.05 },
+    { name: 'ficus', art: FICUS, skin: SKIN.ficus, title: 'Подвинуть фикус', at: 0.045 },
     { name: 'sofa', art: SOFA, skin: SKIN.sofa, title: 'Подвинуть диван', at: 0.92 },
-    { name: 'plant', art: PLANT, skin: SKIN.plant, title: 'Подвинуть растение', at: 1 },
+    { name: 'plant', art: PLANT, skin: SKIN.plant, title: 'Подвинуть растение', at: 0.97 },
   ].map(function (spec) {
     var thing = makeThing(spec);
     thing.name = spec.name;
