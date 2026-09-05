@@ -1394,6 +1394,7 @@
 
       var box = canvas.getBoundingClientRect();
       me.grab = { dx: event.clientX - box.left, dy: event.clientY - box.top };
+      me.moved = true;               // дальше висит там, где повесили
       me.vy = 0;
       canvas.classList.add('is-held');
       wake();
@@ -1505,13 +1506,13 @@
      предметом их не делаем нарочно — владелец просил, чтобы растащить их можно
      было в любую сторону. Следующий предмет добавляется строкой. */
   var things = [
-    // Доска висит не по линейке: чуть правее полки и ниже — так она выглядит
-    // повешенной от руки, а не поставленной по сетке. Правее нельзя: за
-    // левым полем начинается текстовая колонка.
-    { name: 'board', art: BOARD, skin: SKIN.board, title: 'Перевесить доску', at: 0.02, wall: 64 },
-    // Часы висят ниже и левее доски по краю правого поля. Левее нельзя:
-    // при 1280 до текстовой колонки остаётся семь пикселей.
-    { name: 'clock', art: CLOCK, skin: SKIN.clock, title: 'Перевесить часы', at: 0.97, wall: 80 },
+    // Доска и часы висят по краям текстовой колонки: доска слева от неё,
+    // часы справа. `at` остаётся запасным значением на случай, если колонки
+    // не найти.
+    { name: 'board', art: BOARD, skin: SKIN.board, title: 'Перевесить доску',
+      at: 0.02, wall: 64, side: 'left', gap: 8 },
+    { name: 'clock', art: CLOCK, skin: SKIN.clock, title: 'Перевесить часы',
+      at: 0.97, wall: 66, side: 'right', gap: 8 },
     { name: 'shelf', art: SHELF, skin: SKIN.shelf, title: 'Подвинуть полку', at: 0 },
     { name: 'ficus', art: FICUS, skin: SKIN.ficus, title: 'Подвинуть фикус', at: 0.045 },
     { name: 'sofa', art: SOFA, skin: SKIN.sofa, title: 'Подвинуть диван', at: 0.92 },
@@ -1523,8 +1524,22 @@
     thing.at = spec.at;
     thing.on = spec.on;
     thing.hangs = spec.wall || 0;
+    thing.side = spec.side || null;
+    thing.gap = spec.gap || 0;
     return thing;
   });
+
+  /* Края текстовой колонки: по ним ставится висящее. Разметку к этому времени
+     уже собрал app.js — он подключён раньше. Если колонки нет (проверочный
+     прогон под заглушками), вернём null, и висящее встанет по доле окна. */
+  function columnEdges() {
+    if (!document.querySelector) return null;
+    var wrap = document.querySelector('.wrap');
+    if (!wrap) return null;
+
+    var box = wrap.getBoundingClientRect();
+    return { left: box.left, right: box.right };
+  }
 
   function thingNamed(name) {
     var found = null;
@@ -1715,12 +1730,33 @@
   otto.x = clamp(64, EDGE, otto.limit());
   olivia.x = clamp(otto.x + SPAN + 96, EDGE, olivia.limit());
   pets.forEach(function (p) { p.place(); });
-  things.forEach(function (t) {
-    if (t.on) return;
-    t.x = clamp(EDGE + (t.limit() - EDGE) * t.at, EDGE, t.limit());
-    if (t.wall) t.y = t.hangs;          // висящее сразу на своей высоте
-    t.place();
-  });
+  function hangSpot(t) {
+    var edges = t.side && columnEdges();
+    if (!edges) return EDGE + (t.limit() - EDGE) * t.at;
+
+    return t.side === 'right'
+      ? edges.right + t.gap
+      : edges.left - t.canvas.width - t.gap;
+  }
+
+  /* Развесить висящее по краям колонки. Зовётся дважды: сейчас — чтобы предмет
+     сразу был на месте, и после DOMContentLoaded — потому что разметку собирает
+     app.js по этому же событию, и на первый раз колонки ещё нет. Переставленное
+     руками не трогаем. */
+  function anchorWalls() {
+    things.forEach(function (t) {
+      if (t.on || t.moved) return;
+      t.x = clamp(hangSpot(t), EDGE, t.limit());
+      if (t.wall) t.y = t.hangs;
+      t.place();
+    });
+  }
+
+  anchorWalls();
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', anchorWalls);
+  }
   // Стоящие на другом предмете встают по его середине и на его высоту.
   things.forEach(function (t) {
     if (!t.on) return;
@@ -1766,6 +1802,9 @@
     });
     things.forEach(function (t) {
       t.checkHidden();
+      // Колонка при смене ширины уезжает, и висящее держится за неё — но
+      // только пока его не трогали руками: переставленное остаётся где повесили.
+      if (t.side && !t.moved) t.x = clamp(hangSpot(t), EDGE, t.limit());
       t.x = Math.min(t.limit(), t.x);
       t.place();
     });
