@@ -2159,9 +2159,9 @@
     // утвердил. К текстовой колонке её привязывали 2026-09-05 и вернули
     // обратно: на широком экране от этого она уезжала на треть окна вправо.
     { name: 'board', art: BOARD, skin: SKIN.board, title: 'Перевесить доску',
-      at: 0.02, wall: 64 },
+      at: 0.02, wall: 64, shift: -3 },
     { name: 'clock', art: CLOCK, skin: SKIN.clock, title: 'Перевесить часы',
-      at: 0.97, wall: 66, between: ['sofa', 'plant'], face: clockFace },
+      at: 0.97, wall: 66, between: ['sofa', 'plant'], shift: 3, face: clockFace },
     { name: 'shelf', art: SHELF, skin: SKIN.shelf, title: 'Подвинуть полку', at: 0 },
     { name: 'ficus', art: FICUS, skin: SKIN.ficus, title: 'Подвинуть фикус', at: 0.045 },
     { name: 'sofa', art: SOFA, skin: SKIN.sofa, title: 'Подвинуть диван', at: 0.92 },
@@ -2173,6 +2173,7 @@
     thing.at = spec.at;
     thing.hangs = spec.wall || 0;
     thing.between = spec.between || null;
+    thing.shift = spec.shift || 0;    // доводка на пару пикселей, по просьбе
     return thing;
   });
 
@@ -2391,8 +2392,13 @@
     return EDGE + (t.limit() - EDGE) * t.at;
   }
 
+  // Место плюс доводка: пара пикселей, которых не выразить долей окна.
+  function spotFor(t) {
+    return hangSpot(t) + t.shift;
+  }
+
   function setSpot(t) {
-    t.x = clamp(hangSpot(t), EDGE, t.limit());
+    t.x = clamp(spotFor(t), EDGE, t.limit());
     if (t.wall) t.y = t.hangs;
     t.place();
   }
