@@ -725,6 +725,51 @@ check('диван увели — сидящий падает', function () {
   return 'диван увели — упал за ' + sec(fell);
 });
 
+/* Слезающего с дивана утешать не бегут: это не падение, а его собственная
+   затея. Пузырь с восклицательными и поглаживание положены только тому, кого
+   бросили рукой или из-под кого выдернули диван. */
+check('слезающего с дивана не утешают', function () {
+  const world = open({ seed: 3 });
+
+  const couch = world.things.filter(function (t) {
+    return t.title.indexOf('диван') >= 0;
+  })[0];
+  const top = couch.spot().y + NUM.SEAT_UP;
+
+  // Ждём посадку, потом сам сход — короткими отрезками, чтобы не проскочить.
+  let sat = false;
+  for (let i = 0; i < 240 && !sat; i++) {
+    world.step(1000, function (t, pets) {
+      if (pets.some(function (p) { return p.y === top; })) sat = true;
+    });
+  }
+  if (!sat) fail('за четыре минуты никто не сел — проверять нечего');
+
+  let off = false;
+  for (let i = 0; i < 30 && !off; i++) {
+    world.step(1000, function (t, pets) {
+      if (pets.every(function (p) { return p.y === 0; })) off = true;
+    });
+  }
+  if (!off) fail('за полминуты с дивана никто не слез');
+
+  // После схода — ни пузыря, ни поглаживания.
+  let bubble = false;
+  let pets4 = false;
+
+  world.step(6000, function (t, pets) {
+    pets.forEach(function (pet) {
+      if (pet.bubble) bubble = true;
+      if (petting(world, pet.prop)) pets4 = true;
+    });
+  });
+
+  if (bubble) fail('после схода с дивана кто-то выругался пузырём');
+  if (pets4) fail('после схода с дивана второй прибежал гладить');
+
+  return 'слез сам — ни пузыря, ни утешения';
+});
+
 /* Доску перевешивают: где отпустили, там и осталась. Мебель на её месте
    падала бы на пол — этим висящее и отличается, и это ровно то, что просил
    владелец: «брать и в другое место закреплять». */
@@ -1179,6 +1224,14 @@ const BREAKS = [
     parts: [[
       '      var floor = support();',
       '      var floor = 0;',
+    ]],
+  },
+  {
+    name: 'слезание с дивана считают падением',
+    red: 'слезающего с дивана не утешают',
+    parts: [[
+      '          me.thrown = false;                 // слезает сам: утешать не за что',
+      '          me.thrown = true;',
     ]],
   },
   {

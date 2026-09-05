@@ -298,7 +298,6 @@
     sit: [[
         '............',
         '............',
-        '............',
         '.hhhhhhhhhh.',
         'hggggggggggh',
         'gggggggggggg',
@@ -308,6 +307,7 @@
         'gggggggggggg',
         'dggggggggggd',
         '.dddddddddd.',
+        '...dd.dddd..',
         '...dd.dddd..',
       ], [
         '............',
@@ -322,7 +322,7 @@
         'gggggggggggg',
         'dggggggggggd',
         '.dddddddddd.',
-        '......dd....',
+        '...dd.dddd..',
       ]],
     dance: [[
         '............',
@@ -956,6 +956,7 @@
       facing: 1,             // и куда повернуться, когда дойдёт
       grab: null,
       dragged: false,
+      thrown: false,         // упал не сам, а по чужой воле — тогда утешают
       hidden: false,
       seat: null,            // диван, на котором сидит
       seatDx: 0,             // и где именно на нём
@@ -1207,7 +1208,8 @@
 
       // Лезет на диван: за четверть секунды поднимается на высоту сиденья.
       if (me.state === 'climb') {
-        if (!stillSeated()) { me.seat = null; enter('fly', now); return; }
+        // Диван выдернули из-под самого носа — это уже не его затея.
+        if (!stillSeated()) { me.seat = null; me.thrown = true; enter('fly', now); return; }
 
         var top = seatTop(me.seat);
         var done = Math.min(1, (now - me.frameAt) / CLIMB_MS);
@@ -1227,6 +1229,9 @@
          сваливается на пол. Позвали на встречу — слезает сам. */
       if (me.state === 'sit') {
         if (!stillSeated() || me.errand !== null) {
+          // Диван увели — падение не по своей воле, утешать за него бегут.
+          // Позвали на встречу — слезает сам, и это не падение.
+          me.thrown = me.errand === null;
           me.seat = null;
           enter('fly', now);
           return;
@@ -1247,6 +1252,7 @@
           }
 
           me.seat = null;
+          me.thrown = false;                 // слезает сам: утешать не за что
           me.vx = (gap > 0 ? -1 : 1) * 40;   // спрыгивает в сторону от соседа
           me.vy = 0;
           enter('fly', now);
@@ -1475,6 +1481,7 @@
       // Экранный Y растёт вниз, наш — вверх, поэтому вертикальная меняет знак.
       me.vx = clamp(me.grab.vx, -THROW_MAX, THROW_MAX);
       me.vy = clamp(-me.grab.vy, -THROW_MAX, THROW_MAX);
+      me.thrown = true;              // бросили рукой — второй прибежит утешать
 
       me.grab = null;
       canvas.classList.remove('is-held');
@@ -1824,7 +1831,13 @@
 
   function watchFall(now) {
     pets.forEach(function (p, i) {
-      if (falling[i] && p.state === 'land') comfort(now, p);
+      /* Утешают не всякое приземление, а только чужой рукой устроенное: бросок
+         или выдернутый из-под сидящего диван. Спрыгнувшего с дивана по своей
+         воле встречать пузырём незачем — это не падение. */
+      if (falling[i] && p.state === 'land') {
+        if (p.thrown) comfort(now, p);
+        p.thrown = false;
+      }
       falling[i] = p.state === 'fly';
     });
   }
