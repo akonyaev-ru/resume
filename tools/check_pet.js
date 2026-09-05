@@ -602,83 +602,6 @@ check('предмет стоит на другом и падает без нег
     ', без опоры упал за ' + sec(fell);
 });
 
-/* Пирамидка сложена уже при загрузке: то, что стоит не на полу, опирается на
-   соседей снизу, не свешивается с них и стоит по середине их общей ширины.
-   Опор бывает две — верхняя коробка сидит на обеих нижних. Соседняя проверка
-   ставит предмет на предмет мышью, а начальную расстановку не смотрит никто.
-   Предметы не названы нарочно: сегодня это коробки, вчера были тумбочка с
-   кулером. */
-check('пирамидка сложена при загрузке', function () {
-  const world = open({});
-  world.step(500);
-
-  const floorThings = world.things.filter(function (t) { return !wall(t); });
-  const stacked = floorThings.filter(function (t) { return t.spot().y > 0; });
-  if (!stacked.length) fail('ни один предмет не стоит на другом');
-
-  const notes = [];
-
-  stacked.forEach(function (over) {
-    const spot = over.spot();
-    const name = over.title.replace('Подвинуть ', '');
-
-    // Опора — то, что стоит ровно под ним своим верхом и перекрывается вбок.
-    function under(thing) {
-      return thing !== over && thing.spot().y + thing.height === spot.y;
-    }
-
-    const bases = floorThings.filter(function (thing) {
-      if (!under(thing)) return false;
-      const at = thing.spot().x;
-      return at < spot.x + over.width && at + thing.width > spot.x;
-    });
-
-    if (!bases.length) fail(name + ': стоит на высоте ' + spot.y + ', а опоры под ним нет');
-
-    /* К найденным опорам добавляем сомкнутых с ними соседей: коробки внизу
-       стоят вплотную, и середину надо считать по их общей ширине. Иначе
-       сдвинутая верхняя коробка проходит проверку — перекрытие сужается
-       вместе с ней, и она оказывается «по середине» одной опоры. */
-    let grew = true;
-    while (grew) {
-      grew = false;
-      floorThings.forEach(function (near) {
-        if (!under(near) || bases.indexOf(near) >= 0) return;
-
-        const at = near.spot().x;
-        const touches = bases.some(function (base) {
-          return at <= base.spot().x + base.width && at + near.width >= base.spot().x;
-        });
-
-        if (touches) {
-          bases.push(near);
-          grew = true;
-        }
-      });
-    }
-
-    const left = Math.min.apply(null, bases.map(function (b) { return b.spot().x; }));
-    const right = Math.max.apply(null, bases.map(function (b) {
-      return b.spot().x + b.width;
-    }));
-
-    if (spot.x < left || spot.x + over.width > right) {
-      fail(name + ': свесился с опоры — сам ' + spot.x + '..' + (spot.x + over.width) +
-        ', опора ' + left + '..' + right);
-    }
-
-    const middle = left + (right - left - over.width) / 2;
-    if (Math.abs(spot.x - middle) > 1) {
-      fail(name + ': сдвинут с середины опоры на ' + Math.round(spot.x - middle) + ' px');
-    }
-
-    notes.push(name + ' на высоте ' + spot.y + ', опор ' + bases.length +
-      ', по середине их ширины');
-  });
-
-  return notes.join('; ');
-});
-
 /* Доску перевешивают: где отпустили, там и осталась. Мебель на её месте
    падала бы на пол — этим висящее и отличается, и это ровно то, что просил
    владелец: «брать и в другое место закреплять». */
@@ -1110,22 +1033,6 @@ const BREAKS = [
     parts: [[
       '      if (spec.wall) return;',
       '      if (false) return;',
-    ]],
-  },
-  {
-    name: 'верхнюю коробку ставят на пол, а не на нижние',
-    red: 'пирамидка сложена при загрузке',
-    parts: [[
-      '    t.y = top;',
-      '    t.y = 0;',
-    ]],
-  },
-  {
-    name: 'верхняя коробка встаёт по середине одной опоры, а не обеих',
-    red: 'пирамидка сложена при загрузке',
-    parts: [[
-      '      right = Math.max(right === null ? 0 : right, base.x + base.canvas.width);',
-      '      right = right === null ? base.x + base.canvas.width : right;',
     ]],
   },
   {

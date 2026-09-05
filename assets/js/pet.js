@@ -107,13 +107,6 @@
       w: '#bd7d5c',          // светлая грань кадки
       n: '#2e2018',          // земля под ободом
     },
-    box: {
-      k: '#9d7549',          // картон
-      l: '#b8905c',          // клапан изнутри, на свету
-      d: '#6f5232',          // шов, правая грань и тень у пола
-      t: '#86673f',          // лента: темнее картона, светлая читалась полосой
-      n: '#33261a',          // нутро открытой коробки
-    },
     clock: {
       f: '#4a5162',          // рама
       w: '#eef1f6',          // циферблат
@@ -779,34 +772,6 @@
         '...wpppppp...',
         '...wpppppp...',
         '...ppppppp...',
-      ];
-
-  // Коробки: две закрытые и одна открытая, с клапанами вверх.
-  var BOX_L = [
-        'kkkdkkd',
-        'kkkdkkd',
-        'kkkkkkd',
-        'ttttttd',
-        'kkkkkkd',
-        'ddddddd',
-      ];
-
-  var BOX_R = [
-        'kkdkkkd',
-        'kkdkkkd',
-        'kkkkkkd',
-        'ttttttd',
-        'kkkkkkd',
-        'ddddddd',
-      ];
-
-  var BOX_TOP = [
-        'llnnnll',
-        'llnnnll',
-        'kkkkkkd',
-        'kkkkkkd',
-        'kkkkkkd',
-        'ddddddd',
       ];
 
   /* --- сборка кадров ----------------------------------------------------- */
@@ -1550,16 +1515,6 @@
       at: 0.97, wall: 66, between: ['sofa', 'plant'] },
     { name: 'shelf', art: SHELF, skin: SKIN.shelf, title: 'Подвинуть полку', at: 0 },
     { name: 'ficus', art: FICUS, skin: SKIN.ficus, title: 'Подвинуть фикус', at: 0.045 },
-    /* Коробки стоят пирамидкой: две внизу вплотную, третья сверху по их
-       середине. Правая считается от левой (`beside`), а не по своей доле окна:
-       доля развела бы их тем дальше, чем шире окно, и пирамидки не осталось
-       бы. Не склеены — любую можно снять и поставить куда угодно. */
-    { name: 'boxl', art: BOX_L, skin: SKIN.box,
-      title: 'Подвинуть левую коробку', at: 0.105 },
-    { name: 'boxr', art: BOX_R, skin: SKIN.box,
-      title: 'Подвинуть правую коробку', at: 0.13, beside: 'boxl' },
-    { name: 'boxt', art: BOX_TOP, skin: SKIN.box,
-      title: 'Подвинуть верхнюю коробку', on: ['boxl', 'boxr'] },
     { name: 'sofa', art: SOFA, skin: SKIN.sofa, title: 'Подвинуть диван', at: 0.92 },
     { name: 'plant', art: PLANT, skin: SKIN.plant, title: 'Подвинуть растение', at: 0.97 },
   ].map(function (spec) {
@@ -1567,10 +1522,8 @@
     thing.name = spec.name;
     thing.wall = !!spec.wall;
     thing.at = spec.at;
-    thing.on = spec.on ? [].concat(spec.on) : null;   // опор бывает и две
     thing.hangs = spec.wall || 0;
     thing.between = spec.between || null;
-    thing.beside = spec.beside || null;
     return thing;
   });
 
@@ -1764,17 +1717,11 @@
   olivia.x = clamp(otto.x + SPAN + 96, EDGE, olivia.limit());
   pets.forEach(function (p) { p.place(); });
   function hangSpot(t) {
-    /* Место считается тремя способами. По доле свободной полосы — так стоит
-       большинство. Вплотную к соседу (`beside`) — так стоит правая коробка:
-       доля развела бы пару тем дальше, чем шире окно. Над промежутком между
-       двумя предметами (`between`) — так висят часы: обе опоры ходят вместе с
-       окном, и проём читается одинаково на любой ширине. Последние два
-       способа считаются от соседей, поэтому идут вторым проходом. */
-    if (t.beside) {
-      var next = thingNamed(t.beside);
-      if (next) return next.x + next.canvas.width;
-    }
-
+    /* Место считается двумя способами. По доле свободной полосы — так стоит
+       всё, кроме часов. Над промежутком между двумя предметами (`between`) —
+       так висят часы: обе опоры ходят вместе с окном, и проём читается
+       одинаково на любой ширине. Второй способ считается от соседей, поэтому
+       идёт вторым проходом. */
     if (t.between) {
       var a = thingNamed(t.between[0]);
       var b = thingNamed(t.between[1]);
@@ -1795,47 +1742,19 @@
     t.place();
   }
 
-  /* Стоящий сверху встаёт по середине своих опор и на их верх. Опор бывает
-     две: верхняя коробка сидит на обеих нижних. */
-  function setOnBase(t) {
-    var left = null;
-    var right = null;
-    var top = 0;
-
-    t.on.forEach(function (name) {
-      var base = thingNamed(name);
-      if (!base) return;
-
-      left = left === null ? base.x : Math.min(left, base.x);
-      right = Math.max(right === null ? 0 : right, base.x + base.canvas.width);
-      top = Math.max(top, base.y + base.canvas.height);
-    });
-
-    if (left === null) return;          // опоры не нашлось — оставляем как есть
-
-    t.x = clamp(Math.round(left + (right - left - t.canvas.width) / 2), EDGE, t.limit());
-    t.y = top;
-    t.place();
-  }
-
-  /* Расставить обстановку тремя проходами: сперва те, кто стоит сам по себе,
-     потом считающиеся от соседа, потом стоящие сверху. Порядок обязателен:
-     иначе сосед считается по нерасставленному, и предмет уезжает к краю.
-     `depsOnly` — для смены ширины: стоящие сами по себе остаются где стояли, а
+  /* Расставить обстановку двумя проходами: сперва те, кто стоит сам по себе,
+     потом висящие над промежутком между ними. Порядок обязателен: иначе проём
+     считается по нерасставленным предметам, и часы уезжают к краю. `depsOnly`
+     — для смены ширины: стоящие сами по себе остаются где стояли, а
      привязанные к ним идут следом. Взятое рукой не трогаем никогда. */
   function arrange(depsOnly) {
     things.forEach(function (t) {
-      if (t.on || t.moved || t.between || t.beside) return;
+      if (t.moved || t.between) return;
       if (!depsOnly) setSpot(t);
     });
 
     things.forEach(function (t) {
-      if (t.on || t.moved) return;
-      if (t.between || t.beside) setSpot(t);
-    });
-
-    things.forEach(function (t) {
-      if (t.on && !t.moved) setOnBase(t);
+      if (t.between && !t.moved) setSpot(t);
     });
   }
 
