@@ -2161,7 +2161,7 @@
     { name: 'board', art: BOARD, skin: SKIN.board, title: 'Перевесить доску',
       at: 0.02, wall: 64, shift: -8 },
     { name: 'clock', art: CLOCK, skin: SKIN.clock, title: 'Перевесить часы',
-      at: 0.97, wall: 66, between: ['sofa', 'plant'], shift: 8, face: clockFace },
+      at: 0.97, wall: 58, between: ['sofa', 'plant'], shift: 14, face: clockFace },
     { name: 'shelf', art: SHELF, skin: SKIN.shelf, title: 'Подвинуть полку', at: 0 },
     { name: 'ficus', art: FICUS, skin: SKIN.ficus, title: 'Подвинуть фикус', at: 0.045 },
     { name: 'sofa', art: SOFA, skin: SKIN.sofa, title: 'Подвинуть диван', at: 0.92 },
