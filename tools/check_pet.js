@@ -260,8 +260,9 @@ function open(options) {
   // Существа создаются первыми, мебель следом: делим по классу холста, а не
   // по порядку — порядок легко переставить, класс держит вёрстка.
   world.pets = appended.filter(function (el) { return el.className === 'pet'; });
-  // У плоского предмета класс составной («thing thing--flat»), поэтому сравнение
-  // по началу строки, а не по всему классу: точное однажды потеряло ковёр целиком.
+  // Сравнение по началу строки, а не по всему классу: у предмета может
+  // появиться свой вариант класса, и точное сравнение потеряет его целиком —
+  // так однажды из проверок выпал ковёр.
   world.things = appended.filter(function (el) { return el.className.indexOf('thing') === 0; });
   world.otto = world.pets[0];
   world.olivia = world.pets[1];
@@ -434,18 +435,11 @@ check('работают оба', function () {
 /* На чём предмет стоит в точке `x`: на полу или на верхе другого предмета,
    который с ним перекрывается. Тем же правилом живёт `pet.js`, и проверки
    считают его отдельно — иначе они сверяли бы скрипт сам с собой. */
-function flat(el) {
-  return el.className.indexOf('--flat') > 0;
-}
-
 function restLevel(world, thing, x, y) {
-  // Плоский предмет опорой не бывает: на ковре стоят, а не на его толщине.
-  if (flat(thing)) return 0;
-
   let level = 0;
 
   world.things.forEach(function (other) {
-    if (other === thing || flat(other)) return;
+    if (other === thing) return;
     const at = other.spot();
     if (x + thing.width <= at.x || at.x + other.width <= x) return;
 
@@ -541,8 +535,7 @@ check('предмет стоит на другом и падает без нег
   world.step(500);
 
   // Нижний — самый широкий, верхний — самый узкий: так они точно перекроются.
-  const sorted = world.things.filter(function (t) { return !flat(t); })
-    .sort(function (a, b) { return b.width - a.width; });
+  const sorted = world.things.slice().sort(function (a, b) { return b.width - a.width; });
   const under = sorted[0];
   const over = sorted[sorted.length - 1];
   if (under === over) fail('в обстановке меньше двух предметов');
@@ -596,59 +589,6 @@ check('предмет стоит на другом и падает без нег
   return over.title.replace('Подвинуть ', '') + ' встал на ' +
     under.title.replace('Подвинуть ', '') + ' за ' + sec(stood) +
     ', без опоры упал за ' + sec(fell);
-});
-
-/* Ковёр лежит на полу, и опорой он не служит: предмет, опущенный над ковром,
-   встаёт на пол, а не на его толщину. Иначе мебель висела бы на пять клеток
-   выше пола, что на этом размере видно сразу. */
-check('на ковре стоят, а не на нём', function () {
-  const world = open({ seed: 8 });
-  world.step(500);
-
-  const rug = world.things.filter(flat)[0];
-  if (!rug) fail('в обстановке нет плоского предмета');
-  if (rug.spot().y !== 0) fail('ковёр сам не лежит на полу: y = ' + rug.spot().y);
-
-  // Берём самый узкий предмет и опускаем его на середину ковра.
-  const over = world.things.filter(function (t) { return !flat(t); })
-    .sort(function (a, b) { return a.width - b.width; })[0];
-
-  /* Роняем не в середину ковра, а в первое свободное место на нём: посередине
-     может стоять диван, и предмет встанет на него — проверка поймает не то,
-     ради чего писалась. Ровно на этом она и покраснела на раннере, когда ковёр
-     сдвинули на две сотых вправо. */
-  let target = null;
-  for (let x = rug.spot().x; x + over.width <= rug.spot().x + rug.width; x += 2) {
-    const busy = world.things.some(function (t) {
-      if (t === over || flat(t)) return false;
-      const at = t.spot();
-      return !(x + over.width <= at.x || at.x + t.width <= x);
-    });
-    if (!busy) { target = x; break; }
-  }
-  if (target === null) fail('на ковре нет свободного места: всё занято мебелью');
-
-  const hold = { dx: 6, dy: 6 };
-  const box = over.getBoundingClientRect();
-
-  over.fire('mousedown', event(box.left + hold.dx, box.top + hold.dy));
-  world.step(FRAME_MS);
-  world.win('mousemove', event(target + hold.dx,
-    world.high() - 220 - over.height + hold.dy));
-  world.step(33);
-  world.win('mouseup', event(target + hold.dx,
-    world.high() - 220 - over.height + hold.dy));
-
-  let landed = null;
-  world.step(3000, function (t) {
-    if (landed === null && over.spot().y === 0) landed = t;
-  });
-
-  if (landed === null) {
-    fail(over.title + ' над ковром не дошёл до пола: y = ' + over.spot().y);
-  }
-
-  return over.title.replace('Подвинуть ', '') + ' встал на пол посреди ковра';
 });
 
 /* На узком экране стили прячут обоих, и кадры считаться не должны. Окно могли
@@ -1035,18 +975,10 @@ const BREAKS = [
     ]],
   },
   {
-    name: 'на ковре стоят как на тумбочке',
-    red: 'на ковре стоят, а не на нём',
-    parts: [[
-      "        if (other === me || other.hidden || other.flat) return;",
-      "        if (other === me || other.hidden) return;",
-    ]],
-  },
-  {
     name: 'опоры под предметом не существует',
     red: 'предмет стоит на другом и падает без него',
     parts: [[
-      '      var floor = spec.flat ? 0 : support();',
+      '      var floor = support();',
       '      var floor = 0;',
     ]],
   },

@@ -16,6 +16,12 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
+
+
+def asset(path: str) -> str:
+    """Путь без метки выпуска: в разметке ссылки подписаны `?v=…`, а читать
+    надо файл. Метку ставит tools/stamp_assets.py перед этой сборкой."""
+    return path.split("?", 1)[0]
 DIST = ROOT / "dist"
 
 LINK = re.compile(r'\s*<link rel="stylesheet" href="(assets/css/[^"]+)" />')
@@ -35,11 +41,11 @@ MIME = {
 
 def inline(html: str) -> str:
     def css(match: re.Match[str]) -> str:
-        body = (ROOT / match.group(1)).read_text(encoding="utf-8")
+        body = (ROOT / asset(match.group(1))).read_text(encoding="utf-8")
         return "\n  <style>\n" + body + "\n  </style>"
 
     def js(match: re.Match[str]) -> str:
-        body = (ROOT / match.group(1)).read_text(encoding="utf-8")
+        body = (ROOT / asset(match.group(1))).read_text(encoding="utf-8")
         # </script> внутри строки оборвал бы тег раньше времени.
         body = body.replace("</script>", "<\\/script>")
         return "\n  <script>\n" + body + "\n  </script>"

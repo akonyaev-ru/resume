@@ -107,12 +107,6 @@
       w: '#bd7d5c',          // светлая грань кадки
       n: '#2e2018',          // земля под ободом
     },
-    rug: {
-      f: '#5a4340',          // полотно
-      d: '#3f2f2c',          // кайма
-      p: '#8a6a5c',          // узор
-      g: '#9a8478',          // бахрома
-    },
     sofa: {
       f: '#4e6472',          // рама и обивка
       c: '#5e7787',          // подушки посветлее
@@ -719,13 +713,6 @@
         '.kk....................kk.',
       ];
 
-  // Ковёр: кайма, узор ромбами и бахрома по торцам.
-  var RUG = [
-        '..dddddddddddddddddddddddddddddd..',
-        'ggdfpffpffpffpffpffpffpffpffpffdgg',
-        '..dddddddddddddddddddddddddddddd..',
-      ];
-
   // Фикус: деревце со стволом и густой кроной.
   var FICUS = [
         '.....llmm....',
@@ -1307,8 +1294,7 @@
     var art = render(spec.art, false, spec.skin);
 
     var canvas = document.createElement('canvas');
-    // Плоскому предмету свой класс: он лежит ещё ниже прочей мебели.
-    canvas.className = spec.flat ? 'thing thing--flat' : 'thing';
+    canvas.className = 'thing';
     canvas.width = art.width;
     canvas.height = art.height;
     canvas.setAttribute('aria-hidden', 'true');
@@ -1397,7 +1383,7 @@
       var level = 0;
 
       things.forEach(function (other) {
-        if (other === me || other.hidden || other.flat) return;
+        if (other === me || other.hidden) return;
         if (me.x + canvas.width <= other.x) return;
         if (other.x + other.canvas.width <= me.x) return;
 
@@ -1413,8 +1399,7 @@
     function update(now, step) {
       if (me.grab) return;
 
-      // Плоский предмет всегда падает на пол: ковёр не встаёт на диван.
-      var floor = spec.flat ? 0 : support();
+      var floor = support();
 
       if (me.vy === 0 && me.y <= floor) {
         // Опора могла подъехать под предмет — тогда он встаёт на неё.
@@ -1476,13 +1461,11 @@
   var things = [
     { name: 'shelf', art: SHELF, skin: SKIN.shelf, title: 'Подвинуть полку', at: 0 },
     { name: 'ficus', art: FICUS, skin: SKIN.ficus, title: 'Подвинуть фикус', at: 0.05 },
-    { name: 'rug', art: RUG, skin: SKIN.rug, title: 'Подвинуть ковёр', at: 0.88, flat: true },
     { name: 'sofa', art: SOFA, skin: SKIN.sofa, title: 'Подвинуть диван', at: 0.92 },
     { name: 'plant', art: PLANT, skin: SKIN.plant, title: 'Подвинуть растение', at: 1 },
   ].map(function (spec) {
     var thing = makeThing(spec);
     thing.name = spec.name;
-    thing.flat = !!spec.flat;
     thing.at = spec.at;
     thing.on = spec.on;
     return thing;
