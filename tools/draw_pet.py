@@ -285,6 +285,45 @@ def pet_hand(lifted):
 
 # --- обстановка ---------------------------------------------------------
 
+# Лейка: её поднимают от пола и поливают растение. Носик смотрит вправо-вниз,
+# из него падают капли — само занятие держится на них, как у кружки на паре.
+# Ставится лейка в тот же слой предмета, что ноутбук и кружка, и рисуется он
+# всегда справа от существа: значит поливать оно встаёт слева от растения.
+CAN_X = 1                        # левый край корпуса
+CAN_W = 4
+CAN_H = 4                        # высота корпуса
+CAN_BOTTOM = (GROUND, GROUND - 2, GROUND - 4)   # три шага подъёма
+
+# Капли: на сколько клеток ниже носика они в каждом кадре. Две сразу читаются
+# струйкой, одна — каплей; чередуем.
+CAN_DROPS = ((1,), (2,), (3, 1), (4, 2))
+
+
+def can(lift, drops=None):
+    """Лейка в руке. lift: 0 — у пола, 2 — поднята к растению.
+    drops: номер кадра капель или None, пока лейку только поднимают."""
+    g = blank(PROP_W)
+    bottom = CAN_BOTTOM[lift]
+    top = bottom - CAN_H + 1
+    right = CAN_X + CAN_W - 1
+
+    rect(g, CAN_X + 1, top - 1, CAN_X + 2, top - 1, 'l')   # ручка
+    rect(g, CAN_X, top, right, bottom, 'm')                # корпус
+
+    rect(g, right + 1, bottom - 1, right + 1, bottom, 'm')  # носик вниз
+    rect(g, right + 2, bottom, right + 2, bottom, 'm')      # и вбок
+
+    rect(g, 0, bottom - 1, 1, bottom, 'd')                 # рука держит за бок
+
+    if drops is not None:
+        for below in CAN_DROPS[drops]:
+            y = bottom + below
+            if y <= GROUND:
+                g[y][right + 2] = 'a'
+
+    return g
+
+
 # Книжная полка: корпус `f`, задняя стенка `e`, книги — цифрами. Четырнадцать
 # клеток в ширину и восемнадцать в высоту: она нарочно выше существа (тринадцать
 # клеток), иначе рядом с ним читалась бы ящиком, а не мебелью.
@@ -398,7 +437,21 @@ CLOCK_H = 11
 CLOCK_C = 5                      # центр циферблата
 
 
-def clock():
+# Стрелка на этом размере читается только прямой, поэтому положений у неё
+# четыре: вверх, вправо, вниз, влево. Кадров, стало быть, шестнадцать — по
+# положению часовой и минутной. Часы показывают настоящее время, огрублённое до
+# четверти: минутная переставляется четырежды в час, часовая — четырежды за
+# половину суток.
+CLOCK_WAYS = ((0, -1), (1, 0), (0, 1), (-1, 0))     # вверх, вправо, вниз, влево
+
+
+def clock_hand(g, way, length):
+    dx, dy = CLOCK_WAYS[way]
+    for i in range(length + 1):
+        g[CLOCK_C + dy * i][CLOCK_C + dx * i] = 'h'
+
+
+def clock(hour_way=1, minute_way=0):
     g = [['.'] * CLOCK_W for _ in range(CLOCK_H)]
 
     # Круг без тригонометрии: сравниваем квадрат расстояния до центра.
@@ -411,8 +464,8 @@ def clock():
     for x, y in ((CLOCK_C, 1), (CLOCK_C, 9), (1, CLOCK_C), (9, CLOCK_C)):
         g[y][x] = 'm'            # метки 12, 6, 9 и 3
 
-    rect(g, CLOCK_C, 2, CLOCK_C, CLOCK_C, 'h')       # минутная вверх
-    rect(g, CLOCK_C, CLOCK_C, CLOCK_C + 2, CLOCK_C, 'h')   # часовая вправо
+    clock_hand(g, hour_way, 2)       # часовая короче
+    clock_hand(g, minute_way, 3)     # минутная длиннее
 
     return g
 
@@ -601,13 +654,15 @@ LAP_FRAMES = [laptop(0), laptop(1), laptop(2), laptop(3)]
 MUG_FRAMES = [mug(0), mug(1), mug(2)]
 # И просматривают: лист покачивается на клетку — это и есть само дело.
 MUG_STEAM_FRAMES = [mug(2, 0), mug(2, 1), mug(2, 2), mug(2, 3)]
+CAN_FRAMES = [can(0), can(1), can(2)]
+CAN_POUR_FRAMES = [can(2, 0), can(2, 1), can(2, 2), can(2, 3)]
 PET_FRAMES = [pet_hand(False), pet_hand(True)]
 TYPE_FRAMES = [tentacles(laptop(3), True), tentacles(laptop(3), False)]
 SHELF_FRAME = shelf()
 PLANT_FRAME = plant()
 SOFA_FRAME = sofa()
 BOARD_FRAME = board()
-CLOCK_FRAME = clock()
+CLOCK_FRAMES = [clock(h, m) for h in range(4) for m in range(4)]
 FICUS_FRAME = ficus()
 
 HEAD = '  /* --- кадры ------------------------------------------------------------- */'
@@ -650,6 +705,10 @@ def art() -> str:
             + '  var MUG = [\n    ' + table(MUG_FRAMES) + ',\n  ];\n\n'
             + '  // Над поднятой кружкой идёт пар — само занятие.\n'
             + '  var MUG_STEAM = [\n    ' + table(MUG_STEAM_FRAMES) + ',\n  ];\n\n'
+            + '  // Лейка поднимается от пола к растению.\n'
+            + '  var CAN = [\n    ' + table(CAN_FRAMES) + ',\n  ];\n\n'
+            + '  // И льёт: капли падают из носика.\n'
+            + '  var CAN_POUR = [\n    ' + table(CAN_POUR_FRAMES) + ',\n  ];\n\n'
             + '  // Щупальце, которым Отто гладит соседку: то на макушке, то над.\n'
             + '  var PET = [\n    ' + table(PET_FRAMES) + ',\n  ];\n\n'
             + '  // Пузырь ругани: белое облачко с тремя восклицательными.\n'
@@ -663,8 +722,9 @@ def art() -> str:
             + '  var SOFA = ' + grid_js(SOFA_FRAME) + ';\n\n'
             + '  // Доска на стене: полотно, две кривые и полочка.\n'
             + '  var BOARD = ' + grid_js(BOARD_FRAME) + ';\n\n'
-            + '  // Настенные часы: циферблат, метки и две стрелки.\n'
-            + '  var CLOCK = ' + grid_js(CLOCK_FRAME) + ';\n\n'
+            + '  // Настенные часы: шестнадцать кадров — по четыре положения\n'
+            + '  // часовой и минутной стрелки. Кадр выбирается по времени.\n'
+            + '  var CLOCK = [\n    ' + table(CLOCK_FRAMES) + ',\n  ];\n\n'
             + '  // Фикус: деревце со стволом и густой кроной.\n'
             + '  var FICUS = ' + grid_js(FICUS_FRAME) + ';\n\n')
 

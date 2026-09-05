@@ -90,6 +90,13 @@
      и, сев на сиденье, он оказывается в диване, а не на его спинке. */
   var SEAT_UP = 12;
 
+  /* Полить растение. Лейка живёт в слое предмета, а он всегда справа от
+     существа, поэтому поливать оно встаёт слева от кадки. */
+  var WATER_CHANCE = 0.14;   // как часто вместо прогулки идёт поливать
+  var WATER_MS = 7000;       // сколько поливает
+  var CAN_MS = 200;          // такт кадров лейки
+  var WATER_REACH = 20;      // на сколько можно отойти, не бросив полив
+
   /* Цвета у каждого свои, кадры общие. */
   var SKIN = {
     otto: {
@@ -99,6 +106,9 @@
       w: '#e7eaf2',          // белки глаз
       p: '#12141c',          // зрачки
       k: '#838da4',          // ноутбук
+      m: '#8a94a6',          // лейка
+      l: '#a9b3c4',          // её ручка на свету
+      a: '#79c0ff',          // вода из носика
     },
     olivia: {
       g: '#ff86c0',
@@ -115,6 +125,9 @@
       c: '#e0812c',          // глазурь корпуса
       s: '#a75e19',          // кромка: темнее глазури
       v: '#93a1b8',          // пар остаётся серым: он не глазурь
+      m: '#8a94a6',          // лейка
+      l: '#a9b3c4',          // её ручка на свету
+      a: '#79c0ff',          // вода из носика
     },
     /* Обстановка: цвета приглушённые, ни один не спорит с акцентом
        страницы — мебель стоит фоном, а не в центре. */
@@ -699,6 +712,119 @@
       ],
   ];
 
+  // Лейка поднимается от пола к растению.
+  var CAN = [
+    [
+        '.......',
+        '.......',
+        '.......',
+        '.......',
+        '.......',
+        '.......',
+        '.......',
+        '.......',
+        '..ll...',
+        '.mmmm..',
+        '.mmmm..',
+        'ddmmmm.',
+        'ddmmmmm',
+      ],
+    [
+        '.......',
+        '.......',
+        '.......',
+        '.......',
+        '.......',
+        '.......',
+        '..ll...',
+        '.mmmm..',
+        '.mmmm..',
+        'ddmmmm.',
+        'ddmmmmm',
+        '.......',
+        '.......',
+      ],
+    [
+        '.......',
+        '.......',
+        '.......',
+        '.......',
+        '..ll...',
+        '.mmmm..',
+        '.mmmm..',
+        'ddmmmm.',
+        'ddmmmmm',
+        '.......',
+        '.......',
+        '.......',
+        '.......',
+      ],
+  ];
+
+  // И льёт: капли падают из носика.
+  var CAN_POUR = [
+    [
+        '.......',
+        '.......',
+        '.......',
+        '.......',
+        '..ll...',
+        '.mmmm..',
+        '.mmmm..',
+        'ddmmmm.',
+        'ddmmmmm',
+        '......a',
+        '.......',
+        '.......',
+        '.......',
+      ],
+    [
+        '.......',
+        '.......',
+        '.......',
+        '.......',
+        '..ll...',
+        '.mmmm..',
+        '.mmmm..',
+        'ddmmmm.',
+        'ddmmmmm',
+        '.......',
+        '......a',
+        '.......',
+        '.......',
+      ],
+    [
+        '.......',
+        '.......',
+        '.......',
+        '.......',
+        '..ll...',
+        '.mmmm..',
+        '.mmmm..',
+        'ddmmmm.',
+        'ddmmmmm',
+        '......a',
+        '.......',
+        '......a',
+        '.......',
+      ],
+    [
+        '.......',
+        '.......',
+        '.......',
+        '.......',
+        '..ll...',
+        '.mmmm..',
+        '.mmmm..',
+        'ddmmmm.',
+        'ddmmmmm',
+        '.......',
+        '......a',
+        '.......',
+        '......a',
+      ],
+  ];
+
   // Щупальце, которым Отто гладит соседку: то на макушке, то над.
   var PET = [
     [
@@ -814,8 +940,62 @@
         '.....rrrrrr.....',
       ];
 
-  // Настенные часы: циферблат, метки и две стрелки.
+  // Настенные часы: шестнадцать кадров — по четыре положения
+  // часовой и минутной стрелки. Кадр выбирается по времени.
   var CLOCK = [
+    [
+        '....fff....',
+        '..ffwmwff..',
+        '.ffwwhwwff.',
+        '.fwwwhwwwf.',
+        'fwwwwhwwwwf',
+        'fmwwwhwwwmf',
+        'fwwwwwwwwwf',
+        '.fwwwwwwwf.',
+        '.ffwwwwwff.',
+        '..ffwmwff..',
+        '....fff....',
+      ],
+    [
+        '....fff....',
+        '..ffwmwff..',
+        '.ffwwwwwff.',
+        '.fwwwhwwwf.',
+        'fwwwwhwwwwf',
+        'fmwwwhhhhmf',
+        'fwwwwwwwwwf',
+        '.fwwwwwwwf.',
+        '.ffwwwwwff.',
+        '..ffwmwff..',
+        '....fff....',
+      ],
+    [
+        '....fff....',
+        '..ffwmwff..',
+        '.ffwwwwwff.',
+        '.fwwwhwwwf.',
+        'fwwwwhwwwwf',
+        'fmwwwhwwwmf',
+        'fwwwwhwwwwf',
+        '.fwwwhwwwf.',
+        '.ffwwhwwff.',
+        '..ffwmwff..',
+        '....fff....',
+      ],
+    [
+        '....fff....',
+        '..ffwmwff..',
+        '.ffwwwwwff.',
+        '.fwwwhwwwf.',
+        'fwwwwhwwwwf',
+        'fmhhhhwwwmf',
+        'fwwwwwwwwwf',
+        '.fwwwwwwwf.',
+        '.ffwwwwwff.',
+        '..ffwmwff..',
+        '....fff....',
+      ],
+    [
         '....fff....',
         '..ffwmwff..',
         '.ffwwhwwff.',
@@ -827,7 +1007,151 @@
         '.ffwwwwwff.',
         '..ffwmwff..',
         '....fff....',
-      ];
+      ],
+    [
+        '....fff....',
+        '..ffwmwff..',
+        '.ffwwwwwff.',
+        '.fwwwwwwwf.',
+        'fwwwwwwwwwf',
+        'fmwwwhhhhmf',
+        'fwwwwwwwwwf',
+        '.fwwwwwwwf.',
+        '.ffwwwwwff.',
+        '..ffwmwff..',
+        '....fff....',
+      ],
+    [
+        '....fff....',
+        '..ffwmwff..',
+        '.ffwwwwwff.',
+        '.fwwwwwwwf.',
+        'fwwwwwwwwwf',
+        'fmwwwhhhwmf',
+        'fwwwwhwwwwf',
+        '.fwwwhwwwf.',
+        '.ffwwhwwff.',
+        '..ffwmwff..',
+        '....fff....',
+      ],
+    [
+        '....fff....',
+        '..ffwmwff..',
+        '.ffwwwwwff.',
+        '.fwwwwwwwf.',
+        'fwwwwwwwwwf',
+        'fmhhhhhhwmf',
+        'fwwwwwwwwwf',
+        '.fwwwwwwwf.',
+        '.ffwwwwwff.',
+        '..ffwmwff..',
+        '....fff....',
+      ],
+    [
+        '....fff....',
+        '..ffwmwff..',
+        '.ffwwhwwff.',
+        '.fwwwhwwwf.',
+        'fwwwwhwwwwf',
+        'fmwwwhwwwmf',
+        'fwwwwhwwwwf',
+        '.fwwwhwwwf.',
+        '.ffwwwwwff.',
+        '..ffwmwff..',
+        '....fff....',
+      ],
+    [
+        '....fff....',
+        '..ffwmwff..',
+        '.ffwwwwwff.',
+        '.fwwwwwwwf.',
+        'fwwwwwwwwwf',
+        'fmwwwhhhhmf',
+        'fwwwwhwwwwf',
+        '.fwwwhwwwf.',
+        '.ffwwwwwff.',
+        '..ffwmwff..',
+        '....fff....',
+      ],
+    [
+        '....fff....',
+        '..ffwmwff..',
+        '.ffwwwwwff.',
+        '.fwwwwwwwf.',
+        'fwwwwwwwwwf',
+        'fmwwwhwwwmf',
+        'fwwwwhwwwwf',
+        '.fwwwhwwwf.',
+        '.ffwwhwwff.',
+        '..ffwmwff..',
+        '....fff....',
+      ],
+    [
+        '....fff....',
+        '..ffwmwff..',
+        '.ffwwwwwff.',
+        '.fwwwwwwwf.',
+        'fwwwwwwwwwf',
+        'fmhhhhwwwmf',
+        'fwwwwhwwwwf',
+        '.fwwwhwwwf.',
+        '.ffwwwwwff.',
+        '..ffwmwff..',
+        '....fff....',
+      ],
+    [
+        '....fff....',
+        '..ffwmwff..',
+        '.ffwwhwwff.',
+        '.fwwwhwwwf.',
+        'fwwwwhwwwwf',
+        'fmwhhhwwwmf',
+        'fwwwwwwwwwf',
+        '.fwwwwwwwf.',
+        '.ffwwwwwff.',
+        '..ffwmwff..',
+        '....fff....',
+      ],
+    [
+        '....fff....',
+        '..ffwmwff..',
+        '.ffwwwwwff.',
+        '.fwwwwwwwf.',
+        'fwwwwwwwwwf',
+        'fmwhhhhhhmf',
+        'fwwwwwwwwwf',
+        '.fwwwwwwwf.',
+        '.ffwwwwwff.',
+        '..ffwmwff..',
+        '....fff....',
+      ],
+    [
+        '....fff....',
+        '..ffwmwff..',
+        '.ffwwwwwff.',
+        '.fwwwwwwwf.',
+        'fwwwwwwwwwf',
+        'fmwhhhwwwmf',
+        'fwwwwhwwwwf',
+        '.fwwwhwwwf.',
+        '.ffwwhwwff.',
+        '..ffwmwff..',
+        '....fff....',
+      ],
+    [
+        '....fff....',
+        '..ffwmwff..',
+        '.ffwwwwwff.',
+        '.fwwwwwwwf.',
+        'fwwwwwwwwwf',
+        'fmhhhhwwwmf',
+        'fwwwwwwwwwf',
+        '.fwwwwwwwf.',
+        '.ffwwwwwff.',
+        '..ffwmwff..',
+        '....fff....',
+      ],
+  ];
 
   // Фикус: деревце со стволом и густой кроной.
   var FICUS = [
@@ -920,6 +1244,8 @@
     var openLast = 0;
     var bubble = render(BUBBLE, false, spec.skin);
     var hands = PET.map(function (art) { return render(art, false, spec.skin); });
+    var cans = CAN.map(function (art) { return render(art, false, spec.skin); });
+    var pours = CAN_POUR.map(function (art) { return render(art, false, spec.skin); });
 
     if (spec.prop) {
       prop = spec.prop.open.map(function (art) { return render(art, false, spec.skin); });
@@ -960,6 +1286,7 @@
       hidden: false,
       seat: null,            // диван, на котором сидит
       seatDx: 0,             // и где именно на нём
+      pot: null,             // растение, которое поливает
       canvas: canvas,
     };
 
@@ -1014,6 +1341,32 @@
       return couch;
     }
 
+    /* Растение для полива: кадка на полу, не спрятанная, не в руке и не занятая
+       вторым. Их две — берём ту, что ближе. */
+    function thirsty() {
+      var best = null;
+
+      ['ficus', 'plant'].forEach(function (name) {
+        var pot = thingNamed(name);
+        if (!pot || pot.hidden || pot.grab || pot.y !== 0) return;
+        if (me.mate && me.mate.pot === pot) return;
+        if (!best || Math.abs(pot.x - me.x) < Math.abs(best.x - me.x)) best = pot;
+      });
+
+      return best;
+    }
+
+    // Куда встать, чтобы носик пришёлся на кадку.
+    function waterSpot(pot) {
+      return clamp(pot.x - SPAN, EDGE, limit());
+    }
+
+    function stillWatering() {
+      var pot = me.pot;
+      if (!pot || pot.hidden || pot.grab || pot.y !== 0) return false;
+      return Math.abs(me.x - waterSpot(pot)) <= WATER_REACH;
+    }
+
     function seatTop(couch) {
       return couch.y + SEAT_UP;
     }
@@ -1062,8 +1415,15 @@
 
       var roll = Math.random();
       var couch = roll < SIT_CHANCE ? seat() : null;
+      var pot = !couch && roll < SIT_CHANCE + WATER_CHANCE ? thirsty() : null;
 
-      if (couch) {
+      if (pot) {
+        me.pot = pot;
+        me.hurry = false;
+        me.target = waterSpot(pot);
+        me.dir = me.target < me.x ? -1 : 1;
+        enter('walk', now);
+      } else if (couch) {
         me.seat = couch;
         me.hurry = false;
         me.target = seatSpot(couch);
@@ -1135,6 +1495,18 @@
     /* Пришёл. Шёл по своим делам — выбирает следующее занятие; звал режиссёр —
        встаёт лицом куда велено и ждёт, дальше сценой распоряжается он. */
     function arrive(now) {
+      /* Дошёл до кадки — поливает. Как и с диваном, только если и правда дошёл:
+         разойдясь с соседом, он останавливается где угодно. */
+      if (me.pot && me.errand === null) {
+        if (!stillWatering()) {
+          me.pot = null;
+          decide(now);
+          return;
+        }
+        enter('water', now, now + WATER_MS);
+        return;
+      }
+
       /* Дошёл до дивана — забирается на сиденье. Но только если и правда дошёл:
          разойдясь с соседом, он останавливается где угодно, а затея сесть
          остаётся — и без этой проверки он телепортировался бы на диван, случалось
@@ -1203,6 +1575,20 @@
       if (me.state === 'busy') {
         if (now - me.frameAt > BUSY_MS) { me.frame += 1; me.frameAt = now; }
         if (now >= me.until) enter('close', now);
+        return;
+      }
+
+      /* Поливает: лейка поднимается от пола, потом из носика идут капли.
+         Растение уехало из-под носика или его взяли в руку — полив кончился. */
+      if (me.state === 'water') {
+        if (!stillWatering() || me.errand !== null) {
+          me.pot = null;
+          decide(now);
+          return;
+        }
+
+        if (now - me.frameAt > CAN_MS) { me.frame += 1; me.frameAt = now; }
+        if (now >= me.until) { me.pot = null; decide(now); }
         return;
       }
 
@@ -1321,6 +1707,14 @@
       if (me.state === 'busy') return draw('idle', me.frame, busy[me.frame % busy.length]);
       if (me.state === 'hop') return draw('hop', 0, null);
       if (me.state === 'climb') return draw('hop', 0, null);
+
+      // Полив: сперва лейка поднимается, потом льёт по кругу.
+      if (me.state === 'water') {
+        var raised = me.frame < cans.length;
+        return draw('idle', 0, raised
+          ? cans[me.frame]
+          : pours[(me.frame - cans.length) % pours.length]);
+      }
       if (me.state === 'sit') return draw('sit', Math.floor(now / BREATH_MS), null);
 
       // Гладит соседку: щупальце то на её макушке, то поднято над ней.
@@ -1440,6 +1834,7 @@
       };
 
       me.seat = null;               // сняли с дивана — больше он там не сидит
+      me.pot = null;                // и полив бросил
       me.dragged = false;
       me.errand = null;             // на встречу его больше никто не ждёт
       canvas.classList.add('is-held');
@@ -1511,6 +1906,15 @@
     return me;
   }
 
+  /* Какой кадр часов показывать. Настоящее время, огрублённое до четверти:
+     стрелка в три пикселя читается только прямой, и положений у неё четыре.
+     Минутная переставляется четыре раза в час, часовая — четыре раза за
+     половину суток. */
+  function clockFace() {
+    var t = new Date();
+    return Math.floor((t.getHours() % 12) / 3) * 4 + Math.floor(t.getMinutes() / 15);
+  }
+
   /* --- обстановка --------------------------------------------------------- */
 
   /* Мебель — не существо: она никуда не идёт, кадров не тратит, пока стоит, и
@@ -1519,7 +1923,13 @@
      вниз и почти без отскока: скорость руки не учитывается вовсе, иначе полку
      можно было бы зашвырнуть, как Оливию. */
   function makeThing(spec) {
-    var art = render(spec.art, false, spec.skin);
+    /* У предмета бывает не один кадр, а набор: так идут часы. Кадр выбирает
+       `spec.face` — по настоящему времени, а не по счётчику кадров. */
+    var many = typeof spec.art[0] !== 'string';
+    var sheet = (many ? spec.art : [spec.art]).map(function (one) {
+      return render(one, false, spec.skin);
+    });
+    var art = sheet[0];
 
     var canvas = document.createElement('canvas');
     // Висящему на стене — свой класс: он лежит слоем ниже стоящей мебели.
@@ -1538,6 +1948,8 @@
       vy: 0,
       grab: null,
       hidden: false,
+      frame: 0,              // какой кадр показан: у часов их шестнадцать
+      askedAt: -1000,        // когда в последний раз спрашивали время
       canvas: canvas,
     };
 
@@ -1558,7 +1970,21 @@
 
     function draw() {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
-      ctx.drawImage(art, 0, 0);
+      ctx.drawImage(sheet[me.frame], 0, 0);
+    }
+
+    /* Часы переставляют стрелки. Время спрашиваем раз в секунду, а не в каждом
+       кадре: чаще оно всё равно не меняется. Перерисовываем только когда кадр
+       и правда сменился. */
+    function tick(now) {
+      if (!spec.face || now - me.askedAt < 1000) return;
+
+      me.askedAt = now;
+      var next = spec.face();
+      if (next === me.frame) return;
+
+      me.frame = next;
+      draw();
     }
 
     function checkHidden() {
@@ -1697,6 +2123,7 @@
 
     me.limit = limit;
     me.place = place;
+    me.tick = tick;
     me.hover = hover;
     me.haul = haul;
     me.drop = drop;
@@ -1734,7 +2161,7 @@
     { name: 'board', art: BOARD, skin: SKIN.board, title: 'Перевесить доску',
       at: 0.02, wall: 64 },
     { name: 'clock', art: CLOCK, skin: SKIN.clock, title: 'Перевесить часы',
-      at: 0.97, wall: 66, between: ['sofa', 'plant'] },
+      at: 0.97, wall: 66, between: ['sofa', 'plant'], face: clockFace },
     { name: 'shelf', art: SHELF, skin: SKIN.shelf, title: 'Подвинуть полку', at: 0 },
     { name: 'ficus', art: FICUS, skin: SKIN.ficus, title: 'Подвинуть фикус', at: 0.045 },
     { name: 'sofa', art: SOFA, skin: SKIN.sofa, title: 'Подвинуть диван', at: 0.92 },
@@ -1926,7 +2353,10 @@
       p.update(now, step);
       p.pick(now);
     });
-    things.forEach(function (t) { t.update(now, step); });
+    things.forEach(function (t) {
+      t.update(now, step);
+      t.tick(now);
+    });
 
     window.requestAnimationFrame(frame);
   }

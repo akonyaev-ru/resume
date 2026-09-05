@@ -114,7 +114,9 @@ function open(options) {
       fillStyle: '',
       // Из чего собран сам кадр: по этому следу проверки отличают трубку от
       // ноутбука, а не по безымянному номеру холста.
-      fillRect: function (x, y) { paint.push({ x: x, y: y }); },
+      /* Цвет запоминаем вместе с клеткой: у часов стрелки лежат поверх
+         циферблата, и по одним координатам кадры неразличимы. */
+      fillRect: function (x, y) { paint.push({ x: x, y: y, c: this.fillStyle }); },
       // Кадр начинается с очистки — значит в `layers` всегда текущий кадр.
       clearRect: function () { layers.length = 0; },
       drawImage: function (image, dx, dy) {
@@ -201,11 +203,21 @@ function open(options) {
     },
   };
 
+  /* Настенные часы спрашивают настоящее время, поэтому в песочнице оно своё и
+     управляемое: `world.clock(h, m)` переводит стрелки. */
+  let clockAt = { h: 10, m: 5 };
+
+  function Stub() {
+    this.getHours = function () { return clockAt.h; };
+    this.getMinutes = function () { return clockAt.m; };
+  }
+
   const sandbox = {
     window: win,
     document: doc,
     performance: { now: function () { return now; } },
     Math: Object.create(Math),
+    Date: Stub,
     console: console,
   };
   sandbox.Math.random = rng(opt.seed);
@@ -217,6 +229,7 @@ function open(options) {
     otto: null,
     olivia: null,
     frames: function () { return frames; },
+    clock: function (h, m) { clockAt = { h: h, m: m }; },
     at: function () { return now; },
     limit: function () {
       const el = world.pets[0];
@@ -286,6 +299,14 @@ function look(el) {
 
 /* Отпечаток кадра: из каких клеток он собран. Им и различаем дела — у него
    ноутбук, у неё кружка, а номера холстов сами по себе не говорят ничего. */
+/* Полный отпечаток кадра: клетки вместе с цветом. Нужен там, где рисунок
+   меняется краской по тем же клеткам, — например у стрелок часов. */
+function printOf(world, id) {
+  const el = world.made[id];
+  if (!el || !el.paint.length) fail('кадр ' + id + ' пуст — рисовать нечем');
+  return el.paint.map(function (c) { return c.x + ',' + c.y + c.c; }).sort().join(' ');
+}
+
 function shapeOf(world, id) {
   const el = world.made[id];
   if (!el || !el.paint.length) fail('кадр ' + id + ' пуст — рисовать нечем');
@@ -420,7 +441,9 @@ check('работают оба', function () {
 
   world.step(180000, function (t, pets) {
     pets.forEach(function (pet, i) {
-      if (pet.prop !== null && !petting(world, pet.prop)) seen[i].add(pet.prop);
+      if (pet.prop === null) return;
+      if (petting(world, pet.prop) || withCan(world, pet.prop)) return;
+      seen[i].add(pet.prop);
     });
   });
 
@@ -730,44 +753,183 @@ check('диван увели — сидящий падает', function () {
    бросили рукой или из-под кого выдернули диван. */
 check('слезающего с дивана не утешают', function () {
   const world = open({ seed: 3 });
+  const SPAN = bodySpan(world);
 
   const couch = world.things.filter(function (t) {
     return t.title.indexOf('диван') >= 0;
   })[0];
   const top = couch.spot().y + NUM.SEAT_UP;
 
-  // Ждём посадку, потом сам сход — короткими отрезками, чтобы не проскочить.
-  let sat = false;
-  for (let i = 0; i < 240 && !sat; i++) {
-    world.step(1000, function (t, pets) {
-      if (pets.some(function (p) { return p.y === top; })) sat = true;
+  /* Смотрим три схода подряд, а не один. Утешать бегут не всегда: если второй
+     сам занят, сцена не начинается, и по одному сходу поломку можно проглядеть.
+     Каждый сход смотрим двенадцать секунд — утешающий бежит через полокна. */
+  let watched = 0;
+
+  for (let round = 0; round < 3; round++) {
+    let sat = false;
+    for (let i = 0; i < 240 && !sat; i++) {
+      world.step(1000, function (t, pets) {
+        if (pets.some(function (p) { return p.y === top; })) sat = true;
+      });
+    }
+    if (!sat) break;
+
+    let off = false;
+    for (let i = 0; i < 40 && !off; i++) {
+      world.step(1000, function (t, pets) {
+        if (pets.every(function (p) { return p.y === 0; })) off = true;
+      });
+    }
+    if (!off) fail('сел и за сорок секунд не слез');
+
+    let bubble = false;
+    let pets4 = false;
+    let side = false;
+
+    world.step(12000, function (t, pets) {
+      pets.forEach(function (pet) {
+        if (pet.bubble) bubble = true;
+        if (petting(world, pet.prop)) pets4 = true;
+      });
+      if (Math.abs(pets[0].x - pets[1].x) <= SPAN + 2) side = true;
+    });
+
+    if (bubble) fail('после схода с дивана кто-то выругался пузырём');
+    if (pets4) fail('после схода с дивана второй прибежал гладить');
+    if (side) fail('после схода с дивана второй прибежал и встал вплотную');
+
+    watched += 1;
+  }
+
+  if (!watched) fail('за четыре минуты никто не сел — проверять нечего');
+  return 'сходов посмотрено ' + watched + ': ни пузыря, ни утешения';
+});
+
+/* Часы идут: стрелки показывают настоящее время, огрублённое до четверти.
+   Время в песочнице своё, поэтому переводим его сами и смотрим, сменился ли
+   кадр. Кадр сверяем отпечатком рисунка — номера холстов сами по себе ничего
+   не значат. */
+check('часы показывают время', function () {
+  const world = open({ seed: 5 });
+  world.clock(10, 5);
+  world.step(2000);
+
+  const clock = world.things.filter(wall)[1];
+  if (!clock) fail('вторых висящих часов в обстановке нет');
+  if (!clock.layers.length) fail('часы не нарисованы');
+
+  const morning = printOf(world, clock.layers[0].id);
+
+  // Полчаса вперёд: минутная обязана переставиться.
+  world.clock(10, 40);
+  world.step(2000);
+  const later = printOf(world, clock.layers[0].id);
+  if (later === morning) fail('прошло полчаса, а стрелки не двинулись');
+
+  // Четыре часа вперёд: теперь и часовая.
+  world.clock(14, 40);
+  world.step(2000);
+  const afternoon = printOf(world, clock.layers[0].id);
+  if (afternoon === later) fail('прошло четыре часа, а часовая не двинулась');
+
+  // Вернули время — вернулся и кадр: показ зависит от времени, а не от счётчика.
+  world.clock(10, 5);
+  world.step(2000);
+  if (printOf(world, clock.layers[0].id) !== morning) {
+    fail('время то же, а кадр другой — часы идут сами по себе');
+  }
+
+  return 'стрелки идут за временем и возвращаются вместе с ним';
+});
+
+/* Льётся ли из лейки: ищем в кадре предмета клетку цвета воды. Цвет заглушка
+   запоминает вместе с клеткой, поэтому полив узнаётся точно, а не по числу
+   клеток. */
+const WATER_BLUE = '#79c0ff';
+const CAN_METAL = '#8a94a6';
+
+/* Кадр с лейкой: её металл больше нигде не встречается. Полив — занятие общее,
+   и в счёт «своего дела» он не идёт, иначе сломанный ноутбук маскировался бы
+   поливом. */
+function withCan(world, id) {
+  const el = id === null || id === undefined ? null : world.made[id];
+  return !!el && el.paint.some(function (cell) { return cell.c === CAN_METAL; });
+}
+
+function pouring(world, id) {
+  const el = id === null || id === undefined ? null : world.made[id];
+  return !!el && el.paint.some(function (cell) { return cell.c === WATER_BLUE; });
+}
+
+/* Кадки, которые можно полить. */
+function pots(world) {
+  return world.things.filter(function (t) {
+    return t.title.indexOf('фикус') >= 0 || t.title.indexOf('растение') >= 0;
+  });
+}
+
+/* Дождаться полива: шагаем секундными отрезками, пока в кадре предмета не
+   появится вода. Возвращаем, кто и когда. */
+function waitForWater(world, seconds) {
+  let when = null;
+  let who = null;
+
+  for (let i = 0; i < seconds && when === null; i++) {
+    world.step(1000, function (t, watchers) {
+      if (when !== null) return;
+      watchers.forEach(function (pet, k) {
+        if (pouring(world, pet.prop)) { when = t; who = k; }
+      });
     });
   }
-  if (!sat) fail('за четыре минуты никто не сел — проверять нечего');
 
-  let off = false;
-  for (let i = 0; i < 30 && !off; i++) {
-    world.step(1000, function (t, pets) {
-      if (pets.every(function (p) { return p.y === 0; })) off = true;
-    });
-  }
-  if (!off) fail('за полминуты с дивана никто не слез');
+  return { when: when, who: who };
+}
 
-  // После схода — ни пузыря, ни поглаживания.
-  let bubble = false;
-  let pets4 = false;
+check('поливают растение', function () {
+  const world = open({ seed: 5 });
+  const found = waitForWater(world, 300);
 
-  world.step(6000, function (t, pets) {
-    pets.forEach(function (pet) {
-      if (pet.bubble) bubble = true;
-      if (petting(world, pet.prop)) pets4 = true;
-    });
+  if (found.when === null) fail('за пять минут никто не полил растение');
+
+  // Стоит он при этом слева от кадки, на длину тела: носик смотрит вправо.
+  const SPAN = bodySpan(world);
+  const me = look(world.pets[found.who]);
+  const near = pots(world).some(function (pot) {
+    return Math.abs(pot.spot().x - me.x - SPAN) <= NUM.WATER_REACH;
   });
 
-  if (bubble) fail('после схода с дивана кто-то выругался пузырём');
-  if (pets4) fail('после схода с дивана второй прибежал гладить');
+  if (!near) fail('полил, стоя не у кадки: сам на ' + me.x);
 
-  return 'слез сам — ни пузыря, ни утешения';
+  return 'полил на ' + sec(found.when) + ', стоя вплотную к кадке';
+});
+
+/* Растение можно увести из-под носика: оно такой же предмет, как остальные.
+   Полив тогда кончается, а не льётся в пустоту. */
+check('растение увели — полив кончился', function () {
+  const world = open({ seed: 5 });
+  const found = waitForWater(world, 300);
+  if (found.when === null) fail('за пять минут никто не полил — проверять нечего');
+
+  const SPAN = bodySpan(world);
+  const me = look(world.pets[found.who]);
+  const pot = pots(world).filter(function (one) {
+    return Math.abs(one.spot().x - me.x - SPAN) <= NUM.WATER_REACH;
+  })[0];
+  if (!pot) fail('поливал, а кадки рядом нет');
+
+  const box = pot.getBoundingClientRect();
+  pot.fire('mousedown', event(box.left + 6, box.top + 6));
+  world.step(FRAME_MS);
+  world.win('mousemove', event(box.left + 220, box.top - 40));
+
+  let wet = false;
+  world.step(1500, function (t, watchers) {
+    if (pouring(world, watchers[found.who].prop)) wet = true;
+  });
+
+  if (wet) fail('кадку унесли, а он всё льёт');
+  return 'кадку унесли — полив кончился';
 });
 
 /* Доску перевешивают: где отпустили, там и осталась. Мебель на её месте
@@ -1232,6 +1394,22 @@ const BREAKS = [
     parts: [[
       '          me.thrown = false;                 // слезает сам: утешать не за что',
       '          me.thrown = true;',
+    ]],
+  },
+  {
+    name: 'полив не кончается без растения',
+    red: 'растение увели — полив кончился',
+    parts: [[
+      '        if (!stillWatering() || me.errand !== null) {',
+      '        if (false) {',
+    ]],
+  },
+  {
+    name: 'часы не переставляют стрелки',
+    red: 'часы показывают время',
+    parts: [[
+      '      if (!spec.face || now - me.askedAt < 1000) return;',
+      '      if (true) return;',
     ]],
   },
   {
