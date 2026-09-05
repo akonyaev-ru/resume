@@ -2371,9 +2371,6 @@
   pets.forEach(function (p) { p.checkHidden(); });
   things.forEach(function (t) { t.checkHidden(); });
 
-  otto.x = clamp(64, EDGE, otto.limit());
-  olivia.x = clamp(otto.x + SPAN + 96, EDGE, olivia.limit());
-  pets.forEach(function (p) { p.place(); });
   function hangSpot(t) {
     /* Место считается двумя способами. По доле свободной полосы — так стоит
        всё, кроме часов. Над промежутком между двумя предметами (`between`) —
@@ -2417,6 +2414,19 @@
   }
 
   arrange(false);
+
+  /* Существ ставим после мебели: Отто встаёт правее левой кадки. Раньше он
+     появлялся на 64-м пикселе и при обновлении страницы оказывался прямо в
+     фикусе; место считается от самой кадки, а не числом, потому что кадка
+     стоит по доле окна и на широком экране уезжает правее. */
+  var firstPot = thingNamed('ficus');
+  var startAt = firstPot && !firstPot.hidden
+    ? firstPot.x + firstPot.canvas.width + 16
+    : 64;
+
+  otto.x = clamp(startAt, EDGE, otto.limit());
+  olivia.x = clamp(otto.x + SPAN + 96, EDGE, olivia.limit());
+  pets.forEach(function (p) { p.place(); });
 
   if (LESS_MOTION) {
     pets.forEach(function (p) { p.rest(true); });

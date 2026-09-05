@@ -805,6 +805,41 @@ check('слезающего с дивана не утешают', function () {
   return 'сходов посмотрено ' + watched + ': ни пузыря, ни утешения';
 });
 
+/* При загрузке существа не стоят внутри мебели. Отто раньше вставал на 64-й
+   пиксель и при обновлении страницы оказывался прямо в фикусе — владелец это и
+   увидел. Проверяем на трёх ширинах: кадка стоит по доле окна и с шириной
+   уезжает. */
+check('при загрузке никто не стоит в мебели', function () {
+  const notes = [];
+
+  [720, 1280, 1920].forEach(function (width) {
+    const world = open({ seed: 5, width: width });
+    world.step(200);
+
+    const span = bodySpan(world) - NUM.MEET_GAP;    // ширина тела без просвета
+
+    world.pets.forEach(function (el) {
+      const pet = look(el);
+      const name = el.title.replace('Погладить ', '');
+
+      world.things.forEach(function (thing) {
+        if (wall(thing)) return;            // висящее над головой не в счёт
+
+        const at = thing.spot().x;
+        if (pet.x + span <= at || at + thing.width <= pet.x) return;
+
+        fail(name + ' при ширине ' + width + ' стоит в предмете «' +
+          thing.title.replace('Подвинуть ', '') + '»: сам ' + pet.x + '..' +
+          (pet.x + span) + ', предмет ' + at + '..' + (at + thing.width));
+      });
+    });
+
+    notes.push(width + ': ' + look(world.pets[0]).x);
+  });
+
+  return 'Отто встаёт на ' + notes.join(', ');
+});
+
 /* Часы идут: стрелки показывают настоящее время, огрублённое до четверти.
    Время в песочнице своё, поэтому переводим его сами и смотрим, сменился ли
    кадр. Кадр сверяем отпечатком рисунка — номера холстов сами по себе ничего
@@ -1402,6 +1437,14 @@ const BREAKS = [
     parts: [[
       '        if (!stillWatering() || me.errand !== null) {',
       '        if (false) {',
+    ]],
+  },
+  {
+    name: 'Отто встаёт на старое место, в фикус',
+    red: 'при загрузке никто не стоит в мебели',
+    parts: [[
+      '    ? firstPot.x + firstPot.canvas.width + 16',
+      '    ? 64',
     ]],
   },
   {
