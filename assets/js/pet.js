@@ -107,6 +107,15 @@
       w: '#bd7d5c',          // светлая грань кадки
       n: '#2e2018',          // земля под ободом
     },
+    box: {
+      k: '#9d7549',          // картон
+      l: '#b8905c',          // крышка и кромка: свет сверху слева
+      d: '#6f5232',          // швы, правая грань и тень у пола
+      t: '#cbbc9b',          // скотч
+      w: '#ded3b8',          // ярлык
+      n: '#33261a',          // нутро открытой коробки
+      s: '#e7eaf2',          // лист, выглядывающий из неё
+    },
     clock: {
       f: '#4a5162',          // рама
       w: '#eef1f6',          // циферблат
@@ -772,6 +781,30 @@
         '...wpppppp...',
         '...wpppppp...',
         '...ppppppp...',
+      ];
+
+  // Нижняя коробка: закрытая, со скотчем и ярлыком.
+  var BOX = [
+        'llllldlllld',
+        'llllldlllld',
+        'ttttttttttd',
+        'kkkkkkkkkkd',
+        'kwwwwkkkkkd',
+        'kwddwkkkkkd',
+        'kkkkkkkkkkd',
+        'ddddddddddd',
+      ];
+
+  // Верхняя: открытая, из неё выглядывает лист.
+  var CRATE = [
+        '...sss...',
+        'llnsssnll',
+        'llnsssnll',
+        'lllllllld',
+        'kkkkkkkkd',
+        'kkdddkkkd',
+        'kkkkkkkkd',
+        'ddddddddd',
       ];
 
   /* --- сборка кадров ----------------------------------------------------- */
@@ -1515,6 +1548,10 @@
       at: 0.97, wall: 66, between: ['sofa', 'plant'] },
     { name: 'shelf', art: SHELF, skin: SKIN.shelf, title: 'Подвинуть полку', at: 0 },
     { name: 'ficus', art: FICUS, skin: SKIN.ficus, title: 'Подвинуть фикус', at: 0.045 },
+    // Коробки стоят стопкой, но не склеены: верхнюю можно снять и поставить
+    // куда угодно, как когда-то кулер с тумбочкой.
+    { name: 'box', art: BOX, skin: SKIN.box, title: 'Подвинуть коробку', at: 0.11 },
+    { name: 'crate', art: CRATE, skin: SKIN.box, title: 'Подвинуть верхнюю коробку', on: 'box' },
     { name: 'sofa', art: SOFA, skin: SKIN.sofa, title: 'Подвинуть диван', at: 0.92 },
     { name: 'plant', art: PLANT, skin: SKIN.plant, title: 'Подвинуть растение', at: 0.97 },
   ].map(function (spec) {

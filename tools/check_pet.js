@@ -602,6 +602,44 @@ check('предмет стоит на другом и падает без нег
     ', без опоры упал за ' + sec(fell);
 });
 
+/* Стопка сложена уже при загрузке: то, что стоит не на полу, стоит ровно на
+   другом предмете и по его середине. Соседняя проверка ставит предмет на
+   предмет мышью — эта смотрит, что расстановка при запуске делает то же сама.
+   Пара не названа нарочно: сегодня это коробки, вчера были тумбочка с
+   кулером. */
+check('стопка сложена при загрузке', function () {
+  const world = open({});
+  world.step(500);
+
+  const floorThings = world.things.filter(function (t) { return !wall(t); });
+  const stacked = floorThings.filter(function (t) { return t.spot().y > 0; });
+  if (!stacked.length) fail('ни один предмет не стоит на другом');
+
+  const notes = [];
+
+  stacked.forEach(function (over) {
+    const spot = over.spot();
+    const name = over.title.replace('Подвинуть ', '');
+
+    const base = floorThings.find(function (under) {
+      if (under === over || under.height !== spot.y) return false;
+      const at = under.spot().x;
+      return at <= spot.x && at + under.width >= spot.x + over.width;
+    });
+
+    if (!base) fail(name + ': стоит на высоте ' + spot.y + ', а опоры под ним нет');
+
+    const middle = base.spot().x + (base.width - over.width) / 2;
+    if (Math.abs(spot.x - middle) > 1) {
+      fail(name + ': сдвинут с середины опоры на ' + Math.round(spot.x - middle) + ' px');
+    }
+
+    notes.push(name + ' на высоте ' + spot.y + ', по середине опоры');
+  });
+
+  return notes.join('; ');
+});
+
 /* Доску перевешивают: где отпустили, там и осталась. Мебель на её месте
    падала бы на пол — этим висящее и отличается, и это ровно то, что просил
    владелец: «брать и в другое место закреплять». */
@@ -1033,6 +1071,14 @@ const BREAKS = [
     parts: [[
       '      if (spec.wall) return;',
       '      if (false) return;',
+    ]],
+  },
+  {
+    name: 'верхнюю коробку ставят на пол, а не на нижнюю',
+    red: 'стопка сложена при загрузке',
+    parts: [[
+      '    t.y = base.y + base.canvas.height;',
+      '    t.y = 0;',
     ]],
   },
   {
