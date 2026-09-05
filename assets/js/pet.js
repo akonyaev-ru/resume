@@ -722,9 +722,7 @@
   // Ковёр: кайма, узор ромбами и бахрома по торцам.
   var RUG = [
         '..dddddddddddddddddddddddddddddd..',
-        'ggdffpfffpfffpfffpfffpfffpfffpfdgg',
-        '..dfpfpfpfpfpfpfpfpfpfpfpfpfpfpd..',
-        'ggdffpfffpfffpfffpfffpfffpfffpfdgg',
+        'ggdfpffpffpffpffpffpffpffpffpffdgg',
         '..dddddddddddddddddddddddddddddd..',
       ];
 
@@ -860,7 +858,9 @@
     };
 
     function limit() {
-      return Math.max(EDGE, window.innerWidth - canvas.width - EDGE);
+      // Ширина без полосы прокрутки: `innerWidth` считает её своей, и предмет
+      // у правого края уезжал под ползунок.
+      return Math.max(EDGE, document.documentElement.clientWidth - canvas.width - EDGE);
     }
 
     function place() {
@@ -1326,7 +1326,9 @@
     };
 
     function limit() {
-      return Math.max(EDGE, window.innerWidth - canvas.width - EDGE);
+      // Ширина без полосы прокрутки: `innerWidth` считает её своей, и предмет
+      // у правого края уезжал под ползунок.
+      return Math.max(EDGE, document.documentElement.clientWidth - canvas.width - EDGE);
     }
 
     function ceiling() {

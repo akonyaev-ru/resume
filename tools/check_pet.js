@@ -190,6 +190,10 @@ function open(options) {
 
   const doc = {
     hidden: false,
+    /* Ширина без полосы прокрутки. У браузера она меньше `innerWidth` на
+       ширину ползунка, и края предметов считаются именно по ней; в прогоне
+       ползунка нет, поэтому обе совпадают. */
+    documentElement: { get clientWidth() { return opt.width; } },
     createElement: function () { return makeCanvas(); },
     body: { appendChild: function (el) { appended.push(el); } },
     addEventListener: function (type, fn) {
@@ -1098,8 +1102,8 @@ const BREAKS = [
     name: 'правый край окна не считается',
     red: 'за край не утащить',
     parts: [[
-      '      return Math.max(EDGE, window.innerWidth - canvas.width - EDGE);',
-      '      return window.innerWidth;',
+      '      return Math.max(EDGE, document.documentElement.clientWidth - canvas.width - EDGE);',
+      '      return document.documentElement.clientWidth;',
     ]],
   },
 ];
