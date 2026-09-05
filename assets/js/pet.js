@@ -49,6 +49,14 @@
      пол-экрана «честный» отскок превращал её в мячик; порог остановки высокий,
      поэтому второго отскока не бывает — удар, короткий подскок и всё. */
   var THING_GRAVITY = 2800;  // px/с² — у мебели своя, тяжелее, чем у существа
+  /* Брошенная мебель летит вбок, как существо, но хуже: тяжёлое тело руке
+     слушается меньше. До 2026-09-05 бросок в счёт не шёл вовсе — предмет падал
+     строго вниз, — и владелец попросил вернуть полёт: «мебель падает очень
+     сильно вниз, а не в бок как персонажи». */
+  var THING_THROW = 0.55;    // какая доля скорости руки достаётся предмету
+  var THING_THROW_MAX = 620; // и не больше этого, px/с
+  var THING_RUB = 0.35;      // сколько горизонтальной остаётся после удара о пол
+  var THING_SLIDE = 45;      // ниже этой скорости он замирает, px/с
   var THING_BOUNCE = 0.22;   // сколько скорости остаётся после удара о пол
   var THING_HOP = 240;       // и не больше этого, px/с — предел отскока
   var THING_STICK = 110;     // ниже этой скорости отскок прекращается
@@ -1374,6 +1382,7 @@
     var me = {
       x: 0,
       y: 0,                  // высота над нижним краем окна
+      vx: 0,                 // после броска она не ноль: предмет летит вбок
       vy: 0,
       grab: null,
       hidden: false,
@@ -1420,8 +1429,20 @@
       event.preventDefault();
 
       var box = canvas.getBoundingClientRect();
-      me.grab = { dx: event.clientX - box.left, dy: event.clientY - box.top };
+      /* Кроме смещения захвата помним, куда и когда рука двигалась: по
+         последнему отрезку считается бросок. До 2026-09-05 предмет падал строго
+         вниз, и этих полей тут не было вовсе. */
+      me.grab = {
+        dx: event.clientX - box.left,
+        dy: event.clientY - box.top,
+        x: event.clientX,
+        y: event.clientY,
+        at: performance.now(),
+        vx: 0,
+        vy: 0,
+      };
       me.moved = true;               // дальше висит там, где повесили
+      me.vx = 0;
       me.vy = 0;
       canvas.classList.add('is-held');
       wake();
@@ -1429,6 +1450,17 @@
 
     function haul(event) {
       if (!me.grab) return;
+
+      // Скорость руки — по последнему отрезку: бросок слушается того, как рука
+      // шла перед самым отпусканием, а не всего пути.
+      var now = performance.now();
+      var dt = Math.max(16, now - me.grab.at) / 1000;
+
+      me.grab.vx = (event.clientX - me.grab.x) / dt;
+      me.grab.vy = (event.clientY - me.grab.y) / dt;
+      me.grab.x = event.clientX;
+      me.grab.y = event.clientY;
+      me.grab.at = now;
 
       me.x = clamp(event.clientX - me.grab.dx, EDGE, limit());
       me.y = clamp(window.innerHeight - (event.clientY - me.grab.dy) - canvas.height,
@@ -1439,8 +1471,12 @@
     function drop() {
       if (!me.grab) return;
 
+      // Экранный Y растёт вниз, наш — вверх, поэтому вертикальная меняет знак.
+      // Доля от руки одна на обе оси: иначе брошенный вбок предмет взмывает.
+      me.vx = clamp(me.grab.vx * THING_THROW, -THING_THROW_MAX, THING_THROW_MAX);
+      me.vy = clamp(-me.grab.vy * THING_THROW, -THING_THROW_MAX, THING_THROW_MAX);
+
       me.grab = null;
-      me.vy = 0;             // скорость руки не в счёт: полка падает, а не летит
       canvas.classList.remove('is-held');
       wake();
     }
@@ -1475,7 +1511,7 @@
 
       var floor = support();
 
-      if (me.vy === 0 && me.y <= floor) {
+      if (me.vy === 0 && me.vx === 0 && me.y <= floor) {
         // Опора могла подъехать под предмет — тогда он встаёт на неё.
         if (me.y !== floor) { me.y = floor; place(); }
         return;
@@ -1484,15 +1520,22 @@
       var dt = step / 1000;
 
       me.vy -= THING_GRAVITY * dt;
+      me.x += me.vx * dt;
       me.y += me.vy * dt;
 
       if (me.y <= floor) {
         me.y = floor;
         var back = Math.min(-me.vy * THING_BOUNCE, THING_HOP);
         me.vy = back > THING_STICK ? back : 0;
+
+        // Об пол он ещё и тормозит: тяжёлое по полу не катится.
+        me.vx *= THING_RUB;
+        if (Math.abs(me.vx) < THING_SLIDE) me.vx = 0;
       }
 
-      me.x = Math.min(limit(), Math.max(EDGE, me.x));
+      // О стену — глухо: отскока вбок нет, скорость гаснет разом.
+      var stop = Math.min(limit(), Math.max(EDGE, me.x));
+      if (stop !== me.x) { me.x = stop; me.vx = 0; }
       place();
     }
 

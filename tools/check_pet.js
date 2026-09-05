@@ -507,6 +507,10 @@ check('обстановку двигают, и она падает вниз', fu
     if (lifted.y < 100) fail(name + ': не подняли, y = ' + lifted.y);
     if (Math.abs(lifted.x - from) < 100) fail(name + ': не сдвинули вбок, x = ' + lifted.x);
 
+    // Рука замирает перед тем, как отпустить: бросок нулевой, и предмет обязан
+    // упасть отвесно. Полёт по броску проверяет соседняя проверка.
+    world.win('mousemove', hand(lifted.x, lifted.y));
+    world.step(33);
     world.win('mouseup', hand(lifted.x, lifted.y));
 
     const dropped = thing.spot().x;
@@ -555,11 +559,14 @@ check('предмет стоит на другом и падает без нег
     return event(x + hold.dx, world.high() - y - thing.height + hold.dy);
   }
 
-  // Верхний предмет поднимаем и опускаем на середину нижнего.
+  // Верхний предмет поднимаем и опускаем на середину нижнего. Руку перед
+  // отпусканием останавливаем: иначе это бросок, и предмет улетит вбок.
   const target = under.spot().x + Math.round((under.width - over.width) / 2);
   let box = over.getBoundingClientRect();
   over.fire('mousedown', event(box.left + hold.dx, box.top + hold.dy));
   world.step(FRAME_MS);
+  world.win('mousemove', hand(over, target, 260));
+  world.step(33);
   world.win('mousemove', hand(over, target, 260));
   world.step(33);
   world.win('mouseup', hand(over, target, 260));
@@ -581,9 +588,12 @@ check('предмет стоит на другом и падает без нег
   box = under.getBoundingClientRect();
   under.fire('mousedown', event(box.left + hold.dx, box.top + hold.dy));
   world.step(FRAME_MS);
-  world.win('mousemove', hand(under, Math.max(NUM.EDGE, under.spot().x - 320), 0));
+  const away = Math.max(NUM.EDGE, under.spot().x - 320);
+  world.win('mousemove', hand(under, away, 0));
   world.step(33);
-  world.win('mouseup', hand(under, Math.max(NUM.EDGE, under.spot().x - 320), 0));
+  world.win('mousemove', hand(under, away, 0));
+  world.step(33);
+  world.win('mouseup', hand(under, away, 0));
 
   let fell = null;
   const movedAt = world.at();
@@ -599,6 +609,49 @@ check('предмет стоит на другом и падает без нег
   return over.title.replace('Подвинуть ', '') + ' встал на ' +
     under.title.replace('Подвинуть ', '') + ' за ' + sec(stood) +
     ', без опоры упал за ' + sec(fell);
+});
+
+/* Брошенная вбок мебель летит вбок. До 2026-09-05 бросок в счёт не шёл вовсе —
+   предмет падал строго вниз, — и владелец попросил вернуть полёт: «мебель падает
+   очень сильно вниз, а не в бок как персонажи». Тяжесть при этом осталась: летит
+   он хуже существа и по полу не катится. */
+check('мебель бросают вбок, и она летит вбок', function () {
+  const world = open({ seed: 4 });
+  world.step(500);
+
+  const thing = world.things.filter(function (t) { return !wall(t); })[0];
+  const name = thing.title.replace('Подвинуть ', '');
+  const from = thing.spot().x;
+  const hold = { dx: 6, dy: 6 };
+
+  function hand(x, y) {
+    return event(x + hold.dx, world.high() - y - thing.height + hold.dy);
+  }
+
+  const box = thing.getBoundingClientRect();
+  thing.fire('mousedown', event(box.left + hold.dx, box.top + hold.dy));
+  world.step(FRAME_MS);
+
+  // Ведём руку вбок и вверх и отпускаем на ходу — это и есть бросок.
+  [[60, 120], [180, 200], [300, 260]].forEach(function (pt) {
+    world.win('mousemove', hand(from + pt[0], pt[1]));
+    world.step(33);
+  });
+  world.win('mouseup', hand(from + 300, 260));
+
+  const released = thing.spot().x;
+  let landed = null;
+
+  world.step(4000, function (t) {
+    if (landed === null && thing.spot().y === 0) landed = t;
+  });
+
+  if (landed === null) fail(name + ': за четыре секунды не приземлился после броска');
+
+  const flew = thing.spot().x - released;
+  if (flew < 40) fail(name + ': бросок не в счёт, пролетел вбок всего ' + flew + ' px');
+
+  return name + ': пролетел вбок ' + Math.round(flew) + ' px и лёг за ' + sec(landed);
 });
 
 /* Доску перевешивают: где отпустили, там и осталась. Мебель на её месте
@@ -1040,6 +1093,14 @@ const BREAKS = [
     parts: [[
       '      var floor = support();',
       '      var floor = 0;',
+    ]],
+  },
+  {
+    name: 'мебель не слушается броска',
+    red: 'мебель бросают вбок, и она летит вбок',
+    parts: [[
+      '      me.vx = clamp(me.grab.vx * THING_THROW, -THING_THROW_MAX, THING_THROW_MAX);',
+      '      me.vx = 0;',
     ]],
   },
   {
