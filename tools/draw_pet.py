@@ -322,13 +322,16 @@ def can(lift, drops=None):
     rect(g, 1, top, 4, bottom - 1, 'm')             # корпус
     rect(g, 1, bottom, 3, bottom, 'm')              # книзу он сужается
 
-    # Носик в три клетки, целиком вынесенный за корпус: по нему лейку и узнают.
-    rect(g, 5, top + 1, 5, top + 1, 'm')
-    rect(g, CAN_SPOUT, top + 2, CAN_SPOUT, bottom, 'm')
-
     rect(g, 0, bottom, 1, min(bottom + 1, GROUND), 'd')  # рука держит снизу слева
 
+    # Струя. Серым её рисовать нельзя: владелец сразу прочитал серую лесенку от
+    # края лейки как струю, а не как носик — «сделай тогда её голубой». Так и
+    # сделано: пока лейка поднимается, ничего не льётся, а в кадрах полива от
+    # края корпуса до кромки кадки идёт вода.
     if drops is not None:
+        rect(g, 5, top + 1, 5, top + 1, 'a')
+        rect(g, CAN_SPOUT, top + 2, CAN_SPOUT, bottom, 'a')
+
         for below in CAN_DROPS[drops]:
             y = bottom + below
             if y <= GROUND and below <= CAN_RIM:
