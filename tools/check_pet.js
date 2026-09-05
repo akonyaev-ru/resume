@@ -609,8 +609,22 @@ check('на ковре стоят, а не на нём', function () {
   const over = world.things.filter(function (t) { return !flat(t); })
     .sort(function (a, b) { return a.width - b.width; })[0];
 
+  /* Роняем не в середину ковра, а в первое свободное место на нём: посередине
+     может стоять диван, и предмет встанет на него — проверка поймает не то,
+     ради чего писалась. Ровно на этом она и покраснела на раннере, когда ковёр
+     сдвинули на две сотых вправо. */
+  let target = null;
+  for (let x = rug.spot().x; x + over.width <= rug.spot().x + rug.width; x += 2) {
+    const busy = world.things.some(function (t) {
+      if (t === over || flat(t)) return false;
+      const at = t.spot();
+      return !(x + over.width <= at.x || at.x + t.width <= x);
+    });
+    if (!busy) { target = x; break; }
+  }
+  if (target === null) fail('на ковре нет свободного места: всё занято мебелью');
+
   const hold = { dx: 6, dy: 6 };
-  const target = rug.spot().x + Math.round((rug.width - over.width) / 2);
   const box = over.getBoundingClientRect();
 
   over.fire('mousedown', event(box.left + hold.dx, box.top + hold.dy));
