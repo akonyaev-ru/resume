@@ -359,9 +359,13 @@ check('загрузка', function () {
 
     if (!thing.layers.length) fail(name + ': предмет не нарисован');
 
-    const rest = restLevel(world, thing, at.x, at.y);
-    if (at.y !== rest) {
-      fail(name + ': при загрузке стоит на ' + at.y + ', а опора на ' + rest);
+    if (wall(thing)) {
+      if (at.y <= 0) fail(name + ': висящее при загрузке лежит на полу');
+    } else {
+      const rest = restLevel(world, thing, at.x, at.y);
+      if (at.y !== rest) {
+        fail(name + ': при загрузке стоит на ' + at.y + ', а опора на ' + rest);
+      }
     }
     if (at.x < NUM.EDGE || at.x > world.wide() - thing.width) {
       fail(name + ': при загрузке стоит за краем окна, x = ' + at.x);
@@ -435,11 +439,16 @@ check('работают оба', function () {
 /* На чём предмет стоит в точке `x`: на полу или на верхе другого предмета,
    который с ним перекрывается. Тем же правилом живёт `pet.js`, и проверки
    считают его отдельно — иначе они сверяли бы скрипт сам с собой. */
+function wall(el) {
+  return el.className.indexOf('--wall') > 0;
+}
+
 function restLevel(world, thing, x, y) {
   let level = 0;
 
   world.things.forEach(function (other) {
-    if (other === thing) return;
+    // Висящее на стене опорой не бывает: на доску не ставят.
+    if (other === thing || wall(other)) return;
     const at = other.spot();
     if (x + thing.width <= at.x || at.x + other.width <= x) return;
 
@@ -473,6 +482,7 @@ check('обстановку двигают, и она падает вниз', fu
   world_of_things().forEach(function (one) {
     const world = one.world;
     const thing = one.thing;
+    if (wall(thing)) return;              // висящее не падает, у него своя проверка
     const name = thing.title.replace('Подвинуть ', '');
     const from = thing.spot().x;
 
@@ -535,7 +545,8 @@ check('предмет стоит на другом и падает без нег
   world.step(500);
 
   // Нижний — самый широкий, верхний — самый узкий: так они точно перекроются.
-  const sorted = world.things.slice().sort(function (a, b) { return b.width - a.width; });
+  const sorted = world.things.filter(function (t) { return !wall(t); })
+    .sort(function (a, b) { return b.width - a.width; });
   const under = sorted[0];
   const over = sorted[sorted.length - 1];
   if (under === over) fail('в обстановке меньше двух предметов');
@@ -589,6 +600,48 @@ check('предмет стоит на другом и падает без нег
   return over.title.replace('Подвинуть ', '') + ' встал на ' +
     under.title.replace('Подвинуть ', '') + ' за ' + sec(stood) +
     ', без опоры упал за ' + sec(fell);
+});
+
+/* Доску перевешивают: где отпустили, там и осталась. Мебель на её месте
+   падала бы на пол — этим висящее и отличается, и это ровно то, что просил
+   владелец: «брать и в другое место закреплять». */
+check('доску перевешивают, и она висит', function () {
+  const world = open({ seed: 9 });
+  world.step(500);
+
+  const board = world.things.filter(wall)[0];
+  if (!board) fail('в обстановке нет висящего предмета');
+
+  const was = board.spot();
+  if (was.y <= 0) fail('доска при загрузке лежит на полу');
+
+  const hold = { dx: 8, dy: 8 };
+  const box = board.getBoundingClientRect();
+  const toX = Math.min(was.x + 260, world.wide() - board.width - NUM.EDGE);
+  const toY = was.y + 90;
+
+  board.fire('mousedown', event(box.left + hold.dx, box.top + hold.dy));
+  world.step(FRAME_MS);
+  world.win('mousemove', event(toX + hold.dx, world.high() - toY - board.height + hold.dy));
+  world.step(33);
+  world.win('mouseup', event(toX + hold.dx, world.high() - toY - board.height + hold.dy));
+
+  const hung = board.spot();
+  if (Math.abs(hung.x - toX) > 2 || Math.abs(hung.y - toY) > 2) {
+    fail('доска не перевесилась: ждали ' + toX + ',' + toY +
+      ', а она на ' + hung.x + ',' + hung.y);
+  }
+
+  // Три секунды спустя она обязана висеть там же, а не сползти на пол.
+  world.step(3000);
+  const now = board.spot();
+  if (now.x !== hung.x || now.y !== hung.y) {
+    fail('доска не удержалась: была ' + hung.x + ',' + hung.y +
+      ', стала ' + now.x + ',' + now.y);
+  }
+
+  return 'перевесили с ' + was.x + ',' + was.y + ' на ' + now.x + ',' + now.y +
+    ' — висит';
 });
 
 /* На узком экране стили прячут обоих, и кадры считаться не должны. Окно могли
@@ -972,6 +1025,14 @@ const BREAKS = [
     parts: [[
       '    document.body.appendChild(canvas);\n    draw();',
       '    document.body.appendChild(canvas);',
+    ]],
+  },
+  {
+    name: 'доска падает, как мебель',
+    red: 'доску перевешивают, и она висит',
+    parts: [[
+      '      if (spec.wall) return;',
+      '      if (false) return;',
     ]],
   },
   {

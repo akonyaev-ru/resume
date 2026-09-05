@@ -107,6 +107,12 @@
       w: '#bd7d5c',          // светлая грань кадки
       n: '#2e2018',          // земля под ободом
     },
+    board: {
+      r: '#9aa2b2',          // рама и полочка под маркеры
+      w: '#eef1f6',          // полотно
+      g: '#3fa35f',          // кривая вверх
+      e: '#c2554f',          // и вниз
+    },
     sofa: {
       f: '#4e6472',          // рама и обивка
       c: '#5e7787',          // подушки посветлее
@@ -713,6 +719,24 @@
         '.kk....................kk.',
       ];
 
+  // Доска на стене: полотно, две кривые и полочка.
+  var BOARD = [
+        'rrrrrrrrrrrrrrrrrrrrrr',
+        'rwwwwwwwwwwwwwwwwwwwwr',
+        'rwwwwwwwwwwwwwwwwwwgwr',
+        'rwwwwwwwewwwwwwwwggwwr',
+        'rweewweewewwwwwggwwwwr',
+        'rwwweewwwewwwggwwwwwwr',
+        'rwwwwwwwwweggwwwwwwwwr',
+        'rwwwwwwwwwgeewwwwwwwwr',
+        'rwwwwggwwgwwweewwwwwwr',
+        'rwwggwwggwwwwwweewwwwr',
+        'rwgwwwwwwwwwwwwwweewwr',
+        'rwwwwwwwwwwwwwwwwwwewr',
+        'rrrrrrrrrrrrrrrrrrrrrr',
+        '......rrrrrrrrrr......',
+      ];
+
   // Фикус: деревце со стволом и густой кроной.
   var FICUS = [
         '.....llmm....',
@@ -1294,7 +1318,8 @@
     var art = render(spec.art, false, spec.skin);
 
     var canvas = document.createElement('canvas');
-    canvas.className = 'thing';
+    // Висящему на стене — свой класс: он лежит слоем ниже стоящей мебели.
+    canvas.className = spec.wall ? 'thing thing--wall' : 'thing';
     canvas.width = art.width;
     canvas.height = art.height;
     canvas.setAttribute('aria-hidden', 'true');
@@ -1383,7 +1408,8 @@
       var level = 0;
 
       things.forEach(function (other) {
-        if (other === me || other.hidden) return;
+        // Доска висит на стене и опорой не бывает: на неё не ставят.
+        if (other === me || other.hidden || other.wall) return;
         if (me.x + canvas.width <= other.x) return;
         if (other.x + other.canvas.width <= me.x) return;
 
@@ -1398,6 +1424,9 @@
        тратила бы время в каждом кадре, ничего не делая. */
     function update(now, step) {
       if (me.grab) return;
+
+      // Висящее не падает вовсе: где повесили, там и осталось.
+      if (spec.wall) return;
 
       var floor = support();
 
@@ -1459,6 +1488,7 @@
      предметом их не делаем нарочно — владелец просил, чтобы растащить их можно
      было в любую сторону. Следующий предмет добавляется строкой. */
   var things = [
+    { name: 'board', art: BOARD, skin: SKIN.board, title: 'Перевесить доску', at: 0, wall: 96 },
     { name: 'shelf', art: SHELF, skin: SKIN.shelf, title: 'Подвинуть полку', at: 0 },
     { name: 'ficus', art: FICUS, skin: SKIN.ficus, title: 'Подвинуть фикус', at: 0.045 },
     { name: 'sofa', art: SOFA, skin: SKIN.sofa, title: 'Подвинуть диван', at: 0.92 },
@@ -1466,8 +1496,10 @@
   ].map(function (spec) {
     var thing = makeThing(spec);
     thing.name = spec.name;
+    thing.wall = !!spec.wall;
     thing.at = spec.at;
     thing.on = spec.on;
+    thing.hangs = spec.wall || 0;
     return thing;
   });
 
@@ -1663,6 +1695,7 @@
   things.forEach(function (t) {
     if (t.on) return;
     t.x = clamp(EDGE + (t.limit() - EDGE) * t.at, EDGE, t.limit());
+    if (t.wall) t.y = t.hangs;          // висящее сразу на своей высоте
     t.place();
   });
   // Стоящие на другом предмете встают по его середине и на его высоту.
