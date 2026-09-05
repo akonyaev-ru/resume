@@ -1283,9 +1283,14 @@ a:not(.btn):hover { color: var(--text); }
   margin-block-start: 1.9rem;
 }
 
+/* Снизу оставлена полоса под обстановку: холсты мебели и существ прибиты к
+   низу окна, и на прокрученной до конца странице подписи подвала оказывались
+   ровно под ними — владелец увидел это на телевизоре. Полоса выше самого
+   высокого предмета (полка, 54 px), поэтому текст не закрывается ничем и ни
+   при какой ширине окна. */
 .footer {
   border-top: 1px solid var(--line-soft);
-  padding-block: 1.5rem 2.5rem;
+  padding-block: 1.5rem 4.5rem;
   font-family: var(--font-mono);
   font-size: var(--step--2);
   color: var(--muted);
