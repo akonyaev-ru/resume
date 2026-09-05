@@ -107,6 +107,12 @@
       w: '#bd7d5c',          // светлая грань кадки
       n: '#2e2018',          // земля под ободом
     },
+    clock: {
+      f: '#4a5162',          // рама
+      w: '#eef1f6',          // циферблат
+      m: '#9aa2b2',          // метки
+      h: '#2a3038',          // стрелки
+    },
     board: {
       r: '#9aa2b2',          // рама и полочка под маркеры
       w: '#eef1f6',          // полотно
@@ -731,6 +737,21 @@
         'rwggwggweewggwwr',
         'rrrrrrrrrrrrrrrr',
         '.....rrrrrr.....',
+      ];
+
+  // Настенные часы: циферблат, метки и две стрелки.
+  var CLOCK = [
+        '....fff....',
+        '..ffwmwff..',
+        '.ffwwhwwff.',
+        '.fwwwhwwwf.',
+        'fwwwwhwwwwf',
+        'fmwwwhhhwmf',
+        'fwwwwwwwwwf',
+        '.fwwwwwwwf.',
+        '.ffwwwwwff.',
+        '..ffwmwff..',
+        '....fff....',
       ];
 
   // Фикус: деревце со стволом и густой кроной.
@@ -1488,6 +1509,7 @@
     // повешенной от руки, а не поставленной по сетке. Правее нельзя: за
     // левым полем начинается текстовая колонка.
     { name: 'board', art: BOARD, skin: SKIN.board, title: 'Перевесить доску', at: 0.02, wall: 64 },
+    { name: 'clock', art: CLOCK, skin: SKIN.clock, title: 'Перевесить часы', at: 0.98, wall: 110 },
     { name: 'shelf', art: SHELF, skin: SKIN.shelf, title: 'Подвинуть полку', at: 0 },
     { name: 'ficus', art: FICUS, skin: SKIN.ficus, title: 'Подвинуть фикус', at: 0.045 },
     { name: 'sofa', art: SOFA, skin: SKIN.sofa, title: 'Подвинуть диван', at: 0.92 },

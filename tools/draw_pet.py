@@ -346,6 +346,35 @@ def board():
     return g
 
 
+# Настенные часы: круглый циферблат в раме, четыре метки и две стрелки.
+# Одиннадцать клеток на одиннадцать — меньше доски, как и положено часам рядом
+# с доской. Стрелки стоят на трёх часах: одна вверх, другая вправо. Косых
+# стрелок нет намеренно — линия в одну клетку наискось на этом размере
+# рассыпается в отдельные точки, это уже проверено на трубке и на кривых доски.
+CLOCK_W = 11
+CLOCK_H = 11
+CLOCK_C = 5                      # центр циферблата
+
+
+def clock():
+    g = [['.'] * CLOCK_W for _ in range(CLOCK_H)]
+
+    # Круг без тригонометрии: сравниваем квадрат расстояния до центра.
+    for y in range(CLOCK_H):
+        for x in range(CLOCK_W):
+            far = (x - CLOCK_C) ** 2 + (y - CLOCK_C) ** 2
+            if far <= 27:
+                g[y][x] = 'f' if far > 17 else 'w'
+
+    for x, y in ((CLOCK_C, 1), (CLOCK_C, 9), (1, CLOCK_C), (9, CLOCK_C)):
+        g[y][x] = 'm'            # метки 12, 6, 9 и 3
+
+    rect(g, CLOCK_C, 2, CLOCK_C, CLOCK_C, 'h')       # минутная вверх
+    rect(g, CLOCK_C, CLOCK_C, CLOCK_C + 2, CLOCK_C, 'h')   # часовая вправо
+
+    return g
+
+
 # Фикус: деревце — тонкий ствол и густая крона. Силуэт нарочно не такой, как у
 # первого растения: то куст из отдельных листьев на стеблях, этот сплошная
 # крона. Свет падает слева, как у существ, поэтому правая треть кроны темнее.
@@ -527,6 +556,7 @@ SHELF_FRAME = shelf()
 PLANT_FRAME = plant()
 SOFA_FRAME = sofa()
 BOARD_FRAME = board()
+CLOCK_FRAME = clock()
 FICUS_FRAME = ficus()
 
 HEAD = '  /* --- кадры ------------------------------------------------------------- */'
@@ -582,6 +612,8 @@ def art() -> str:
             + '  var SOFA = ' + grid_js(SOFA_FRAME) + ';\n\n'
             + '  // Доска на стене: полотно, две кривые и полочка.\n'
             + '  var BOARD = ' + grid_js(BOARD_FRAME) + ';\n\n'
+            + '  // Настенные часы: циферблат, метки и две стрелки.\n'
+            + '  var CLOCK = ' + grid_js(CLOCK_FRAME) + ';\n\n'
             + '  // Фикус: деревце со стволом и густой кроной.\n'
             + '  var FICUS = ' + grid_js(FICUS_FRAME) + ';\n\n')
 
@@ -604,7 +636,8 @@ def main() -> int:
     print(f'{path.name}: кадры перерисованы, существо {BODY_W}x{H}, '
           f'предмет {PROP_W}x{H}, полка {SHELF_W}x{SHELF_H}, '
           f'растение {PLANT_W}x{PLANT_H}, диван {SOFA_W}x{SOFA_H}, '
-          f'фикус {FICUS_W}x{FICUS_H}, доска {BOARD_W}x{BOARD_H}')
+          f'фикус {FICUS_W}x{FICUS_H}, доска {BOARD_W}x{BOARD_H}, '
+          f'часы {CLOCK_W}x{CLOCK_H}')
     return 0
 
 
