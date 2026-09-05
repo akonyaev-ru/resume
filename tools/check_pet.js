@@ -654,6 +654,77 @@ check('мебель бросают вбок, и она летит вбок', fun
   return name + ': пролетел вбок ' + Math.round(flew) + ' px и лёг за ' + sec(landed);
 });
 
+/* На диван садятся: доходят, забираются на сиденье, сидят и слезают. Диван при
+   этом остаётся предметом — его двигают мышью, — поэтому сидящего ищем не по
+   состоянию (его отсюда не видно), а по высоте: он стоит ровно на верху дивана.
+   Владелец просил начать анимации с дивана и напомнил, что диван двигается. */
+check('на диван садятся и слезают', function () {
+  const world = open({ seed: 3 });
+  world.step(500);
+
+  const couch = world.things.filter(function (t) {
+    return t.title.indexOf('диван') >= 0;
+  })[0];
+  if (!couch) fail('дивана в обстановке нет');
+
+  const top = couch.spot().y + NUM.SEAT_UP;
+  let sat = null;
+  let down = null;
+
+  world.step(240000, function (t, pets) {
+    const up = pets.some(function (p) { return p.y === top; });
+    if (sat === null && up) sat = t;
+    if (sat !== null && down === null && !up && pets.every(function (p) { return p.y === 0; })) {
+      down = t;
+    }
+  });
+
+  if (sat === null) fail('за четыре минуты никто не сел на диван');
+  if (down === null) fail('сел и не слез: за четыре минуты с дивана никто не встал');
+
+  return 'сели на ' + sec(sat) + ', слезли к ' + sec(down);
+});
+
+/* Диван можно увести из-под сидящего: он остаётся обычным предметом, и сидящий
+   тогда падает на пол, а не висит в воздухе. */
+check('диван увели — сидящий падает', function () {
+  const world = open({ seed: 3 });
+
+  const couch = world.things.filter(function (t) {
+    return t.title.indexOf('диван') >= 0;
+  })[0];
+  const top = couch.spot().y + NUM.SEAT_UP;
+
+  /* Шагаем короткими отрезками и останавливаемся, как только кто-то сел: если
+     прогнать все четыре минуты разом, он успеет и слезть, и диван мы уведём
+     из-под пустого места — проверка пройдёт, ничего не проверив. */
+  let sitter = null;
+  for (let i = 0; i < 240 && sitter === null; i++) {
+    world.step(1000, function (t, pets) {
+      if (sitter !== null) return;
+      pets.forEach(function (p, k) { if (p.y === top) sitter = k; });
+    });
+  }
+
+  if (sitter === null) fail('за четыре минуты никто не сел — проверять нечего');
+
+  // Берём диван рукой: сидеть больше не на чем.
+  const box = couch.getBoundingClientRect();
+  couch.fire('mousedown', event(box.left + 6, box.top + 6));
+  world.step(FRAME_MS);
+  world.win('mousemove', event(box.left + 306, box.top - 60));
+  world.step(33);
+
+  let fell = null;
+  const from = world.at();
+  world.step(4000, function (t, pets) {
+    if (fell === null && pets[sitter].y === 0) fell = t - from;
+  });
+
+  if (fell === null) fail('диван увели, а сидящий остался висеть');
+  return 'диван увели — упал за ' + sec(fell);
+});
+
 /* Доску перевешивают: где отпустили, там и осталась. Мебель на её месте
    падала бы на пол — этим висящее и отличается, и это ровно то, что просил
    владелец: «брать и в другое место закреплять». */
@@ -740,7 +811,7 @@ function longRun(seeds, minutes) {
           fail('зерно ' + seed + ', ' + sec(t) + ': ушёл за край, x = ' + pet.x +
             ' при допустимых ' + NUM.EDGE + '..' + limit);
         }
-        if (pet.y !== 0) {
+        if (pet.y !== 0 && !onThing(world, pet, SPAN)) {
           fail('зерно ' + seed + ', ' + sec(t) + ': повис в воздухе на ' + pet.y + ' px');
         }
 
@@ -757,8 +828,8 @@ function longRun(seeds, minutes) {
       });
 
       const gap = Math.abs(pets[0].x - pets[1].x);
-
-      // Сквозь друг друга они не ходят. Допуск — на кадр шага и округление.
+      // Сквозь друг друга они не ходят и место по горизонтали не делят — даже
+      // когда один сидит на диване, а другой идёт по полу.
       if (gap < SPAN - 3) {
         fail('зерно ' + seed + ', ' + sec(t) + ': нахлёст, зазор ' + gap +
           ' px при положенных ' + SPAN);
@@ -782,6 +853,21 @@ function longRun(seeds, minutes) {
    просвет. Скрипт держит это в `SPAN`, но наружу не отдаёт, поэтому меряем по
    холсту нарисованного кадра — холст самого существа шире тела на предмет, и
    по нему не посчитать. */
+/* Выше пола существо бывает только на диване: лезет на него или сидит. Тогда
+   под ним есть предмет, и оно не выше его верха. Всё прочее — зависание, ровно
+   то, что ловила эта проверка до появления посадки. */
+function onThing(world, pet, span) {
+  const middle = pet.x + span / 2;
+
+  return world.things.some(function (t) {
+    if (wall(t)) return false;
+
+    const at = t.spot().x;
+    if (middle < at || middle > at + t.width) return false;
+    return pet.y <= t.spot().y + t.height + 1;
+  });
+}
+
 function bodySpan(world) {
   const drawn = look(world.otto);
   if (drawn.body === null) fail('в кадре нет тела — мерить нечего');
@@ -1096,6 +1182,14 @@ const BREAKS = [
     ]],
   },
   {
+    name: 'сидящий не замечает, что диван увели',
+    red: 'диван увели — сидящий падает',
+    parts: [[
+      '        if (!stillSeated() || me.errand !== null) {',
+      '        if (false) {',
+    ]],
+  },
+  {
     name: 'мебель не слушается броска',
     red: 'мебель бросают вбок, и она летит вбок',
     parts: [[
@@ -1148,7 +1242,7 @@ const BREAKS = [
     red: 'бросок кончается приземлением',
     parts: [
       ['      if (me.dragged) { me.dragged = false; return; }', '      void 0;'],
-      ["      if (me.y > 0 && me.state !== 'held' && me.state !== 'fly') {", '      if (false) {'],
+      ["      if (me.y > 0 && me.state !== 'held' && me.state !== 'fly' &&\n        me.state !== 'climb' && me.state !== 'sit') {", '      if (false) {'],
     ],
   },
   {

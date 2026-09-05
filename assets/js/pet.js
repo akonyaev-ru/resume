@@ -79,6 +79,17 @@
   var LOOK_MS = 6500;        // сколько стоит и смотрит, как он работает
   var LOOK_KEEP = 30000;     // столько он не бросит работу, пока она идёт
 
+  /* Посидеть на диване. Диван при этом остаётся обычным предметом: его можно
+     двигать, и сидящий едет вместе с ним, а стоит взять диван в руку — сидящий
+     сваливается на пол. */
+  var SIT_CHANCE = 0.2;      // как часто вместо прогулки идёт посидеть
+  var SIT_MS = 9000;         // сколько сидит
+  var SIT_SPAN = 8000;       // плюс случайная добавка
+  var CLIMB_MS = 240;        // сколько забирается на сиденье
+  /* Высота сиденья над полом. Не верх дивана: сидящий рисуется поверх мебели,
+     и, сев на сиденье, он оказывается в диване, а не на его спинке. */
+  var SEAT_UP = 12;
+
   /* Цвета у каждого свои, кадры общие. */
   var SKIN = {
     otto: {
@@ -283,6 +294,35 @@
         '...dd.dddd..',
         '............',
         '............',
+      ]],
+    sit: [[
+        '............',
+        '............',
+        '............',
+        '.hhhhhhhhhh.',
+        'hggggggggggh',
+        'gggggggggggg',
+        'ggwwggggwwgg',
+        'ggwpggggwpgg',
+        'ggwwggggwwgg',
+        'gggggggggggg',
+        'dggggggggggd',
+        '.dddddddddd.',
+        '...dd.dddd..',
+      ], [
+        '............',
+        '............',
+        '............',
+        '.hhhhhhhhhh.',
+        'hggggggggggh',
+        'gggggggggggg',
+        'ggwwggggwwgg',
+        'ggwpggggwpgg',
+        'ggwwggggwwgg',
+        'gggggggggggg',
+        'dggggggggggd',
+        '.dddddddddd.',
+        '......dd....',
       ]],
     dance: [[
         '............',
@@ -917,6 +957,8 @@
       grab: null,
       dragged: false,
       hidden: false,
+      seat: null,            // диван, на котором сидит
+      seatDx: 0,             // и где именно на нём
       canvas: canvas,
     };
 
@@ -962,6 +1004,32 @@
       me.until = until || 0;
     }
 
+    /* Сиденье — диван, если он на месте, не спрятан узким экраном, не в руке
+       и на нём ещё никто не сидит. Ищем по имени: сидят пока только на нём. */
+    function seat() {
+      var couch = thingNamed('sofa');
+      if (!couch || couch.hidden || couch.grab) return null;
+      if (me.mate && me.mate.seat === couch) return null;
+      return couch;
+    }
+
+    function seatTop(couch) {
+      return couch.y + SEAT_UP;
+    }
+
+    // Куда вставать перед подъёмом: середина дивана, иначе существо свисало бы
+    // за подлокотник.
+    function seatSpot(couch) {
+      return clamp(couch.x + (couch.canvas.width - SPAN) / 2, EDGE, limit());
+    }
+
+    // Сидящий держится за диван: едет вместе с ним, а без него падает.
+    function stillSeated() {
+      var couch = me.seat;
+      if (!couch || couch.hidden || couch.grab) return false;
+      return couch.y === 0 && couch.vy === 0;
+    }
+
     function stroll(now) {
       me.hurry = false;
       me.target = EDGE + Math.random() * (limit() - EDGE);
@@ -992,8 +1060,15 @@
       }
 
       var roll = Math.random();
+      var couch = roll < SIT_CHANCE ? seat() : null;
 
-      if (roll < 0.44) {
+      if (couch) {
+        me.seat = couch;
+        me.hurry = false;
+        me.target = seatSpot(couch);
+        me.dir = me.target < me.x ? -1 : 1;
+        enter('walk', now);
+      } else if (roll < 0.44) {
         stroll(now);
       } else if (roll < 0.8 && spec.prop) {
         me.dir = 1;
@@ -1022,6 +1097,9 @@
     /* Сквозь друг друга они не ходят. Идущего на встречу это правило не
        касается — там они как раз и должны сойтись бок о бок. */
     function tooClose() {
+      /* Высота тут не в счёт нарочно: с сидящим на диване второй расходится так
+         же, как со стоящим. Иначе он проходил бы у дивана впритирку, а слезающий
+         приземлялся бы ему на голову. */
       return me.errand === null && me.mate &&
         Math.abs(me.mate.x - me.x) < SPAN;
     }
@@ -1056,6 +1134,20 @@
     /* Пришёл. Шёл по своим делам — выбирает следующее занятие; звал режиссёр —
        встаёт лицом куда велено и ждёт, дальше сценой распоряжается он. */
     function arrive(now) {
+      /* Дошёл до дивана — забирается на сиденье. Но только если и правда дошёл:
+         разойдясь с соседом, он останавливается где угодно, а затея сесть
+         остаётся — и без этой проверки он телепортировался бы на диван, случалось
+         что прямо на соседа. */
+      if (me.seat && me.errand === null) {
+        if (!stillSeated() || Math.abs(me.x - seatSpot(me.seat)) > 4) {
+          me.seat = null;
+          decide(now);
+          return;
+        }
+        enter('climb', now);
+        return;
+      }
+
       if (me.errand === null) {
         decide(now);
         return;
@@ -1070,7 +1162,8 @@
     function update(now, step) {
       /* Подстраховка от любых будущих оплошностей: если он оказался выше пола,
          а его не держат и он не летит — он падает. */
-      if (me.y > 0 && me.state !== 'held' && me.state !== 'fly') {
+      if (me.y > 0 && me.state !== 'held' && me.state !== 'fly' &&
+        me.state !== 'climb' && me.state !== 'sit') {
         enter('fly', now);
         return;
       }
@@ -1109,6 +1202,55 @@
       if (me.state === 'busy') {
         if (now - me.frameAt > BUSY_MS) { me.frame += 1; me.frameAt = now; }
         if (now >= me.until) enter('close', now);
+        return;
+      }
+
+      // Лезет на диван: за четверть секунды поднимается на высоту сиденья.
+      if (me.state === 'climb') {
+        if (!stillSeated()) { me.seat = null; enter('fly', now); return; }
+
+        var top = seatTop(me.seat);
+        var done = Math.min(1, (now - me.frameAt) / CLIMB_MS);
+
+        me.y = top * done;
+        place();
+
+        if (done === 1) {
+          me.seatDx = me.x - me.seat.x;
+          enter('sit', now, now + SIT_MS + Math.random() * SIT_SPAN);
+        }
+        return;
+      }
+
+      /* Сидит. Диван под ним живой: его двигают мышью, и сидящий едет вместе с
+         ним. Взяли диван в руку или швырнули — сидеть больше не на чем, и он
+         сваливается на пол. Позвали на встречу — слезает сам. */
+      if (me.state === 'sit') {
+        if (!stillSeated() || me.errand !== null) {
+          me.seat = null;
+          enter('fly', now);
+          return;
+        }
+
+        me.x = clamp(me.seat.x + me.seatDx, EDGE, limit());
+        me.y = seatTop(me.seat);
+        place();
+
+        if (now >= me.until) {
+          /* Слезать некуда, пока внизу второй. Запас берём с походом: пока он
+             летит вниз, сосед успевает пройти ещё десяток пикселей, и впритык
+             они всё равно сошлись бы. */
+          var gap = me.mate ? me.mate.x - me.x : 0;
+          if (me.mate && me.mate.y === 0 && Math.abs(gap) < SPAN + 24) {
+            me.until = now + 700;
+            return;
+          }
+
+          me.seat = null;
+          me.vx = (gap > 0 ? -1 : 1) * 40;   // спрыгивает в сторону от соседа
+          me.vy = 0;
+          enter('fly', now);
+        }
         return;
       }
 
@@ -1172,6 +1314,8 @@
       // За делом идут те же два кадра дыхания, что и стоя, — меняется предмет.
       if (me.state === 'busy') return draw('idle', me.frame, busy[me.frame % busy.length]);
       if (me.state === 'hop') return draw('hop', 0, null);
+      if (me.state === 'climb') return draw('hop', 0, null);
+      if (me.state === 'sit') return draw('sit', Math.floor(now / BREATH_MS), null);
 
       // Гладит соседку: щупальце то на её макушке, то поднято над ней.
       if (me.state === 'pet') {
@@ -1289,6 +1433,7 @@
         vy: 0,
       };
 
+      me.seat = null;               // сняли с дивана — больше он там не сидит
       me.dragged = false;
       me.errand = null;             // на встречу его больше никто не ждёт
       canvas.classList.add('is-held');
