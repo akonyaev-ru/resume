@@ -86,7 +86,6 @@
   var SIT_MS = 9000;         // сколько сидит
   var SIT_SPAN = 8000;       // плюс случайная добавка
   var CLIMB_MS = 240;        // сколько забирается на сиденье
-  var SWING_MS = 340;        // как часто перебирает ногами, сидя на диване
   /* Высота сиденья над полом. Не верх дивана: сидящий рисуется поверх мебели,
      и, сев на сиденье, он оказывается в диване, а не на его спинке. */
   var SEAT_UP = 12;
@@ -298,19 +297,7 @@
       ]],
     sit: [[
         '............',
-        '.hhhhhhhhhh.',
-        'hggggggggggh',
-        'gggggggggggg',
-        'ggwwggggwwgg',
-        'ggwpggggwpgg',
-        'ggwwggggwwgg',
-        'gggggggggggg',
-        'dggggggggggd',
-        '.dddddddddd.',
-        '...dd..dd...',
-        '...dd..dd...',
-        '.......dd...',
-      ], [
+        '............',
         '............',
         '.hhhhhhhhhh.',
         'hggggggggggh',
@@ -321,9 +308,21 @@
         'gggggggggggg',
         'dggggggggggd',
         '.dddddddddd.',
-        '...dd..dd...',
-        '...dd..dd...',
-        '...dd.......',
+        '...dd.dddd..',
+      ], [
+        '............',
+        '............',
+        '............',
+        '.hhhhhhhhhh.',
+        'hggggggggggh',
+        'gggggggggggg',
+        'ggwwggggwwgg',
+        'ggwpggggwpgg',
+        'ggwwggggwwgg',
+        'gggggggggggg',
+        'dggggggggggd',
+        '.dddddddddd.',
+        '......dd....',
       ]],
     dance: [[
         '............',
@@ -1322,7 +1321,7 @@
       if (me.state === 'busy') return draw('idle', me.frame, busy[me.frame % busy.length]);
       if (me.state === 'hop') return draw('hop', 0, null);
       if (me.state === 'climb') return draw('hop', 0, null);
-      if (me.state === 'sit') return draw('sit', Math.floor(now / SWING_MS), null);
+      if (me.state === 'sit') return draw('sit', Math.floor(now / BREATH_MS), null);
 
       // Гладит соседку: щупальце то на её макушке, то поднято над ней.
       if (me.state === 'pet') {
