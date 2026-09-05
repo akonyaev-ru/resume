@@ -108,10 +108,11 @@
       n: '#2e2018',          // земля под ободом
     },
     box: {
-      k: '#9d7549',          // корпус
-      l: '#b8905c',          // крышка: свет сверху
+      k: '#9d7549',          // картон
+      l: '#b8905c',          // клапан изнутри, на свету
       d: '#6f5232',          // шов, правая грань и тень у пола
-      t: '#cbbc9b',          // скотч
+      t: '#86673f',          // лента: темнее картона, светлая читалась полосой
+      n: '#33261a',          // нутро открытой коробки
     },
     clock: {
       f: '#4a5162',          // рама
@@ -780,29 +781,29 @@
         '...ppppppp...',
       ];
 
-  // Коробки: три закрытых, скотч у каждой на своём месте.
+  // Коробки: две закрытые и одна открытая, с клапанами вверх.
   var BOX_L = [
-        '.ltlll.',
-        'ddtdddd',
-        'kktkkkd',
+        'kkkdkkd',
+        'kkkdkkd',
         'kkkkkkd',
+        'ttttttd',
         'kkkkkkd',
         'ddddddd',
       ];
 
   var BOX_R = [
-        '.llltl.',
-        'ddddtdd',
-        'kkkktkd',
+        'kkdkkkd',
+        'kkdkkkd',
         'kkkkkkd',
+        'ttttttd',
         'kkkkkkd',
         'ddddddd',
       ];
 
   var BOX_TOP = [
-        '.lltll.',
-        'dddtddd',
-        'kkktkkd',
+        'llnnnll',
+        'llnnnll',
+        'kkkkkkd',
         'kkkkkkd',
         'kkkkkkd',
         'ddddddd',
