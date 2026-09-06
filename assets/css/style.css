@@ -874,12 +874,18 @@ a:not(.btn):hover { color: var(--text); }
   aspect-ratio: 700 / 240;
   transform: translateY(-50%);
   color: var(--accent);
-  /* Замерено на 1280: при 0.36 контраст цитаты поверх штриха значка 9.6:1,
-     основного текста 6.0:1. На 0.45 текст падал до 4.1:1 — ниже нормы AA. */
-  opacity: 0.36;
+  /* Общий множитель; доли частей — в `GRAPH_INK` в app.js. Он поднят с 0.36
+     до 0.7 не ради яркости схемы: связи и контуры остались там же, где были
+     (0.26 и 0.37 от 0.7 — те же 0.18 и 0.26), а вдвое плотнее стали одни
+     значки, иначе их цвета не отличить друг от друга. */
+  opacity: 0.7;
   pointer-events: none;
-  -webkit-mask-image: linear-gradient(to right, transparent, #000 30%);
-  mask-image: linear-gradient(to right, transparent, #000 30%);
+  /* Растушёвка слева не только против обрыва связей: под ней остаётся колонка
+     с текстом, и цветные значки там гасятся сами. Замерено на 1280: при 30%
+     худший контраст основного текста 4.4:1 — ниже нормы AA, при 42% он 6.0:1,
+     а справа, где текста нет, цвет остаётся полным. */
+  -webkit-mask-image: linear-gradient(to right, transparent, #000 42%);
+  mask-image: linear-gradient(to right, transparent, #000 42%);
 }
 
 .graph svg {

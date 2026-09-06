@@ -337,28 +337,39 @@
   var GRAPH_PILL_H = 42;
   var GRAPH_CORNER = 11;           // скругление на изломе связи
 
+  /* Тон узла — из палитры страницы, а не свой набор красок. Бирюза держит
+     большинство, остальные четыре расставлены редко: в присланной картинке
+     цветными были единицы плашек, и работало это ровно потому, что их мало. */
+  var GRAPH_TONE = {
+    base: 'var(--accent)',
+    mint: 'var(--mint)',
+    amber: 'var(--amber)',
+    sky: 'var(--sky)',
+    rose: 'var(--magenta)',
+  };
+
   var GRAPH_NODES = [
     { id: 'a1', x: 236, row: 0, icon: 'branch' },
-    { id: 'a2', x: 336, row: 0, icon: 'star' },
+    { id: 'a2', x: 336, row: 0, icon: 'star', tone: 'amber' },
     { id: 'a3', x: 446, row: 0, pill: true, icon: 'clock' },
 
-    { id: 'b1', x: 142, row: 1, pill: true, icon: 'doc' },
-    { id: 'b2', x: 258, row: 1, icon: 'spark' },
+    { id: 'b1', x: 142, row: 1, pill: true, icon: 'doc', tone: 'sky' },
+    { id: 'b2', x: 258, row: 1, icon: 'spark', tone: 'amber' },
     { id: 'b3', x: 356, row: 1, icon: 'arrow' },
-    { id: 'b4', x: 452, row: 1, icon: 'shield' },
-    { id: 'b5', x: 556, row: 1, icon: 'code' },
+    { id: 'b4', x: 452, row: 1, icon: 'shield', tone: 'mint' },
+    { id: 'b5', x: 556, row: 1, icon: 'code', tone: 'sky' },
 
     { id: 'c1', x: 72, row: 2, icon: 'user' },
-    { id: 'c2', x: 172, row: 2, icon: 'bot' },
-    { id: 'c3', x: 288, row: 2, pill: true, icon: 'db' },
+    { id: 'c2', x: 172, row: 2, icon: 'bot', tone: 'rose' },
+    { id: 'c3', x: 288, row: 2, pill: true, icon: 'db', tone: 'sky' },
     { id: 'c4', x: 392, row: 2, icon: 'cube' },
-    { id: 'c5', x: 504, row: 2, pill: true, icon: 'check' },
-    { id: 'c6', x: 618, row: 2, icon: 'chart' },
+    { id: 'c5', x: 504, row: 2, pill: true, icon: 'check', tone: 'mint' },
+    { id: 'c6', x: 618, row: 2, icon: 'chart', tone: 'mint' },
 
     { id: 'd1', x: 26, row: 3, icon: 'ring' },
-    { id: 'd2', x: 134, row: 3, pill: true, icon: 'bolt' },
+    { id: 'd2', x: 134, row: 3, pill: true, icon: 'bolt', tone: 'amber' },
     { id: 'd3', x: 246, row: 3, icon: 'branch' },
-    { id: 'd4', x: 348, row: 3, icon: 'users' },
+    { id: 'd4', x: 348, row: 3, icon: 'users', tone: 'rose' },
     { id: 'd5', x: 450, row: 3, icon: 'loop' },
     { id: 'd6', x: 556, row: 3, pill: true, icon: 'calendar' },
     { id: 'd7', x: 668, row: 3, icon: 'wave' },
@@ -454,11 +465,24 @@
       + 'V' + y1;
   }
 
+  /* Плотность разведена по частям, а не одним числом на всю схему: связи и
+     контуры держат рисунок и должны молчать, значки несут цвет и должны
+     читаться. Числа тут доли от `opacity` самого блока (см. `.graph`), и
+     замерены они по контрасту текста поверх схемы, а не подобраны на глаз. */
+  var GRAPH_INK = {
+    link: 0.26,
+    edge: 0.37,
+    fill: 0.07,
+    icon: 0.72,
+    bar: 0.62,
+  };
+
   function graphSvg() {
     var out = ['<svg viewBox="0 0 ' + GRAPH_W + ' ' + GRAPH_H
       + '" fill="none" aria-hidden="true">'];
 
-    out.push('<g stroke="currentColor" stroke-width="1.6" stroke-opacity="0.5">');
+    out.push('<g stroke="currentColor" stroke-width="1.6" stroke-opacity="'
+      + GRAPH_INK.link + '">');
     GRAPH_LINKS.forEach(function (pair) {
       out.push('<path d="' + graphRoute(graphNode(pair[0]), graphNode(pair[1])) + '"/>');
     });
@@ -466,8 +490,11 @@
 
     GRAPH_NODES.forEach(function (node) {
       var y = GRAPH_ROWS[node.row];
-      var skin = ' fill="currentColor" fill-opacity="0.1" stroke="currentColor"'
-        + ' stroke-opacity="0.55" stroke-width="1.6"/>';
+      var tone = GRAPH_TONE[node.tone] || GRAPH_TONE.base;
+      // Цвет через `style`: в атрибуте `stroke` переменную понимают не все.
+      var skin = ' style="stroke:' + tone + ';fill:' + tone + '" fill-opacity="'
+        + GRAPH_INK.fill + '" stroke-opacity="' + GRAPH_INK.edge
+        + '" stroke-width="1.6"/>';
 
       if (node.pill) {
         out.push('<rect x="' + (node.x - GRAPH_PILL_W / 2) + '" y="' + (y - GRAPH_PILL_H / 2)
@@ -484,14 +511,14 @@
       // рядом с настоящими показателями резюме делать нечего.
       var ix = node.pill ? node.x - GRAPH_PILL_W / 2 + 7 : node.x - 12;
       out.push('<g transform="translate(' + ix + ' ' + (y - 12) + ')"'
-        + ' stroke="currentColor" stroke-opacity="0.8" stroke-width="1.5"'
-        + ' stroke-linecap="round" stroke-linejoin="round">'
+        + ' style="stroke:' + tone + '" stroke-opacity="' + GRAPH_INK.icon
+        + '" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">'
         + '<path d="' + GRAPH_ICONS[node.icon] + '"/></g>');
 
       if (node.pill) {
         out.push('<rect x="' + (node.x - 1) + '" y="' + (y - 3.5) + '" width="'
           + (GRAPH_PILL_W / 2 - 10) + '" height="7" rx="3.5"'
-          + ' fill="currentColor" fill-opacity="0.55"/>');
+          + ' style="fill:' + tone + '" fill-opacity="' + GRAPH_INK.bar + '"/>');
       }
     });
 
