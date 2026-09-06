@@ -321,12 +321,16 @@
   /* --- подход ------------------------------------------------------------ */
 
   function buildApproach() {
-    return section('approach', u('approachTitle'), [
+    var node = section('approach', u('approachTitle'), [
       el('div', { class: 'approach enter' }, [
         el('p', { class: 'approach__text', text: t(R.person.about) }),
         el('blockquote', { class: 'pullquote', text: t(R.person.pullquote) }),
       ]),
     ]);
+
+    // Декор идёт первым и лежит слоем ниже содержимого — см. `.graph` в стилях.
+    node.insertBefore(el('div', { class: 'graph', 'aria-hidden': 'true' }), node.firstChild);
+    return node;
   }
 
   /* --- опыт -------------------------------------------------------------- */

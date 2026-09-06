@@ -854,6 +854,60 @@ a:not(.btn):hover { color: var(--text); }
 
 /* --- Подход ------------------------------------------------------------- */
 
+/* Декор «Подхода»: схема связей позади текста. Картинку прислал владелец; она
+   легла маской, а не изображением, и это не украшательство приёма, а способ
+   снять с неё лишнее. В маске работает только альфа, а надписи на плашках
+   («4X», «25%», «328%») нарисованы цветом внутри сплошной заливки — вместе с
+   иконками они пропадают целиком. На странице остаются силуэты плашек и связи
+   между ними, покрашенные её же акцентом: выдуманным числам рядом с настоящими
+   показателями делать нечего, а схема процессов «Подходу» по смыслу идёт.
+
+   Уходит за правый край: обрезанная схема читается куском чего-то большего, а
+   вписанная целиком — картинкой в рамке. Ниже 820 px не показываем совсем —
+   там колонка одна, текст идёт во всю ширину, и подкладывать под него нечего. */
+.graph {
+  position: absolute;
+  z-index: -1;
+  inset-block-start: 50%;
+  inset-inline-end: -8%;
+  width: min(1180px, 82vw);
+  aspect-ratio: 687 / 238;
+  transform: translateY(-50%);
+  opacity: 0.17;
+  pointer-events: none;
+  /* Слева схема растворяется, а не обрывается: у картинки там срез посреди
+     линий, и без растушёвки видно кромку. Маски две, вложенные, — внешняя
+     гасит, внутренняя вырезает схему. Свести их в один элемент через
+     `mask-composite` можно, но там, где он не поддержан, слои складываются, и
+     вместо схемы выходит сплошной бирюзовый прямоугольник. */
+  -webkit-mask-image: linear-gradient(to right, transparent, #000 30%);
+  mask-image: linear-gradient(to right, transparent, #000 30%);
+}
+
+.graph::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-color: var(--accent);
+  -webkit-mask-image: url("../img/graph.png");
+  mask-image: url("../img/graph.png");
+  -webkit-mask-size: contain;
+  mask-size: contain;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: center right;
+  mask-position: center right;
+}
+
+#approach {
+  position: relative;
+  overflow: hidden;
+}
+
+@media (max-width: 820px) {
+  .graph { display: none; }
+}
+
 .approach {
   display: grid;
   grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
@@ -1376,6 +1430,8 @@ a:not(.btn):hover { color: var(--text); }
 /* --- Печать ------------------------------------------------------------- */
 
 @media print {
+  .graph { display: none; }
+
   :root {
     --void: #fff;
     --panel: #fff;
