@@ -855,14 +855,15 @@
      бирюзы к янтарю. Свет гаснет не сразу, а затухает кадр за кадром, поэтому
      за курсором тянется короткий шлейф.
 
-     Поля по бокам живут отдельно: они отстают от прокрутки на четверть, и
-     плоский фон становится дальним планом. Отстающая полоса перерисовывается
-     целиком, остальное поле — нет.
+     При прокрутке поле отстаёт на четверть и становится дальним планом. Едет
+     оно целиком: холст рисуется с запасом вниз и сдвигается вверх одним
+     `transform`, без перерисовки. До 2026-09-05 отставали только поля по краям
+     колонки — по стыку едущего со стоящим шла заметная граница, и владелец
+     сказал, что так плохо.
 
      Рисуется целиком только при сборке и изменении размера окна. На каждый кадр
-     перерисовывается лишь квадрат вокруг курсора да полосы полей — иначе четыре
-     с лишним тысячи символов пришлось бы выводить по шестьдесят раз в
-     секунду. */
+     перерисовывается лишь квадрат вокруг курсора — иначе несколько тысяч символов
+     пришлось бы выводить по шестьдесят раз в секунду. */
   function initField() {
     var canvas = $('#field');
     if (!canvas) return;
@@ -886,6 +887,7 @@
        медленнее страницы, но взгляд за них не цепляется. При отключённой в
        системе анимации — ноль: глубина есть движение, пусть и от руки. */
     var PARALLAX = LESS_MOTION ? 0 : 0.25;
+    var SPARE_SCREENS = 2;     // на столько экранов вниз рисуем запас поля
 
     var SCROLL_CELLS = 70;     // столько примерно ячеек греет прокрутка за кадр
     var SCROLL_MIN_ROWS = 4;   // но полоса не ниже этой, иначе её не разглядеть
@@ -898,9 +900,9 @@
     var hot = [];              // индексы ячеек, где свет ещё есть
     var lit = null;            // флаг «уже в списке», чтобы не заводить дубли
     var edges = [];            // столбцы за пределами колонки с текстом
-    var inMargin = null;       // они же, но по номеру столбца
-    var shiftPx = 0;           // насколько поля отстали: остаток внутри ячейки
-    var shiftRows = 0;         // и целые ячейки
+    var depth = 0;             // доля отставания, подогнанная под запас холста
+    var spare = 0;             // запас поля под окном, px — дальше сдвигать нечего
+    var shift = 0;             // на сколько пикселей поле уехало вверх
     var lastPoint = null;
     var lastFrame = 0;
     var running = false;
@@ -910,16 +912,25 @@
       var width = window.innerWidth;
       var height = window.innerHeight;
 
+      /* Запас вниз: столько, сколько поле проедет за всю прокрутку страницы, но
+         не больше двух экранов. Если страница длиннее, отставание уменьшается —
+         поле никогда не кончается раньше страницы. */
+      var scrollable = Math.max(0, document.documentElement.scrollHeight - height);
+      spare = Math.min(Math.round(scrollable * PARALLAX), height * SPARE_SCREENS);
+      depth = scrollable ? spare / scrollable : 0;
+
+      var tall = height + spare;
+
       canvas.width = Math.floor(width * dpr);
-      canvas.height = Math.floor(height * dpr);
+      canvas.height = Math.floor(tall * dpr);
       canvas.style.width = width + 'px';
-      canvas.style.height = height + 'px';
+      canvas.style.height = tall + 'px';
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       ctx.font = FONT + 'px "JetBrains Mono", ui-monospace, monospace';
       ctx.textBaseline = 'top';
 
       cols = Math.ceil(width / CELL_W);
-      rows = Math.ceil(height / CELL_H);
+      rows = Math.ceil(tall / CELL_H);
       chars = new Array(cols * rows);
       for (var i = 0; i < chars.length; i += 1) chars[i] = randomGlyph();
       heat = new Float32Array(cols * rows);
@@ -928,18 +939,17 @@
 
       lastPoint = null;
       measureMargins();
+      shift = -1;              // доля отставания сменилась — сдвиг применить заново
       updateShift();
       paintAll();
     }
 
-    /* Поля — столбцы за пределами колонки с текстом. Ими кормятся двое:
-       отклик на прокрутку греет их с переднего края, глубина двигает их
-       содержимое. Граница идёт ровно по краю колонки, без запаса: тогда стык
-       едущего со стоящим совпадает с краем текста, где глаз перелом и так
-       ждёт. На узком экране полей не остаётся, и оба эффекта молча гаснут. */
+    /* Поля — столбцы за пределами колонки с текстом. Ими кормится отклик на
+       прокрутку: он греет их с переднего края движения. Глубина полей больше не
+       касается — едет всё поле целиком. На узком экране полей не остаётся, и
+       отклик молча гаснет. */
     function measureMargins() {
       edges = [];
-      inMargin = new Uint8Array(cols);
 
       var wrap = $('.wrap');
       if (!wrap) return;
@@ -948,10 +958,7 @@
 
       for (var col = 0; col < cols; col += 1) {
         var x = col * CELL_W + CELL_W / 2;
-        if (x < box.left || x > box.right) {
-          edges.push(col);
-          inMargin[col] = 1;
-        }
+        if (x < box.left || x > box.right) edges.push(col);
       }
     }
 
@@ -963,57 +970,26 @@
 
     /* Отставание считается от абсолютного положения прокрутки, а не копится по
        событиям: тогда оно верно и сразу после перезагрузки, когда браузер
-       возвращает страницу на прежнее место. Целые ячейки и остаток разведены —
-       остаток сдвигает отрисовку в пикселях, целые сдвигают содержимое.
-       Содержимое берётся из тех же `chars` по кругу: знаки там случайные, и
-       повтор через экран от нового набора не отличить. */
+       возвращает страницу на прежнее место. Двигаем сам холст: перерисовывать
+       тысячи знаков на каждый пиксель прокрутки незачем. */
     function updateShift() {
-      var moved = Math.round((window.scrollY || window.pageYOffset || 0) * PARALLAX);
-      var px = ((moved % CELL_H) + CELL_H) % CELL_H;
-      var whole = Math.floor(moved / CELL_H);
+      var moved = Math.round((window.scrollY || window.pageYOffset || 0) * depth);
+      // Страница могла подрасти после сборки (шрифты, отложенное содержимое).
+      // Дальше запаса не сдвигаем: иначе снизу открылась бы пустая полоса.
+      if (moved > spare) moved = spare;
+      if (moved === shift) return false;
 
-      if (px === shiftPx && whole === shiftRows) return false;
-      shiftPx = px;
-      shiftRows = whole;
+      shift = moved;
+      canvas.style.transform = 'translate3d(0,' + -moved + 'px,0)';
       return true;
     }
 
-    /* Поля рисуются полосой целиком, а не по ячейке: съехавший знак заходит в
-       соседнюю ячейку, и почистить одну — значит оставить от него хвост.
-       Замерено: столбцы полей разом стоят 0.4 мс на 1280 и 2.5 мс на 1920 при
-       бюджете кадра 16.7 — экономить не на чем. Ряды сверху и снизу лишние: они
-       закрывают щель, которую открывает сдвиг. */
-    function paintMargins() {
-      if (!rows || !edges.length) return;
-
-      for (var m = 0; m < edges.length; m += 1) {
-        var col = edges[m];
-        ctx.clearRect(col * CELL_W, 0, CELL_W, rows * CELL_H);
-
-        for (var row = -1; row <= rows; row += 1) {
-          var src = (((row + shiftRows) % rows) + rows) % rows;
-          var value = row >= 0 && row < rows ? heat[row * cols + col] : 0;
-          var burning = value > THRESH;
-
-          ctx.globalAlpha = burning ? BASE_ALPHA + value * value : BASE_ALPHA;
-          ctx.fillStyle = burning ? (value > 0.78 ? EMBER : ACCENT) : BASE;
-          ctx.fillText(chars[src * cols + col], col * CELL_W + 2,
-            row * CELL_H + 3 - shiftPx);
-        }
-      }
-
-      ctx.globalAlpha = 1;
-    }
-
     function paintAll() {
-      ctx.clearRect(0, 0, window.innerWidth, window.innerHeight);
+      ctx.clearRect(0, 0, cols * CELL_W, rows * CELL_H);
       for (var row = 0; row < rows; row += 1) {
-        for (var col = 0; col < cols; col += 1) {
-          if (!inMargin[col]) paintCell(col, row, BASE_ALPHA, BASE);
-        }
+        for (var col = 0; col < cols; col += 1) paintCell(col, row, BASE_ALPHA, BASE);
       }
       ctx.globalAlpha = 1;
-      paintMargins();
     }
 
     function wake() {
@@ -1037,7 +1013,9 @@
 
     /* Курсор подогревает ячейки вокруг себя. Тепло не сбрасывается мгновенно, а
        гаснет кадр за кадром — поэтому за курсором тянется короткий хвост. */
-    function warm(x, y) {
+    function warm(x, screenY) {
+      // Холст уехал вверх на `shift` — курсор попадает в клетку ниже.
+      var y = screenY + shift;
       var c0 = Math.max(0, Math.floor((x - RADIUS) / CELL_W));
       var c1 = Math.min(cols - 1, Math.ceil((x + RADIUS) / CELL_W));
       var r0 = Math.max(0, Math.floor((y - RADIUS) / CELL_H));
@@ -1067,8 +1045,12 @@
       var band = Math.min(rows, Math.max(SCROLL_MIN_ROWS,
         Math.round(SCROLL_CELLS / edges.length)));
 
+      // Видимая часть поля: холст выше окна, и греть надо тот край, что в кадре.
+      var first = Math.floor(shift / CELL_H);
+      var last = Math.min(rows - 1, Math.ceil((shift + window.innerHeight) / CELL_H) - 1);
+
       for (var i = 0; i < band; i += 1) {
-        var row = dir > 0 ? rows - 1 - i : i;
+        var row = dir > 0 ? last - i : first + i;
         if (row < 0 || row >= rows) continue;
 
         var value = force * (1 - i / band);
@@ -1082,10 +1064,9 @@
       var step = lastFrame ? Math.min(now - lastFrame, 64) : 16.7;
       lastFrame = now;
 
-      var moved = updateShift();
+      updateShift();
       var fade = Math.pow(DECAY, step / 16.7);
       var kept = [];
-      var marginLit = false;
 
       for (var i = 0; i < hot.length; i += 1) {
         var index = hot[i];
@@ -1101,19 +1082,11 @@
           kept.push(index);
         }
 
-        // Ячейки полей не трогаем поштучно — их закроет полоса целиком.
-        if (inMargin[col]) {
-          marginLit = true;
-          continue;
-        }
-
         ctx.clearRect(col * CELL_W, row * CELL_H, CELL_W, CELL_H);
 
         if (value < THRESH) paintCell(col, row, BASE_ALPHA, BASE);
         else paintCell(col, row, BASE_ALPHA + value * value, value > 0.78 ? EMBER : ACCENT);
       }
-
-      if (moved || marginLit) paintMargins();
 
       hot = kept;
       ctx.globalAlpha = 1;
@@ -1123,7 +1096,20 @@
     }
 
     build();
-    window.addEventListener('resize', build);
+
+    /* Сборка стоит дорого: поле теперь выше окна, и знаков в нём втрое больше —
+       замерено 48 мс на 1280x720 против 18 мс у прежнего поля в один экран.
+       Событий изменения размера приходит десятки в секунду, пока тянут край
+       окна, поэтому пересобираем не на каждое, а через паузу после последнего.
+       На телефоне это ещё и защита от адресной строки: она прячется при
+       прокрутке и каждый раз шлёт `resize`. */
+    var REBUILD_MS = 150;
+    var rebuildTimer = 0;
+
+    window.addEventListener('resize', function () {
+      window.clearTimeout(rebuildTimer);
+      rebuildTimer = window.setTimeout(build, REBUILD_MS);
+    });
 
     if (FINE_POINTER && !LESS_MOTION) {
       window.addEventListener('mousemove', function (event) {
@@ -1177,6 +1163,9 @@
       scrollWaiting = true;
       window.requestAnimationFrame(function () {
         scrollWaiting = false;
+        // Сдвиг применяем здесь же: если ждать кадра, поле отстаёт ещё и на кадр.
+        updateShift();
+
         var delta = scrollDelta;
         scrollDelta = 0;
         if (!delta) return;
@@ -1196,10 +1185,6 @@
         var index = Math.floor(Math.random() * chars.length);
         var row = Math.floor(index / cols);
         var col = index % cols;
-
-        // В полях знаки не мерцают: они там едут, и подмена одной ячейки поверх
-        // съехавшей полосы оставила бы от знака хвост.
-        if (inMargin[col]) continue;
 
         chars[index] = randomGlyph();
         ctx.clearRect(col * CELL_W, row * CELL_H, CELL_W, CELL_H);
