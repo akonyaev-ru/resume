@@ -318,6 +318,187 @@
     ]);
   }
 
+  /* --- схема связей для декора «Подхода» --------------------------------- */
+
+  /* Рисуем сами, а не кладём картинку. Первым заходом сюда легла присланная
+     владельцем схема — растром, через маску; она мылилась на плотных экранах
+     и вообще была чужой на странице, где всё остальное рисуется кодом. Здесь
+     тот же язык — плашки, кружки, ортогональные связи со скруглениями, значки
+     внутри, — но вектор: чёткий на любом экране, красится палитрой страницы
+     через `currentColor` и весит меньше килобайта.
+
+     Узлы стоят на четырёх рядах, координаты в единицах поля 700x240. Связь
+     идёт от края узла, а не от центра, поэтому под заливку не заходит. */
+  var GRAPH_W = 700;
+  var GRAPH_H = 240;
+  var GRAPH_ROWS = [26, 88, 150, 212];
+  var GRAPH_DOT = 17;              // радиус круглого узла
+  var GRAPH_PILL_W = 62;
+  var GRAPH_PILL_H = 42;
+  var GRAPH_CORNER = 11;           // скругление на изломе связи
+
+  var GRAPH_NODES = [
+    { id: 'a1', x: 236, row: 0, icon: 'branch' },
+    { id: 'a2', x: 336, row: 0, icon: 'star' },
+    { id: 'a3', x: 446, row: 0, pill: true, icon: 'clock' },
+
+    { id: 'b1', x: 142, row: 1, pill: true, icon: 'doc' },
+    { id: 'b2', x: 258, row: 1, icon: 'spark' },
+    { id: 'b3', x: 356, row: 1, icon: 'arrow' },
+    { id: 'b4', x: 452, row: 1, icon: 'shield' },
+    { id: 'b5', x: 556, row: 1, icon: 'code' },
+
+    { id: 'c1', x: 72, row: 2, icon: 'user' },
+    { id: 'c2', x: 172, row: 2, icon: 'bot' },
+    { id: 'c3', x: 288, row: 2, pill: true, icon: 'db' },
+    { id: 'c4', x: 392, row: 2, icon: 'cube' },
+    { id: 'c5', x: 504, row: 2, pill: true, icon: 'check' },
+    { id: 'c6', x: 618, row: 2, icon: 'chart' },
+
+    { id: 'd1', x: 26, row: 3, icon: 'ring' },
+    { id: 'd2', x: 134, row: 3, pill: true, icon: 'bolt' },
+    { id: 'd3', x: 246, row: 3, icon: 'branch' },
+    { id: 'd4', x: 348, row: 3, icon: 'users' },
+    { id: 'd5', x: 450, row: 3, icon: 'loop' },
+    { id: 'd6', x: 556, row: 3, pill: true, icon: 'calendar' },
+    { id: 'd7', x: 668, row: 3, icon: 'wave' },
+  ];
+
+  var GRAPH_LINKS = [
+    ['a1', 'a2'], ['a2', 'a3'],
+    ['b1', 'b2'], ['b2', 'b3'], ['b3', 'b4'], ['b4', 'b5'],
+    ['c1', 'c2'], ['c2', 'c3'], ['c3', 'c4'], ['c4', 'c5'], ['c5', 'c6'],
+    ['d1', 'd2'], ['d2', 'd3'], ['d3', 'd4'], ['d4', 'd5'], ['d5', 'd6'], ['d6', 'd7'],
+    ['a1', 'b2'], ['a2', 'b3'], ['a3', 'b4'], ['a3', 'b5'], ['b1', 'a1'],
+    ['b1', 'c2'], ['b3', 'c4'], ['b5', 'c6'], ['b2', 'c3'], ['b4', 'c5'],
+    ['c1', 'd1'], ['c3', 'd3'], ['c4', 'd4'], ['c5', 'd5'], ['c6', 'd7'],
+    ['c1', 'b1'], ['c2', 'd3'], ['c6', 'd6'],
+  ];
+
+  /* Значки в поле 24x24, только штрихом. Рисунок у каждого свой: три похожих
+     (солнце, шестерёнка, вторая искра) в первом заходе сливались в одно пятно. */
+  var GRAPH_ICONS = {
+    user: 'M12 6.2a3.1 3.1 0 1 1 0 6.2 3.1 3.1 0 0 1 0-6.2M5.9 19a6.4 6.4 0 0 1 12.2 0',
+    users: 'M9.4 7.4a2.7 2.7 0 1 1 0 5.4 2.7 2.7 0 0 1 0-5.4M4.4 18.4a5.2 5.2 0 0 1 10 0'
+      + 'M16.2 8.4a2.2 2.2 0 1 1 0 4.4 2.2 2.2 0 0 1 0-4.4M15 15.2a4.6 4.6 0 0 1 4.8 3.2',
+    code: 'M9.6 7.8 5.6 12l4 4.2M14.4 7.8l4 4.2-4 4.2',
+    branch: 'M8 7.6v8.8M8 5.4a2.2 2.2 0 1 1 0 4.4 2.2 2.2 0 0 1 0-4.4'
+      + 'M8 14.2a2.2 2.2 0 1 1 0 4.4 2.2 2.2 0 0 1 0-4.4'
+      + 'M16.4 7.4a2.2 2.2 0 1 1 0 4.4 2.2 2.2 0 0 1 0-4.4M16.4 11.8c0 3-2.6 3.4-5.4 3.8',
+    cube: 'M12 4.6 19 8.5v7.8L12 20l-7-3.7V8.5zM12 4.6v7.8M12 12.4l7-3.9M12 12.4l-7-3.9',
+    spark: 'M12 5.2c.6 3.6 1.6 4.6 5.2 5.2-3.6.6-4.6 1.6-5.2 5.2-.6-3.6-1.6-4.6-5.2-5.2'
+      + ' 3.6-.6 4.6-1.6 5.2-5.2z',
+    star: 'M12 4.8v14.4M6 8.4l12 7.2M18 8.4 6 15.6',
+    arrow: 'M5.6 12h11.2M13.4 8.6l3.8 3.4-3.8 3.4M18.6 8v8',
+    loop: 'M6.4 13.6a5.6 5.6 0 0 1 9.2-5M17.6 10.4a5.6 5.6 0 0 1-9.2 5'
+      + 'M6.2 9.6l.2 4 3.8-.6M17.8 14.4l-.2-4-3.8.6',
+    ring: 'M12 5.4a6.6 6.6 0 1 1 0 13.2 6.6 6.6 0 0 1 0-13.2M12 9a3 3 0 1 1 0 6 3 3 0 0 1 0-6',
+    bot: 'M7.4 9.4h9.2v7.2H7.4zM12 6v3.4M10.2 12.4v1.4M13.8 12.4v1.4'
+      + 'M5.4 11.6v2.8M18.6 11.6v2.8',
+    wave: 'M5 14.4c2.2-4 4.4-4 6.6 0s4.4 4 6.6 0M5 9.6c2.2-4 4.4-4 6.6 0',
+    clock: 'M12 4.8a7.2 7.2 0 1 1 0 14.4 7.2 7.2 0 0 1 0-14.4M12 8.2V12l2.8 1.8',
+    doc: 'M7.4 4.8h6.4l3.8 3.8v10.6H7.4zM13.6 4.8v4h4M10 13h5M10 16h3.4',
+    db: 'M12 5.2c3.5 0 6 .9 6 2.1s-2.5 2.1-6 2.1-6-.9-6-2.1S8.5 5.2 12 5.2'
+      + 'M6 7.3v9.4c0 1.2 2.5 2.1 6 2.1s6-.9 6-2.1V7.3M6 12c0 1.2 2.5 2.1 6 2.1s6-.9 6-2.1',
+    check: 'M12 4.9a7.1 7.1 0 1 1 0 14.2 7.1 7.1 0 0 1 0-14.2M8.6 12.1l2.4 2.4 4.4-4.8',
+    bolt: 'M13.4 4.4 7.2 13h4.2l-.8 6.6 6.2-8.6h-4.2z',
+    shield: 'M12 4.6 18 7v5.2c0 3.4-2.4 5.8-6 7.2-3.6-1.4-6-3.8-6-7.2V7z'
+      + 'M9.4 11.8l1.9 1.9 3.4-3.7',
+    chart: 'M6 19h12M8.6 19v-5.4M12 19V7.6M15.4 19v-8',
+    calendar: 'M6 7.4h12v11.2H6zM6 11h12M9.4 4.8v3.2M14.6 4.8v3.2',
+  };
+
+  function graphNode(id) {
+    for (var i = 0; i < GRAPH_NODES.length; i += 1) {
+      if (GRAPH_NODES[i].id === id) return GRAPH_NODES[i];
+    }
+    return null;
+  }
+
+  function graphGeom(node) {
+    return {
+      x: node.x,
+      y: GRAPH_ROWS[node.row],
+      hw: node.pill ? GRAPH_PILL_W / 2 : GRAPH_DOT,
+      hh: node.pill ? GRAPH_PILL_H / 2 : GRAPH_DOT,
+      row: node.row,
+    };
+  }
+
+  /* По ряду связь прямая, между рядами — уступ с двумя скруглениями. */
+  function graphRoute(a, b) {
+    var p = graphGeom(a);
+    var q = graphGeom(b);
+
+    if (p.row === q.row) {
+      var left = p.x < q.x ? p : q;
+      var right = p.x < q.x ? q : p;
+      return 'M' + (left.x + left.hw) + ' ' + left.y + 'H' + (right.x - right.hw);
+    }
+
+    var up = p.row < q.row ? p : q;
+    var down = p.row < q.row ? q : p;
+    var y0 = up.y + up.hh;
+    var y1 = down.y - down.hh;
+    if (Math.abs(up.x - down.x) < 2) return 'M' + up.x + ' ' + y0 + 'V' + y1;
+
+    var mid = (y0 + y1) / 2;
+    var dir = down.x > up.x ? 1 : -1;
+    var r = Math.min(GRAPH_CORNER, Math.abs(down.x - up.x) / 2, (y1 - y0) / 2);
+
+    return 'M' + up.x + ' ' + y0
+      + 'V' + (mid - r)
+      + 'Q' + up.x + ' ' + mid + ' ' + (up.x + dir * r) + ' ' + mid
+      + 'H' + (down.x - dir * r)
+      + 'Q' + down.x + ' ' + mid + ' ' + down.x + ' ' + (mid + r)
+      + 'V' + y1;
+  }
+
+  function graphSvg() {
+    var out = ['<svg viewBox="0 0 ' + GRAPH_W + ' ' + GRAPH_H
+      + '" fill="none" aria-hidden="true">'];
+
+    out.push('<g stroke="currentColor" stroke-width="1.6" stroke-opacity="0.5">');
+    GRAPH_LINKS.forEach(function (pair) {
+      out.push('<path d="' + graphRoute(graphNode(pair[0]), graphNode(pair[1])) + '"/>');
+    });
+    out.push('</g>');
+
+    GRAPH_NODES.forEach(function (node) {
+      var y = GRAPH_ROWS[node.row];
+      var skin = ' fill="currentColor" fill-opacity="0.1" stroke="currentColor"'
+        + ' stroke-opacity="0.55" stroke-width="1.6"/>';
+
+      if (node.pill) {
+        out.push('<rect x="' + (node.x - GRAPH_PILL_W / 2) + '" y="' + (y - GRAPH_PILL_H / 2)
+          + '" width="' + GRAPH_PILL_W + '" height="' + GRAPH_PILL_H
+          + '" rx="' + (GRAPH_PILL_H / 2) + '"' + skin);
+      } else {
+        out.push('<circle cx="' + node.x + '" cy="' + y + '" r="' + GRAPH_DOT + '"' + skin);
+      }
+
+      if (!GRAPH_ICONS[node.icon]) return;
+
+      // В круге значок по центру, в плашке — слева, а правее полоска: плашка
+      // читается подписанной, но никакой надписи в ней нет. Выдуманным числам
+      // рядом с настоящими показателями резюме делать нечего.
+      var ix = node.pill ? node.x - GRAPH_PILL_W / 2 + 7 : node.x - 12;
+      out.push('<g transform="translate(' + ix + ' ' + (y - 12) + ')"'
+        + ' stroke="currentColor" stroke-opacity="0.8" stroke-width="1.5"'
+        + ' stroke-linecap="round" stroke-linejoin="round">'
+        + '<path d="' + GRAPH_ICONS[node.icon] + '"/></g>');
+
+      if (node.pill) {
+        out.push('<rect x="' + (node.x - 1) + '" y="' + (y - 3.5) + '" width="'
+          + (GRAPH_PILL_W / 2 - 10) + '" height="7" rx="3.5"'
+          + ' fill="currentColor" fill-opacity="0.55"/>');
+      }
+    });
+
+    out.push('</svg>');
+    return out.join('');
+  }
+
   /* --- подход ------------------------------------------------------------ */
 
   function buildApproach() {
@@ -329,7 +510,9 @@
     ]);
 
     // Декор идёт первым и лежит слоем ниже содержимого — см. `.graph` в стилях.
-    node.insertBefore(el('div', { class: 'graph', 'aria-hidden': 'true' }), node.firstChild);
+    var deco = el('div', { class: 'graph', 'aria-hidden': 'true' });
+    deco.innerHTML = graphSvg();
+    node.insertBefore(deco, node.firstChild);
     return node;
   }
 
