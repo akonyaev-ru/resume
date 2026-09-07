@@ -263,7 +263,6 @@ a:not(.btn):hover { color: var(--text); }
   z-index: 30;
   background: color-mix(in srgb, var(--void) 82%, transparent);
   backdrop-filter: blur(12px);
-  border-bottom: 1px solid var(--line);
 }
 
 .topbar__inner {
@@ -629,7 +628,6 @@ a:not(.btn):hover { color: var(--text); }
   overflow: hidden;
   margin-block-start: clamp(2rem, 4vw, 3rem);
   padding-block-start: clamp(1.25rem, 3vw, 1.75rem);
-  border-block-start: 1px solid var(--line);
   -webkit-mask-image: linear-gradient(to right, transparent, #000 var(--facts-fade),
     #000 calc(100% - var(--facts-fade)), transparent);
   mask-image: linear-gradient(to right, transparent, #000 var(--facts-fade),
@@ -695,9 +693,12 @@ a:not(.btn):hover { color: var(--text); }
 
 /* --- Секции ------------------------------------------------------------- */
 
+/* Разделительных полос на странице нет ни одной — владелец снял их 2026-09-05.
+   Блоки разводит воздух: у раздела 40–72 px сверху и снизу, то есть между
+   соседними 80–144 px. Метка-квадратик у заголовка осталась: это знак начала,
+   а не линейка. */
 .section {
   padding-block: clamp(2.5rem, 6vw, 4.5rem);
-  border-top: 1px solid var(--line-soft);
 }
 
 .section__head {
@@ -715,12 +716,6 @@ a:not(.btn):hover { color: var(--text); }
   background: var(--accent);
 }
 
-.section__head::after {
-  content: '';
-  flex: 1;
-  height: 1px;
-  background: var(--line);
-}
 
 .section__title {
   font-size: var(--step-2);
@@ -1084,10 +1079,9 @@ a:not(.btn):hover { color: var(--text); }
   grid-template-columns: var(--margin-col) minmax(0, 1fr);
   gap: 0 clamp(1.25rem, 3vw, 2.5rem);
   padding-block: clamp(1.75rem, 3vw, 2.5rem);
-  border-top: 1px solid var(--line-soft);
 }
 
-.job:first-child { border-top: 0; padding-block-start: 0; }
+.job:first-child { padding-block-start: 0; }
 
 @media (max-width: 740px) {
   .job { grid-template-columns: minmax(0, 1fr); gap: 0.75rem; }
@@ -1273,7 +1267,6 @@ a:not(.btn):hover { color: var(--text); }
   text-transform: uppercase;
   color: var(--muted);
   padding-block-end: 0.5rem;
-  border-bottom: 1px solid var(--line);
   margin-block-end: 0.9rem;
 }
 
@@ -1306,10 +1299,7 @@ a:not(.btn):hover { color: var(--text); }
   grid-template-columns: 4.5rem minmax(0, 1fr);
   gap: 0 1rem;
   padding-block: 0.9rem;
-  border-top: 1px solid var(--line-soft);
 }
-
-.record:first-of-type { border-top: 0; }
 
 .record__year {
   font-family: var(--font-mono);
@@ -1333,7 +1323,6 @@ a:not(.btn):hover { color: var(--text); }
 
 .contact {
   position: relative;
-  border-top: 1px solid var(--line-soft);
   padding-block: clamp(3rem, 7vw, 5rem);
 }
 
@@ -1364,7 +1353,6 @@ a:not(.btn):hover { color: var(--text); }
    пикселях и с размером шрифта не меняются, а `rem` у человека с мелким
    системным шрифтом сжался бы и полоса ушла под часы. */
 .footer {
-  border-top: 1px solid var(--line-soft);
   padding-block: 1.5rem max(6.5rem, 112px);
   font-family: var(--font-mono);
   font-size: var(--step--2);
