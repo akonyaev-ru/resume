@@ -263,7 +263,6 @@ a:not(.btn):hover { color: var(--text); }
   z-index: 30;
   background: color-mix(in srgb, var(--void) 82%, transparent);
   backdrop-filter: blur(12px);
-  border-bottom: 1px solid var(--line);
 }
 
 .topbar__inner {
@@ -695,9 +694,12 @@ a:not(.btn):hover { color: var(--text); }
 
 /* --- Секции ------------------------------------------------------------- */
 
+/* Полос во всю ширину окна на странице нет: владелец снял их 2026-09-05, оставив
+   те, что живут внутри колонки с текстом (хвост у заголовка, разделители работ
+   и записей). Разделы разводит воздух: 40–72 px сверху и снизу, то есть между
+   соседними 80–144 px. В печати линейка сохранена — на бумаге она помогает. */
 .section {
   padding-block: clamp(2.5rem, 6vw, 4.5rem);
-  border-top: 1px solid var(--line-soft);
 }
 
 .section__head {
@@ -1283,7 +1285,6 @@ a:not(.btn):hover { color: var(--text); }
 
 .contact {
   position: relative;
-  border-top: 1px solid var(--line-soft);
   padding-block: clamp(3rem, 7vw, 5rem);
 }
 
@@ -1314,7 +1315,6 @@ a:not(.btn):hover { color: var(--text); }
    пикселях и с размером шрифта не меняются, а `rem` у человека с мелким
    системным шрифтом сжался бы и полоса ушла под часы. */
 .footer {
-  border-top: 1px solid var(--line-soft);
   padding-block: 1.5rem max(6.5rem, 112px);
   font-family: var(--font-mono);
   font-size: var(--step--2);
