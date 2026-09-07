@@ -536,10 +536,10 @@
       ]),
     ]);
 
-    // Схема идёт последней и своей полосой — за колонкой текста, а не под ней.
+    // Декор идёт первым и лежит слоем ниже содержимого — см. `.graph` в стилях.
     var deco = el('div', { class: 'graph', 'aria-hidden': 'true' });
     deco.innerHTML = graphSvg();
-    node.appendChild(deco);
+    node.insertBefore(deco, node.firstChild);
     return node;
   }
 
