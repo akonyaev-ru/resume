@@ -646,6 +646,18 @@ a:not(.btn):hover { color: var(--text); }
 .facts:hover .facts__track,
 .facts:focus-within .facts__track { animation-play-state: paused; }
 
+/* Кольцо фокуса и растушёвка краёв не уживаются: маска гасит всё, что рисует
+   элемент, а `outline-offset` выносит кольцо за её границу, где прозрачно
+   уже полностью. Замер 2026-09-07: полоса матчит `:focus-visible`, а кольца
+   на снимке нет вовсе — то есть один `tabindex` закрыл бы 2.1.1 и уронил
+   2.4.7. Пока полоса в фокусе, растушёвку снимаем: она подсказывает про
+   прокрутку тому, кто ещё не встал на полосу, а вставшему нужен видимый
+   фокус. */
+.facts:focus-visible {
+  -webkit-mask-image: none;
+  mask-image: none;
+}
+
 .facts__group {
   display: flex;
   flex: none;

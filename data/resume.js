@@ -30,6 +30,10 @@ window.RESUME = {
     factRelocation: { ru: 'Переезд', en: 'Relocation' },
     factExperience: { ru: 'Опыт', en: 'Experience' },
     factEmail: { ru: 'Почта', en: 'Email' },
+    factsLabel: {
+      ru: 'Ключевые сведения, прокручиваемая полоса',
+      en: 'Key facts, scrollable strip',
+    },
     years: { ru: 'лет', en: 'years old' },
     resultsTitle: { ru: 'Что изменилось после внедрений', en: 'What changed after the rollouts' },
     resultsNote: {

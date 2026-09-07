@@ -276,6 +276,119 @@
     ]);
   }
 
+  /* --- анкета с клавиатуры ------------------------------------------------ */
+
+  /* Ниже 740 px и при отключённой анимации лента встаёт и начинает листаться
+     пальцем — то есть делается прокручиваемым блоком. Пальцем и колесом её
+     листали, а с клавиатуры до неё было не добраться: сам блок в обход по Tab
+     не попадает. Chrome добавляет туда прокручиваемые блоки только когда
+     внутри нет фокусируемого, а внутри есть ссылка на почту. Замерено
+     2026-09-07 на 375 px: от почты Tab уходит сразу на шкалу опыта, а
+     остальные четыре пункта с клавиатуры недостижимы вовсе.
+
+     Поэтому полоса, которая действительно прокручивается, получает `tabindex`
+     и подпись, а стрелки, Home и End двигают её сами. На родную прокрутку не
+     полагаемся: она зависит от версии браузера — и гасим её `preventDefault`,
+     иначе шаг сложился бы вдвое. Когда полоса помещается целиком, `tabindex`
+     снимается: лишняя остановка Tab на широком экране ни к чему. */
+
+  var FACTS_RESYNC_MS = 150;
+  var factsBound = false;
+
+  function factsScrolls(strip) {
+    var flow = window.getComputedStyle(strip).overflowX;
+    if (flow !== 'auto' && flow !== 'scroll') return false;
+    return strip.scrollWidth - strip.clientWidth > 1;
+  }
+
+  function syncFacts() {
+    var strip = $('.facts');
+    if (!strip) return;
+
+    if (factsScrolls(strip)) {
+      strip.setAttribute('tabindex', '0');
+      strip.setAttribute('role', 'group');
+      strip.setAttribute('aria-label', u('factsLabel'));
+    } else {
+      strip.removeAttribute('tabindex');
+      strip.removeAttribute('role');
+      strip.removeAttribute('aria-label');
+    }
+  }
+
+  /* Шаг — по пунктам, а не на произвольное число пикселей: ближайший
+     недосмотренный пункт встаёт в середину полосы. Так же ведёт себя лента
+     разделов в узкой шапке (`revealNav`), и по той же причине: у краёв полосы
+     растушёвка в 48 px, и пункт, поставленный вплотную к краю, читался бы
+     наполовину. */
+  function factsStep(strip, dir) {
+    var box = strip.getBoundingClientRect();
+    var items = Array.prototype.slice.call(
+      strip.querySelectorAll('.facts__group:not([aria-hidden]) .fact'));
+    var left = strip.scrollLeft;
+    var right = left + strip.clientWidth;
+    var center = null;
+
+    for (var i = 0; i < items.length; i += 1) {
+      var rect = items[i].getBoundingClientRect();
+      var from = left + (rect.left - box.left);
+      var to = from + rect.width;
+      var missed = dir > 0 ? to > right + 1 : from < left - 1;
+      if (!missed) continue;
+      center = from + rect.width / 2;
+      if (dir > 0) break;
+    }
+
+    if (center === null) return dir > 0 ? strip.scrollWidth : 0;
+    return center - strip.clientWidth / 2;
+  }
+
+  /* Шаг мгновенный, без плавности. При отключённой анимации иначе и нельзя, а
+     нажатие клавиши — это переход к соседнему пункту, где задержка только
+     мешает. Плавность в файле есть у `revealNav`, но там полоса догоняет
+     прокрутку сама, без участия человека. */
+  function onFactsKey(event) {
+    var strip = event.currentTarget;
+    if (event.target !== strip) return;
+    if (event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;
+
+    var max = strip.scrollWidth - strip.clientWidth;
+    var to;
+
+    if (event.key === 'ArrowRight') to = factsStep(strip, 1);
+    else if (event.key === 'ArrowLeft') to = factsStep(strip, -1);
+    else if (event.key === 'Home') to = 0;
+    else if (event.key === 'End') to = max;
+    else return;
+
+    event.preventDefault();
+    strip.scrollLeft = Math.max(0, Math.min(to, max));
+  }
+
+  function initFacts() {
+    var strip = $('.facts');
+    if (!strip) return;
+
+    strip.addEventListener('keydown', onFactsKey);
+    syncFacts();
+
+    /* Ширина набора зависит от шрифта, а к первой отрисовке он загружен не
+       всегда: без пересчёта полоса, ставшая прокручиваемой после подмены
+       шрифта, осталась бы без `tabindex`. */
+    if (document.fonts && document.fonts.ready && document.fonts.ready.then) {
+      document.fonts.ready.then(syncFacts);
+    }
+
+    if (factsBound) return;
+    factsBound = true;
+
+    var timer = 0;
+    window.addEventListener('resize', function () {
+      window.clearTimeout(timer);
+      timer = window.setTimeout(syncFacts, FACTS_RESYNC_MS);
+    });
+  }
+
   /* Тег выпуска показывается без ведущей `v`: рядом со словом «Выпуск» она
      ничего не добавляет. */
   function tagName(tag) {
@@ -1306,6 +1419,7 @@
     app.appendChild(buildFooter());
 
     initObservers();
+    initFacts();
     initTitleDecode();
     initGlyphPortrait();
     collectMagnets();
