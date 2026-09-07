@@ -871,7 +871,7 @@ a:not(.btn):hover { color: var(--text); }
      текста, и схема к ним подступала вплотную. */
   inset-block-start: 57%;
   inset-inline-end: -8%;
-  width: min(1180px, 82vw);
+  width: min(1040px, 74vw);
   aspect-ratio: 700 / 240;
   transform: translateY(-50%);
   color: var(--accent);
@@ -881,8 +881,13 @@ a:not(.btn):hover { color: var(--text); }
      цвета уже пропадают, проверено снимками). */
   opacity: 0.34;
   pointer-events: none;
-  -webkit-mask-image: linear-gradient(to right, transparent, #000 42%);
-  mask-image: linear-gradient(to right, transparent, #000 42%);
+  /* Растушёвка с полкой посередине, а не ровным подъёмом: под колонкой текста
+     схема почти погашена, под цитатой держится вполсилы, полную плотность
+     набирает только правее — там, где текста уже нет. */
+  -webkit-mask-image: linear-gradient(to right, transparent,
+    rgba(0, 0, 0, 0.42) 52%, #000 86%);
+  mask-image: linear-gradient(to right, transparent,
+    rgba(0, 0, 0, 0.42) 52%, #000 86%);
 }
 
 .graph svg {
