@@ -73,22 +73,22 @@ window.RESUME = {
   person: {
     name: { ru: 'Алексей Коняев', en: 'Alexey Konyaev' },
     role: {
-      // \u00A0 перед AI: иначе союз «и» повисает в конце строки заголовка.
-      ru: 'Специалист по автоматизации и\u00A0AI-разработке',
-      en: 'Automation and AI engineering specialist',
+      // \u00A0 перед ИИ: иначе союз «и» повисает в конце строки заголовка.
+      ru: 'Автоматизация юридической функции и\u00A0ИИ-агенты',
+      en: 'Legal function automation and AI agents',
     },
     // Термины, которые подсвечиваются акцентом внутри заголовка. Порядок важен:
     // roleNode ищет их последовательно, отрезая уже разобранное начало.
     roleAccent: {
-      ru: ['AI-разработке'],
-      en: ['AI engineering'],
+      ru: ['ИИ-агенты'],
+      en: ['AI agents'],
     },
     photo: 'assets/img/portrait.webp',
     age: 25,
     city: { ru: 'Москва', en: 'Moscow' },
     github: 'akonyaev-ru',
-    updated: { ru: '4 сентября 2026', en: '4 September 2026' },
-    experienceTotal: { ru: '2 года 7 месяцев', en: '2 years 7 months' },
+    updated: { ru: '15 сентября 2026', en: '15 September 2026' },
+    experienceTotal: { ru: '3 года 3 месяца', en: '3 years 3 months' },
     employment: { ru: 'полная занятость', en: 'full-time' },
     schedule: { ru: 'Удалённо или гибрид', en: 'Remote or hybrid' },
     relocation: {
@@ -96,16 +96,16 @@ window.RESUME = {
       en: 'No relocation, occasional trips',
     },
     specializations: {
-      ru: ['Бизнес-аналитик', 'Менеджер продукта'],
-      en: ['Business analyst', 'Product manager'],
+      ru: ['Юрист', 'Бизнес-аналитик'],
+      en: ['Lawyer', 'Business analyst'],
     },
     lede: {
-      ru: 'Перевожу ручные бизнес-процессы в автоматические — и сам пишу то, что\u00A0для этого нужно.',
-      en: 'I move manual business processes into automatic ones — and write what that takes myself.',
+      ru: 'Юрист по практике: перевожу юридическую функцию на ИИ-агентов — и\u00A0сам пишу то, что для этого нужно.',
+      en: 'A practising lawyer: I move the legal function onto AI agents — and write what that takes myself.',
     },
     about: {
-      ru: 'Нахожу узкие места в ручных процессах, собираю требования от заказчиков, формирую техническое задание и довожу решение до работающего результата — по расписанию, событию или заданному условию. Объединяю понимание бизнес-логики с техническими компетенциями: Python, API, интеграция LLM. Роботизировал согласование договоров, внедрил ИИ-агентов на базе Claude, выстроил политику безопасного использования ИИ в контуре компании. Способен и спроектировать архитектуру автоматизации, и реализовать её руками — от постановки задачи до пользовательского тестирования.',
-      en: 'I find the bottlenecks in manual processes, gather requirements from the people who own them, write the specification and carry the solution through to a working result — running on a schedule, on an event or on a condition. I combine an understanding of business logic with technical skills: Python, APIs, LLM integration. I robotised contract approval, rolled out Claude-based AI agents and built the policy for safe use of AI inside the company perimeter. I can both design the automation architecture and build it myself, from framing the task to user testing.',
+      ru: 'Юрист с практикой в договорной, претензионно-исковой и судебной работе, который автоматизирует юридическую функцию своими руками: нахожу узкие места, собираю требования от юристов и бизнес-заказчиков, формирую ТЗ, довожу решение до внедрения, тестирования и обучения команды, а вокруг инструментов выстраиваю методологию — регламенты, инструкции, маршруты согласования. Два юридических образования плюс Python, API и интеграция LLM. Роботизировал согласование договоров, внедрил шесть ИИ-агентов на базе Claude, выстроил контур безопасного использования ИИ в компании — способен и спроектировать архитектуру автоматизации, и реализовать её руками, от постановки задачи до пользовательского тестирования.',
+      en: 'A lawyer with hands-on contract, claims and litigation practice who automates the legal function himself: I find the bottlenecks, gather requirements from lawyers and business owners, write the specification and carry the solution through to rollout, testing and team training — and build the method around the tools: policies, instructions, approval routes. Two law degrees plus Python, APIs and LLM integration. I robotised contract approval, rolled out six Claude-based AI agents and built the perimeter for safe AI use in the company — I can both design the automation architecture and build it myself, from framing the task to user testing.',
     },
     pullquote: {
       ru: 'Результат — не внедрённый инструмент, а процесс, который после меня работает без меня.',
@@ -134,8 +134,8 @@ window.RESUME = {
       caption: { ru: 'времени на подготовку документов', en: 'time spent preparing documents' },
     },
     {
-      value: 70, suffix: '%',
-      caption: { ru: 'FTE высвобождено от рутины', en: 'of FTE freed from routine' },
+      value: 70, prefix: '−', suffix: '%',
+      caption: { ru: 'времени на типовые задачи', en: 'time on routine tasks' },
     },
     {
       value: 80, suffix: '%',
@@ -160,38 +160,38 @@ window.RESUME = {
       bullets: [
         {
           text: {
-            ru: 'Автоматизировал сквозной процесс согласования договоров на базе Битрикс24: описал процесс как есть, расшил узкие места в маршруте, перестроил проверку контрагентов, статусы, уведомления и контроль сроков. Сократил SLA согласования на 60%, ускорив коммерческий цикл компании.',
-            en: 'Automated the end-to-end contract approval process on Bitrix24: mapped the process as it was, cleared the bottlenecks in the route, rebuilt counterparty screening, statuses, notifications and deadline control. Cut the approval SLA by 60% and sped up the company commercial cycle.',
+            ru: 'Внедрил 6 ИИ-агентов на базе Claude в работу восьми юристов: разбор и сверка документов, подготовка типовых материалов, контроль регламентных сроков, проекты процессуальных документов и судебных актов с базой практики по каждому судье и нормативной базой АПК — включая контроль резолютивной части при множественности истцов (ст. 175 АПК). Время на типовые задачи сокращено на 70%.',
+            en: 'Rolled out six Claude-based AI agents to a team of eight lawyers: parsing and cross-checking documents, drafting standard materials, tracking deadlines, and drafting procedural documents and court rulings from a per-judge practice base and the procedural code — including the operative part where there are several claimants (art. 175 of the Commercial Procedure Code). Time on routine tasks cut by 70%.',
           },
         },
         {
           text: {
-            ru: 'Разработал middleware на Python для автоматической деперсонализации данных перед отправкой в LLM. Закрыл риски по 152-ФЗ и утечке коммерческой тайны, сократил время ручной подготовки документов на 95%.',
-            en: 'Built Python middleware that de-identifies data automatically before it goes to an LLM. Closed the risks under the Russian personal data law and trade secret leaks, and cut manual document preparation time by 95%.',
+            ru: 'Автоматизировал сквозной бизнес-процесс согласования договоров в Битрикс24: описал процесс AS IS / TO BE, расшил узкие места в маршруте, перестроил проверку контрагентов, статусы, уведомления и контроль сроков; согласовал целевой процесс с коммерческим блоком и провёл презентацию результатов руководству. SLA согласования сокращён на 60%, коммерческий цикл компании ускорен.',
+            en: 'Automated the end-to-end contract approval process in Bitrix24: mapped the process as is / to be, cleared the bottlenecks in the route, rebuilt counterparty screening, statuses, notifications and deadline control; agreed the target process with the commercial team and presented the results to management. Approval SLA cut by 60%, the company commercial cycle sped up.',
           },
         },
         {
           text: {
-            ru: 'Спроектировал и внедрил корпоративную архитектуру безопасного использования LLM (Claude Code, Codex) во внутреннем контуре компании: разграничение доступов, логирование запросов, регламент работы с конфиденциальными данными. Сформировал требования информационной безопасности к ИИ-решениям.',
-            en: 'Designed and rolled out the corporate architecture for safe LLM use (Claude Code, Codex) inside the company perimeter: access separation, request logging and rules for handling confidential data. Set the information security requirements for AI solutions.',
+            ru: 'Провёл правовую экспертизу и согласование свыше 700 договоров (40–50 в месяц): проверка контрагентов, сопровождение исполнения, обмен документами с контрагентами через Диадок.',
+            en: 'Reviewed and approved over 700 contracts (40–50 a month): counterparty screening, performance follow-up, document exchange with counterparties via Diadoc.',
           },
         },
         {
           text: {
-            ru: 'Собрал BI-отчётность по задачам подразделения: спроектировал дашборды, подгрузил данные из Битрикс24. Убрал 80% ручного ввода и дал контроль KPI в реальном времени.',
-            en: 'Built BI reporting for the unit workload: designed the dashboards and pulled the data from Bitrix24. Removed 80% of manual entry and put KPIs under real-time control.',
+            ru: 'Разработал middleware на Python для автоматической деперсонализации данных перед отправкой в LLM: закрыл риски по 152-ФЗ и утечке коммерческой тайны, ручная подготовка документов сокращена на 95%.',
+            en: 'Built Python middleware that de-identifies data automatically before it goes to an LLM: closed the risks under the personal data law and trade secret leaks; manual document preparation cut by 95%.',
           },
         },
         {
           text: {
-            ru: 'Внедрил ИИ-агентов в ежедневную работу команды: разбор и сверка документов, подготовка типовых материалов, контроль регламентных сроков. Высвободил 70% FTE от рутины на профильные задачи.',
-            en: 'Brought AI agents into the team daily work: parsing and cross-checking documents, drafting standard materials, tracking deadlines. Freed 70% of FTE from routine for professional work.',
+            ru: 'Спроектировал и внедрил контур безопасного использования LLM (Claude Code, Codex) внутри компании: разграничение доступов, логирование запросов, требования информационной безопасности к ИИ-решениям. Разработал ЛНА — регламент использования ИИ в юридическом отделе и инструкции по работе с агентами с приложениями по каждому агенту; обучил 8 юристов.',
+            en: 'Designed and rolled out the perimeter for safe LLM use (Claude Code, Codex) inside the company: access separation, request logging, information security requirements for AI solutions. Wrote the internal policy on AI use in the legal department and the agent manuals with an appendix per agent; trained eight lawyers.',
           },
         },
         {
           text: {
-            ru: 'Вёл бэклог задач автоматизации и приоритизировал их по эффекту и трудозатратам: формировал техническое задание на ИИ-агентов, собирал прототип, проверял его на реальных данных и обкатывал на пилотной группе до передачи пользователям.',
-            en: 'Ran the automation backlog and prioritised it by impact against effort: wrote the specifications for the AI agents, built the prototype, tested it on real data and ran it past a pilot group before handing it to users.',
+            ru: 'Вёл бэклог автоматизации юридической функции в Jira с приоритизацией по эффекту и трудозатратам: формировал бизнес-требования и ТЗ на ИИ-агентов, собирал прототип, тестировал на реальных данных, обкатывал на пилотной группе и передавал в эксплуатацию — этот цикл прошли все шесть агентов. Эффект замерял по BI-дашбордам на данных Битрикс24: убрал 80% ручного ввода в отчётности отдела, вывел KPI в реальном времени.',
+            en: 'Ran the legal function automation backlog in Jira, prioritised by impact against effort: wrote business requirements and specifications for the AI agents, built the prototype, tested it on real data, ran it past a pilot group and handed it over — all six agents went through this cycle. Measured the effect on BI dashboards built on Bitrix24 data: removed 80% of manual entry from the department reporting, put KPIs under real-time control.',
           },
         },
       ],
@@ -206,20 +206,20 @@ window.RESUME = {
       bullets: [
         {
           text: {
-            ru: 'Оцифровал договорную работу по гособоронзаказу: собрал сквозной реестр контрактов с контролем сроков и обязательств вместо разрозненных файлов. Дал руководству единую картину по портфелю.',
+            ru: 'Оцифровал договорную работу по гособоронзаказу: сквозной реестр контрактов с контролем сроков и обязательств вместо разрозненных файлов — единая картина портфеля для руководства.',
             en: 'Digitised contract work under the defence procurement programme: built a single register of contracts with deadline and obligation tracking, replacing scattered files. Gave management one view of the portfolio.',
           },
         },
         {
           text: {
-            ru: 'Выстроил процесс контроля соответствия требованиям 275-ФЗ: плановая проверка прокуратуры пройдена с 0 замечаний, риск многомиллионных штрафов снят.',
-            en: 'Set up compliance control against the defence procurement law: the scheduled prosecutor audit was passed with zero findings, heading off fines running into millions.',
+            ru: 'Выстроил комплаенс-контроль по 275-ФЗ (ГОЗ): плановая проверка прокуратуры пройдена с 0 замечаний, многомиллионные штрафы предотвращены.',
+            en: 'Set up compliance control under the defence procurement law: the scheduled prosecutor audit passed with zero findings, fines running into millions headed off.',
           },
         },
         {
           text: {
-            ru: 'Стандартизировал работу с дебиторской задолженностью: единый регламент, контроль стадий, прозрачная отчётность по статусам. Возвращено в компанию свыше 12 000 000 ₽, результативность 6 из 6.',
-            en: 'Standardised receivables work: one set of rules, stage tracking, transparent status reporting. Recovered over 12,000,000 ₽ for the company, 6 cases out of 6.',
+            ru: 'Стандартизировал претензионно-исковую работу и взыскание дебиторской задолженности: единый регламент, контроль стадий, отчётность по статусам; полный цикл от претензии до арбитражного суда, ФССП и банков. Выиграно 6 из 6 дел, взыскано свыше 12 000 000 ₽.',
+            en: 'Standardised claims and receivables recovery: one set of rules, stage tracking, status reporting; the full cycle from claim letter to commercial court, bailiffs and banks. Won 6 cases out of 6, recovered over 12,000,000 ₽.',
           },
         },
       ],
@@ -234,14 +234,38 @@ window.RESUME = {
       bullets: [
         {
           text: {
-            ru: 'Разработал генератор документов для пакетной обработки массовых однотипных заявок: шаблонизация, автозаполнение из реестра, выгрузка пакетами. Сократил рутинные трудозатраты отдела в 3 раза.',
-            en: 'Built a document generator for batch processing of high-volume identical requests: templating, autofill from a register, batch export. Cut the department routine workload threefold.',
+            ru: 'Автоматизировал массовое приказное производство: разработал конструктор заявлений о выдаче судебных приказов (ст. 122 ГПК) — шаблонизация, автозаполнение из реестра, пакетная выгрузка для подачи мировым судьям. Трудозатраты отдела сокращены в 3 раза.',
+            en: 'Automated high-volume court order proceedings: built a generator for court order applications (art. 122 of the Civil Procedure Code) — templating, autofill from a register, batch export for filing with magistrates. Department routine workload cut threefold.',
           },
         },
         {
           text: {
             ru: 'Выстроил цифровые каналы взаимодействия с банками и ФССП, минимизировав сроки фактического получения средств по исполнительным листам.',
             en: 'Set up digital channels with banks and the bailiff service, cutting the time it actually takes to collect on writs of execution.',
+          },
+        },
+      ],
+    },
+    {
+      company: { ru: 'ИП Коняев А. А.', en: 'Self-employed (sole proprietor)' },
+      role: {
+        ru: 'Консультант по безопасному использованию ИИ и защите данных (152-ФЗ)',
+        en: 'Consultant on safe AI use and data protection',
+      },
+      period: { ru: 'Июль 2023 — настоящее время', en: 'July 2023 — present' },
+      duration: { ru: '3 года 3 месяца', en: '3 years 3 months' },
+      start: '2023-07',
+      end: null,
+      current: true,
+      // Практика идёт параллельно основным местам: на шкале опыта отрезок
+      // лёг бы поверх всех остальных во всю ширину. Карточка в списке есть,
+      // на шкалу запись не выводится.
+      parallel: true,
+      bullets: [
+        {
+          text: {
+            ru: 'Консультировал 4 компании по безопасному использованию ИИ-инструментов и защите персональных данных (152-ФЗ): требования к обработке данных перед передачей в LLM, регламенты использования ИИ.',
+            en: 'Advised four companies on safe use of AI tools and personal data protection: requirements for handling data before it goes to an LLM, internal AI-use policies.',
           },
         },
       ],
@@ -278,15 +302,25 @@ window.RESUME = {
 
   skillGroups: [
     {
+      title: { ru: 'Юридическая практика', en: 'Legal practice' },
+      skills: [
+        { name: { ru: 'Договорная работа', en: 'Contract work' } },
+        { name: { ru: 'Претензионно-исковая работа', en: 'Claims and litigation' } },
+        { name: { ru: 'Проверка контрагентов', en: 'Counterparty screening' } },
+        { name: { ru: 'Комплаенс 275-ФЗ (ГОЗ)', en: 'Defence procurement compliance' } },
+        { name: { ru: 'Защита персональных данных (152-ФЗ)', en: 'Personal data protection' } },
+        { name: { ru: 'КонсультантПлюс', en: 'ConsultantPlus' } },
+      ],
+    },
+    {
       title: { ru: 'Искусственный интеллект', en: 'Artificial intelligence' },
       skills: [
+        { name: { ru: 'ИИ-агенты', en: 'AI agents' } },
         { name: 'Claude' },
         { name: 'ChatGPT' },
-        { name: 'Perplexity' },
         { name: 'Prompt Engineering' },
         { name: 'RAG' },
-        { name: { ru: 'ИИ-агенты', en: 'AI agents' } },
-        { name: 'Antigravity' },
+        { name: { ru: 'Базы знаний', en: 'Knowledge bases' } },
       ],
     },
     {
@@ -294,7 +328,6 @@ window.RESUME = {
       skills: [
         { name: 'Python' },
         { name: 'API' },
-        { name: 'Google API' },
         { name: 'Apps Script' },
         { name: 'n8n' },
         { name: 'RPA' },
@@ -304,12 +337,13 @@ window.RESUME = {
     {
       title: { ru: 'Процессы и системы', en: 'Processes and systems' },
       skills: [
-        { name: { ru: 'Автоматизация бизнес-процессов', en: 'Business process automation' } },
+        { name: { ru: 'Автоматизация юридической функции', en: 'Legal function automation' } },
         { name: { ru: 'Описание процессов AS IS / TO BE', en: 'Process mapping AS IS / TO BE' } },
+        { name: { ru: 'Бизнес-требования и ТЗ', en: 'Business requirements and specifications' } },
         { name: { ru: 'Битрикс24', en: 'Bitrix24' } },
-        { name: { ru: '1С: Предприятие', en: '1C: Enterprise' } },
-        { name: { ru: '1С: ERP', en: '1C: ERP' } },
-        { name: { ru: 'Электронный документооборот', en: 'Electronic document flow' } },
+        { name: 'Jira' },
+        { name: { ru: '1С:ERP, 1С:УТ', en: '1C:ERP, 1C:Trade' } },
+        { name: { ru: 'Диадок (ЭДО)', en: 'Diadoc (e-document exchange)' } },
       ],
     },
     {

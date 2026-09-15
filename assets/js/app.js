@@ -456,7 +456,10 @@
     var today = new Date();
     var now = today.getFullYear() * 12 + today.getMonth();
 
-    var jobs = R.experience.slice().reverse();
+    // Записи с `parallel` — практика, идущая одновременно с основными местами:
+    // на одной дорожке такой отрезок лёг бы поверх остальных во всю ширину.
+    // В списке мест карточка есть, на шкалу запись не выводится.
+    var jobs = R.experience.filter(function (job) { return !job.parallel; }).reverse();
     var from = Math.min.apply(null, jobs.map(function (job) { return months(job.start); }));
     var to = Math.max.apply(null, jobs.map(function (job) {
       return job.end ? months(job.end) : now;
@@ -476,12 +479,14 @@
     var track = el('div', { class: 'timeline__track' });
     var labels = el('div', { class: 'timeline__labels' });
 
-    jobs.forEach(function (job, index) {
+    jobs.forEach(function (job) {
       var start = months(job.start);
       var end = job.end ? months(job.end) : now;
       var left = ((start - from) / span) * 100;
       var width = ((end - start + 1) / span) * 100;
-      var target = '#job-' + (R.experience.length - 1 - index);
+      // Якорь — по месту записи в исходном списке: после фильтра индекс
+      // обратного массива с ним больше не совпадает.
+      var target = '#job-' + R.experience.indexOf(job);
 
       track.appendChild(el('a', {
         class: 'timeline__seg' + (job.current ? ' is-current' : ''),

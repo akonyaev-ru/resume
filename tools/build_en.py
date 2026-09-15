@@ -25,20 +25,14 @@ STRINGS = [
     ('<html lang="ru">', '<html lang="en">'),
     ("<title>Резюме Алексея Коняева</title>", "<title>Alexey Konyaev — CV</title>"),
     (
-        'content="Специалист по автоматизации и AI-разработке.'
-        " Автоматизирую ручные бизнес-процессы и внедряю ИИ: Python, LLM,"
-        ' Битрикс24. Опыт, результаты, продукты."',
-        'content="Automation and AI engineering specialist. Automating'
-        " manual business processes and rolling out AI: Python, LLM, Bitrix24."
-        ' Experience, results, products."',
+        'content="Автоматизация юридической функции и ИИ-агенты. Юрист по практике, который внедряет ИИ-агентов и автоматизирует процессы: Claude, Python, LLM, Битрикс24. Опыт, результаты, продукты."',
+        'content="Legal function automation and AI agents. A practising lawyer who rolls out AI agents and automates processes: Claude, Python, LLM, Bitrix24. Experience, results, products."',
     ),
     ('content="Алексей Коняев"', 'content="Alexey Konyaev"'),
     ('content="Резюме Алексея Коняева"', 'content="Alexey Konyaev — CV"'),
     (
-        'content="Специалист по автоматизации и AI-разработке:'
-        ' автоматизация ручных процессов, внедрение ИИ."',
-        'content="Automation and AI engineering specialist: automating'
-        ' manual processes, rolling out AI."',
+        'content="Автоматизация юридической функции и ИИ-агенты: юрист по практике, внедрение ИИ, автоматизация процессов."',
+        'content="Legal function automation and AI agents: a practising lawyer, AI rollout, process automation."',
     ),
     # Машиночитаемый блок schema.org: у него свои строки, каждая с ключом
     # впереди — иначе они совпали бы с текстом мета-тегов и разметки.
@@ -46,24 +40,20 @@ STRINGS = [
     ('"name": "Алексей Коняев"', '"name": "Alexey Konyaev"'),
     ('"alternateName": "Alexey Konyaev"', '"alternateName": "Алексей Коняев"'),
     (
-        '"jobTitle": "Специалист по автоматизации и AI-разработке"',
-        '"jobTitle": "Automation and AI engineering specialist"',
+        '"jobTitle": "Юрист по автоматизации юридической функции (LegalTech, ИИ-агенты)"',
+        '"jobTitle": "Legal function automation lawyer (LegalTech, AI agents)"',
     ),
     (
-        '"description": "Автоматизация бизнес-процессов и внедрение ИИ: Python,'
-        ' LLM, Битрикс24."',
-        '"description": "Automating business processes and rolling out AI: Python,'
-        ' LLM, Bitrix24."',
+        '"description": "Автоматизация юридической функции и внедрение ИИ-агентов: Claude, Python, LLM, Битрикс24."',
+        '"description": "Legal function automation and AI agent rollout: Claude, Python, LLM, Bitrix24."',
     ),
     ('"addressLocality": "Москва"', '"addressLocality": "Moscow"'),
     ('"name": "Айковер ПРО"', '"name": "iCover PRO"'),
     (">К содержанию<", ">Skip to content<"),
     ("<h1>Алексей Коняев</h1>", "<h1>Alexey Konyaev</h1>"),
     (
-        "<p>Специалист по автоматизации и AI-разработке. Москва,"
-        " удалённо или гибрид.</p>",
-        "<p>Automation and AI engineering specialist. Moscow, remote or"
-        " hybrid.</p>",
+        "<p>Автоматизация юридической функции и ИИ-агенты. Юрист по практике. Москва, удалённо или гибрид.</p>",
+        "<p>Legal function automation and AI agents. A practising lawyer. Moscow, remote or hybrid.</p>",
     ),
     (">Написать в Telegram<", ">Message me on Telegram<"),
     ("Почта: <a", "Email: <a"),
