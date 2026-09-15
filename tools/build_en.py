@@ -25,14 +25,14 @@ STRINGS = [
     ('<html lang="ru">', '<html lang="en">'),
     ("<title>Резюме Алексея Коняева</title>", "<title>Alexey Konyaev — CV</title>"),
     (
-        'content="Автоматизация юридической функции и ИИ-агенты. Юрист по практике, который внедряет ИИ-агентов и автоматизирует процессы: Claude, Python, LLM, Битрикс24. Опыт, результаты, продукты."',
-        'content="Legal function automation and AI agents. A practising lawyer who rolls out AI agents and automates processes: Claude, Python, LLM, Bitrix24. Experience, results, products."',
+        'content="Специалист по LegalOPS и внедрению AI-агентов. Юрист по практике, который внедряет AI-агентов и автоматизирует юридическую функцию: Claude, Python, LLM, Битрикс24. Опыт, результаты, продукты."',
+        'content="LegalOPS and AI-agent implementation specialist. A practising lawyer who rolls out AI agents and automates the legal function: Claude, Python, LLM, Bitrix24. Experience, results, products."',
     ),
     ('content="Алексей Коняев"', 'content="Alexey Konyaev"'),
     ('content="Резюме Алексея Коняева"', 'content="Alexey Konyaev — CV"'),
     (
-        'content="Автоматизация юридической функции и ИИ-агенты: юрист по практике, внедрение ИИ, автоматизация процессов."',
-        'content="Legal function automation and AI agents: a practising lawyer, AI rollout, process automation."',
+        'content="Специалист по LegalOPS и внедрению AI-агентов: юрист по практике, автоматизация юридической функции."',
+        'content="LegalOPS and AI-agent implementation specialist: a practising lawyer, legal function automation."',
     ),
     # Машиночитаемый блок schema.org: у него свои строки, каждая с ключом
     # впереди — иначе они совпали бы с текстом мета-тегов и разметки.
@@ -40,8 +40,8 @@ STRINGS = [
     ('"name": "Алексей Коняев"', '"name": "Alexey Konyaev"'),
     ('"alternateName": "Alexey Konyaev"', '"alternateName": "Алексей Коняев"'),
     (
-        '"jobTitle": "Юрист по автоматизации юридической функции (LegalTech, ИИ-агенты)"',
-        '"jobTitle": "Legal function automation lawyer (LegalTech, AI agents)"',
+        '"jobTitle": "Специалист по LegalOPS и внедрению AI-агентов"',
+        '"jobTitle": "LegalOPS and AI-agent implementation specialist"',
     ),
     (
         '"description": "Автоматизация юридической функции и внедрение ИИ-агентов: Claude, Python, LLM, Битрикс24."',
@@ -52,8 +52,8 @@ STRINGS = [
     (">К содержанию<", ">Skip to content<"),
     ("<h1>Алексей Коняев</h1>", "<h1>Alexey Konyaev</h1>"),
     (
-        "<p>Автоматизация юридической функции и ИИ-агенты. Юрист по практике. Москва, удалённо или гибрид.</p>",
-        "<p>Legal function automation and AI agents. A practising lawyer. Moscow, remote or hybrid.</p>",
+        "<p>Специалист по LegalOPS и внедрению AI-агентов. Юрист по практике. Москва, удалённо или гибрид.</p>",
+        "<p>LegalOPS and AI-agent implementation specialist. A practising lawyer. Moscow, remote or hybrid.</p>",
     ),
     (">Написать в Telegram<", ">Message me on Telegram<"),
     ("Почта: <a", "Email: <a"),

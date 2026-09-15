@@ -74,14 +74,14 @@ window.RESUME = {
     name: { ru: 'Алексей Коняев', en: 'Alexey Konyaev' },
     role: {
       // \u00A0 перед ИИ: иначе союз «и» повисает в конце строки заголовка.
-      ru: 'Автоматизация юридической функции и\u00A0ИИ-агенты',
-      en: 'Legal function automation and AI agents',
+      ru: 'Специалист по LegalOPS и\u00A0внедрению AI-агентов',
+      en: 'LegalOPS and AI-agent implementation specialist',
     },
     // Термины, которые подсвечиваются акцентом внутри заголовка. Порядок важен:
     // roleNode ищет их последовательно, отрезая уже разобранное начало.
     roleAccent: {
-      ru: ['ИИ-агенты'],
-      en: ['AI agents'],
+      ru: ['AI-агентов'],
+      en: ['AI-agent implementation'],
     },
     photo: 'assets/img/portrait.webp',
     age: 25,
@@ -100,7 +100,7 @@ window.RESUME = {
       en: ['Lawyer', 'Business analyst'],
     },
     lede: {
-      ru: 'Юрист по практике: перевожу юридическую функцию на ИИ-агентов — и\u00A0сам пишу то, что для этого нужно.',
+      ru: 'Юрист по практике: перевожу юридическую функцию на AI-агентов — и\u00A0сам пишу то, что для этого нужно.',
       en: 'A practising lawyer: I move the legal function onto AI agents — and write what that takes myself.',
     },
     about: {
@@ -247,10 +247,10 @@ window.RESUME = {
       ],
     },
     {
-      company: { ru: 'ИП Коняев А. А.', en: 'Self-employed (sole proprietor)' },
+      company: { ru: 'ИП Коняев Алексей Алексеевич', en: 'Sole proprietor Alexey Konyaev' },
       role: {
-        ru: 'Консультант по безопасному использованию ИИ и защите данных (152-ФЗ)',
-        en: 'Consultant on safe AI use and data protection',
+        ru: 'Консультант по безопасному использованию ИИ',
+        en: 'Consultant on safe AI use',
       },
       period: { ru: 'Июль 2023 — настоящее время', en: 'July 2023 — present' },
       duration: { ru: '3 года 3 месяца', en: '3 years 3 months' },
@@ -320,7 +320,6 @@ window.RESUME = {
         { name: 'ChatGPT' },
         { name: 'Prompt Engineering' },
         { name: 'RAG' },
-        { name: { ru: 'Базы знаний', en: 'Knowledge bases' } },
       ],
     },
     {
@@ -340,9 +339,11 @@ window.RESUME = {
         { name: { ru: 'Автоматизация юридической функции', en: 'Legal function automation' } },
         { name: { ru: 'Описание процессов AS IS / TO BE', en: 'Process mapping AS IS / TO BE' } },
         { name: { ru: 'Бизнес-требования и ТЗ', en: 'Business requirements and specifications' } },
+        { name: { ru: 'Базы знаний', en: 'Knowledge bases' } },
         { name: { ru: 'Битрикс24', en: 'Bitrix24' } },
         { name: 'Jira' },
-        { name: { ru: '1С:ERP, 1С:УТ', en: '1C:ERP, 1C:Trade' } },
+        { name: '1С:ERP' },
+        { name: { ru: '1С:УТ', en: '1C:Trade' } },
         { name: { ru: 'Диадок (ЭДО)', en: 'Diadoc (e-document exchange)' } },
       ],
     },
