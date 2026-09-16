@@ -1,8 +1,8 @@
 /*
  * Единственный источник содержания страницы.
- * Правка резюме = правка этого файла. Вёрстку трогать не нужно.
+ * Правка резюме = правка этого файла. Верстку трогать не нужно.
  *
- * Строки, которые переводятся, записаны парой { ru, en }. Всё остальное —
+ * Строки, которые переводятся, записаны парой { ru, en }. Все остальное —
  * даты, цифры, ссылки — общее для обоих языков, чтобы версии
  * не разъезжались по фактам.
  */
@@ -58,7 +58,7 @@ window.RESUME = {
     termAll: { ru: 'все группы', en: 'all groups' },
     termGroups: { ru: ['группа', 'группы', 'групп'], en: ['group', 'groups', 'groups'] },
     termSkills: { ru: ['навык', 'навыка', 'навыков'], en: ['skill', 'skills', 'skills'] },
-    termHint: { ru: 'Щёлкните по команде, чтобы оставить одну группу', en: 'Click a command to keep one group' },
+    termHint: { ru: 'Щелкните по команде, чтобы оставить одну группу', en: 'Click a command to keep one group' },
     educationTitle: { ru: 'Образование', en: 'Education' },
     coursesTitle: { ru: 'Повышение квалификации', en: 'Professional training' },
     languagesTitle: { ru: 'Языки', en: 'Languages' },
@@ -98,7 +98,7 @@ window.RESUME = {
     updated: { ru: '15 сентября 2026', en: '15 September 2026' },
     experienceTotal: { ru: '3 года 3 месяца', en: '3 years 3 months' },
     employment: { ru: 'полная занятость', en: 'full-time' },
-    schedule: { ru: 'Удалённо или гибрид', en: 'Remote or hybrid' },
+    schedule: { ru: 'Удаленно или гибрид', en: 'Remote or hybrid' },
     relocation: {
       ru: 'Без переезда, редкие командировки',
       en: 'No relocation, occasional trips',
@@ -112,11 +112,11 @@ window.RESUME = {
       en: 'A practising lawyer: I move the legal function onto AI agents — and write what that takes myself.',
     },
     about: {
-      ru: 'Юрист с практикой в договорной, претензионно-исковой и судебной работе, который автоматизирует юридическую функцию своими руками: нахожу узкие места, собираю требования от юристов и бизнес-заказчиков, формирую ТЗ, довожу решение до внедрения, тестирования и обучения команды, а вокруг инструментов выстраиваю методологию — регламенты, инструкции, маршруты согласования. Два юридических образования плюс Python, API и интеграция LLM. Роботизировал согласование договоров, внедрил шесть ИИ-агентов на базе Claude, выстроил контур безопасного использования ИИ в компании — способен и спроектировать архитектуру автоматизации, и реализовать её руками, от постановки задачи до пользовательского тестирования.',
+      ru: 'Юрист с практикой в договорной, претензионно-исковой и судебной работе, который автоматизирует юридическую функцию своими руками: нахожу узкие места, собираю требования от юристов и бизнес-заказчиков, формирую ТЗ, довожу решение до внедрения, тестирования и обучения команды, а вокруг инструментов выстраиваю методологию — регламенты, инструкции, маршруты согласования. Два юридических образования плюс Python, API и интеграция LLM. Роботизировал согласование договоров, внедрил шесть ИИ-агентов на базе Claude, выстроил контур безопасного использования ИИ в компании — способен и спроектировать архитектуру автоматизации, и реализовать ее руками, от постановки задачи до пользовательского тестирования.',
       en: 'A lawyer with hands-on contract, claims and litigation practice who automates the legal function himself: I find the bottlenecks, gather requirements from lawyers and business owners, write the specification and carry the solution through to rollout, testing and team training — and build the method around the tools: policies, instructions, approval routes. Two law degrees plus Python, APIs and LLM integration. I robotised contract approval, rolled out six Claude-based AI agents and built the perimeter for safe AI use in the company — I can both design the automation architecture and build it myself, from framing the task to user testing.',
     },
     pullquote: {
-      ru: 'Результат — не внедрённый инструмент, а процесс, который после меня работает без меня.',
+      ru: 'Результат — не внедренный инструмент, а процесс, который после меня работает без меня.',
       en: 'The result is not a tool that got deployed. It is a process that keeps running once I am gone.',
     },
     contacts: {
@@ -147,7 +147,7 @@ window.RESUME = {
     },
     {
       value: 80, suffix: '%',
-      caption: { ru: 'ручного ввода убрано из отчётности', en: 'of manual entry removed from reporting' },
+      caption: { ru: 'ручного ввода убрано из отчетности', en: 'of manual entry removed from reporting' },
     },
   ],
 
@@ -174,13 +174,13 @@ window.RESUME = {
         },
         {
           text: {
-            ru: 'Автоматизировал сквозной бизнес-процесс согласования договоров в Битрикс24: описал процесс AS IS / TO BE, расшил узкие места в маршруте, перестроил проверку контрагентов, статусы, уведомления и контроль сроков; согласовал целевой процесс с коммерческим блоком и провёл презентацию результатов руководству. SLA согласования сокращён на 60%, коммерческий цикл компании ускорен.',
+            ru: 'Автоматизировал сквозной бизнес-процесс согласования договоров в Битрикс24: описал процесс AS IS / TO BE, расшил узкие места в маршруте, перестроил проверку контрагентов, статусы, уведомления и контроль сроков; согласовал целевой процесс с коммерческим блоком и провел презентацию результатов руководству. SLA согласования сокращен на 60%, коммерческий цикл компании ускорен.',
             en: 'Automated the end-to-end contract approval process in Bitrix24: mapped the process as is / to be, cleared the bottlenecks in the route, rebuilt counterparty screening, statuses, notifications and deadline control; agreed the target process with the commercial team and presented the results to management. Approval SLA cut by 60%, the company commercial cycle sped up.',
           },
         },
         {
           text: {
-            ru: 'Провёл правовую экспертизу и согласование свыше 700 договоров (40–50 в месяц): проверка контрагентов, сопровождение исполнения, обмен документами с контрагентами через Диадок.',
+            ru: 'Провел правовую экспертизу и согласование свыше 700 договоров (40–50 в месяц): проверка контрагентов, сопровождение исполнения, обмен документами с контрагентами через Диадок.',
             en: 'Reviewed and approved over 700 contracts (40–50 a month): counterparty screening, performance follow-up, document exchange with counterparties via Diadoc.',
           },
         },
@@ -198,7 +198,7 @@ window.RESUME = {
         },
         {
           text: {
-            ru: 'Вёл бэклог автоматизации юридической функции в Jira с приоритизацией по эффекту и трудозатратам: формировал бизнес-требования и ТЗ на ИИ-агентов, собирал прототип, тестировал на реальных данных, обкатывал на пилотной группе и передавал в эксплуатацию — этот цикл прошли все шесть агентов. Эффект замерял по BI-дашбордам на данных Битрикс24: убрал 80% ручного ввода в отчётности отдела, вывел KPI в реальном времени.',
+            ru: 'Вел бэклог автоматизации юридической функции в Jira с приоритизацией по эффекту и трудозатратам: формировал бизнес-требования и ТЗ на ИИ-агентов, собирал прототип, тестировал на реальных данных, обкатывал на пилотной группе и передавал в эксплуатацию — этот цикл прошли все шесть агентов. Эффект замерял по BI-дашбордам на данных Битрикс24: убрал 80% ручного ввода в отчетности отдела, вывел KPI в реальном времени.',
             en: 'Ran the legal function automation backlog in Jira, prioritised by impact against effort: wrote business requirements and specifications for the AI agents, built the prototype, tested it on real data, ran it past a pilot group and handed it over — all six agents went through this cycle. Measured the effect on BI dashboards built on Bitrix24 data: removed 80% of manual entry from the department reporting, put KPIs under real-time control.',
           },
         },
@@ -226,7 +226,7 @@ window.RESUME = {
         },
         {
           text: {
-            ru: 'Стандартизировал претензионно-исковую работу и взыскание дебиторской задолженности: единый регламент, контроль стадий, отчётность по статусам; полный цикл от претензии до арбитражного суда, ФССП и банков. Выиграно 6 из 6 дел, взыскано свыше 12 000 000 ₽.',
+            ru: 'Стандартизировал претензионно-исковую работу и взыскание дебиторской задолженности: единый регламент, контроль стадий, отчетность по статусам; полный цикл от претензии до арбитражного суда, ФССП и банков. Выиграно 6 из 6 дел, взыскано свыше 12 000 000 ₽.',
             en: 'Standardised claims and receivables recovery: one set of rules, stage tracking, status reporting; the full cycle from claim letter to commercial court, bailiffs and banks. Won 6 cases out of 6, recovered over 12,000,000 ₽.',
           },
         },
@@ -265,8 +265,8 @@ window.RESUME = {
       start: '2023-07',
       end: null,
       current: true,
-      // Практика идёт параллельно основным местам: на шкале опыта отрезок
-      // лёг бы поверх всех остальных во всю ширину. Карточка в списке есть,
+      // Практика идет параллельно основным местам: на шкале опыта отрезок
+      // лег бы поверх всех остальных во всю ширину. Карточка в списке есть,
       // на шкалу запись не выводится.
       parallel: true,
       bullets: [
@@ -289,7 +289,7 @@ window.RESUME = {
         en: 'Document anonymiser that runs offline',
       },
       description: {
-        ru: 'Находит персональные данные в договорах и заменяет их метками вида [ФИО_1], чтобы документ можно было отдать нейросети без нарушения 152-ФЗ и NDA. Ответ модели восстанавливается обратно по криптографическому паспорту. Для PDF накладывает настоящие чёрные плашки, вычищая данные из метаданных и скрытых слоёв.',
+        ru: 'Находит персональные данные в договорах и заменяет их метками вида [ФИО_1], чтобы документ можно было отдать нейросети без нарушения 152-ФЗ и NDA. Ответ модели восстанавливается обратно по криптографическому паспорту. Для PDF накладывает настоящие черные плашки, вычищая данные из метаданных и скрытых слоев.',
         en: 'Finds personal data in contracts and swaps it for labels like [NAME_1], so the document can go to a neural network without breaching data protection law or an NDA. The model reply is restored through a cryptographic passport. For PDFs it lays down real black bars, wiping the data out of metadata and hidden layers.',
       },
       stack: ['Python', 'slovnet', 'PyQt', 'Windows · macOS · Linux'],
@@ -300,7 +300,7 @@ window.RESUME = {
       repo: 'akonyaev-ru/HunterCLI',
       tagline: { ru: 'Автопилот резюме в консоли', en: 'CV autopilot in the console' },
       description: {
-        ru: 'Спрашивает у сервиса точное время, когда очередное поднятие резюме разрешено, ждёт этот момент, добавляет случайную задержку и поднимает резюме без участия человека. Считает просмотры и приглашения по неделям, ведёт до восьми аккаунтов одновременно.',
+        ru: 'Спрашивает у сервиса точное время, когда очередное поднятие резюме разрешено, ждет этот момент, добавляет случайную задержку и поднимает резюме без участия человека. Считает просмотры и приглашения по неделям, ведет до восьми аккаунтов одновременно.',
         en: 'Asks the job board exactly when the next CV bump is allowed, waits for that moment, adds a random delay and bumps the CV with no human involved. Counts views and interview invitations week by week, and runs up to eight accounts at once.',
       },
       stack: ['Python', 'TUI', 'OAuth', 'HH API'],
