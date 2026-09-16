@@ -670,10 +670,10 @@
      начала, страница не прыгает: пока команда короткая, невидимый комментарий
      просто едет за ней. Без анимации или без наблюдателя всё видно сразу;
      в печати visibility снимает CSS. */
-  var TERM_CHAR_MS = 16;    // буква команды
-  var TERM_PROMPT_MS = 60;  // каретка у промпта перед набором
-  var TERM_ENTER_MS = 90;   // от конца набора до вывода
-  var TERM_CHIP_MS = 30;    // плашка
+  var TERM_CHAR_MS = 12;    // буква команды (16 → 12 по просьбе владельца 2026-09-16)
+  var TERM_PROMPT_MS = 50;  // каретка у промпта перед набором
+  var TERM_ENTER_MS = 80;   // от конца набора до вывода
+  var TERM_CHIP_MS = 24;    // плашка
 
   function playTerminal(term) {
     if (term.getAttribute('data-played')) return;
