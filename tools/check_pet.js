@@ -767,17 +767,19 @@ check('слезающего с дивана не утешают', function () {
 
   for (let round = 0; round < 3; round++) {
     let sat = false;
+    let sitter = -1;
     for (let i = 0; i < 240 && !sat; i++) {
       world.step(1000, function (t, pets) {
-        if (pets.some(function (p) { return p.y === top; })) sat = true;
+        pets.forEach(function (p, k) { if (p.y === top) { sat = true; sitter = k; } });
       });
     }
     if (!sat) break;
 
     let off = false;
+    let offX = null;
     for (let i = 0; i < 40 && !off; i++) {
       world.step(1000, function (t, pets) {
-        if (pets.every(function (p) { return p.y === 0; })) off = true;
+        if (pets.every(function (p) { return p.y === 0; })) { off = true; offX = pets[sitter].x; }
       });
     }
     if (!off) fail('сел и за сорок секунд не слез');
@@ -786,12 +788,17 @@ check('слезающего с дивана не утешают', function () {
     let pets4 = false;
     let side = false;
 
+    /* «Вплотную» — утешение, только если слезший при этом стоит, где слез:
+       утешаемый лежит на месте, бежит второй. На плановой встрече к середине
+       идут оба — с 2026-09-16 такая встреча попадала в окно (стартовые места
+       сдвинул принтер), и признак без этой оговорки краснел ложно. */
     world.step(12000, function (t, pets) {
       pets.forEach(function (pet) {
         if (pet.bubble) bubble = true;
         if (petting(world, pet.prop)) pets4 = true;
       });
-      if (Math.abs(pets[0].x - pets[1].x) <= SPAN + 2) side = true;
+      const near = Math.abs(pets[0].x - pets[1].x) <= SPAN + 2;
+      if (near && Math.abs(pets[sitter].x - offX) <= 2) side = true;
     });
 
     if (bubble) fail('после схода с дивана кто-то выругался пузырём');
@@ -1440,11 +1447,11 @@ const BREAKS = [
     ]],
   },
   {
-    name: 'Отто встаёт на старое место, в фикус',
+    name: 'Отто встаёт на старое место, в мебель',
     red: 'при загрузке никто не стоит в мебели',
     parts: [[
-      '    ? firstPot.x + firstPot.canvas.width + 16',
-      '    ? 64',
+      '  var startAt = leftEdge ? leftEdge + 16 : 64;',
+      '  var startAt = 64;',
     ]],
   },
   {

@@ -181,6 +181,24 @@
       4: '#c39a4e',
       5: '#7d6bb0',
     },
+    lamp: {
+      d: '#8f6d34',          // верхняя кромка абажура, в тени
+      a: '#b98d45',          // абажур — тёплое пятно у дивана, теплее пледа, но не ярче
+      A: '#dcb56a',          // нижний обод: свет из-под абажура
+      k: '#4a5162',          // стойка на свету
+      p: '#2a3038',          // и в тени
+      n: '#171c28',          // выключатель на стойке
+      b: '#39404f',          // основание
+      B: '#2a3038',          // и его нижняя грань
+    },
+    printer: {
+      g: '#626c7d',          // верхняя грань и освещённый левый бок
+      f: '#4a5263',          // корпус
+      s: '#171c28',          // щель выхода бумаги
+      w: '#d6dae2',          // бумага: лист в лотке и торчащий сверху
+      L: '#6fae7a',          // диод готовности — единственный не серый пиксель
+      k: '#2a3038',          // ножки
+    },
   };
 
   /* --- кадры ------------------------------------------------------------- */
@@ -891,6 +909,44 @@
         'ffffffffffffff',
         'fff........fff',
         'fff........fff',
+      ];
+
+  // Торшер: абажур-трапеция со светлым нижним ободом, стойка в две клетки с
+  // выключателем, круглое основание. Восемь клеток на семнадцать — выше
+  // существа (13), ниже полки (18): по линейке масштаба. Стоит у дивана и даёт
+  // правому краю вертикаль — там всё низкое и широкое.
+  var LAMP = [
+        '..dddd..',
+        '.aaaaaa.',
+        '.aaaaaa.',
+        'aaaaaaaa',
+        'AAAAAAAA',
+        '...kp...',
+        '...kp...',
+        '...kp...',
+        '..nkp...',
+        '...kp...',
+        '...kp...',
+        '...kp...',
+        '...kp...',
+        '...kp...',
+        '...kp...',
+        '.bbbbbb.',
+        'BBBBBBBB',
+      ];
+
+  // Принтер: корпус с освещённым левым боком, лист торчит сверху, из щели
+  // впереди выходит второй — тот самый, что Оливия поднимает к глазам. Девять
+  // клеток на семь, по колено существу. Стоит на полу правее фикуса: на полке
+  // ему места нет — над ней в трёх клетках висит доска.
+  var PRINTER = [
+        '....www..',
+        '....www..',
+        '.ggggggg.',
+        'gffffffLf',
+        'gssssssff',
+        'gwwwwwwff',
+        '.kk...kk.',
       ];
 
   // Растение в кадке: четыре листа на стеблях. Кадр тоже один.
@@ -2164,18 +2220,34 @@
       at: 0.97, wall: 58, between: ['sofa', 'plant'], shift: 14, face: clockFace },
     { name: 'shelf', art: SHELF, skin: SKIN.shelf, title: 'Подвинуть полку', at: 0 },
     { name: 'ficus', art: FICUS, skin: SKIN.ficus, title: 'Подвинуть фикус', at: 0.045 },
+    // Принтер и торшер держатся за соседа (`after`/`before`), а не за долю
+    // полосы: доля на широком экране растаскивает пару — фикус и так отходит
+    // от полки с 13 px на 1280 до 42 на 1920, — а «рядом с диваном» и есть
+    // смысл предмета. Тот же приём, что у часов над проёмом.
+    { name: 'printer', art: PRINTER, skin: SKIN.printer, title: 'Подвинуть принтер',
+      after: 'ficus', shift: 9 },
+    { name: 'lamp', art: LAMP, skin: SKIN.lamp, title: 'Подвинуть торшер',
+      before: 'sofa', shift: -6 },
     { name: 'sofa', art: SOFA, skin: SKIN.sofa, title: 'Подвинуть диван', at: 0.92 },
     { name: 'plant', art: PLANT, skin: SKIN.plant, title: 'Подвинуть растение', at: 0.97 },
   ].map(function (spec) {
     var thing = makeThing(spec);
     thing.name = spec.name;
     thing.wall = !!spec.wall;
-    thing.at = spec.at;
+    thing.at = spec.at || 0;
     thing.hangs = spec.wall || 0;
     thing.between = spec.between || null;
+    thing.after = spec.after || null;   // стоит вплотную справа от названного
+    thing.before = spec.before || null; // или слева
     thing.shift = spec.shift || 0;    // доводка на пару пикселей, по просьбе
     return thing;
   });
+
+  // Предмет, чьё место считается от соседей, а не от полосы: расставляется
+  // вторым проходом и на смене ширины идёт за ними.
+  function leans(t) {
+    return !!(t.between || t.after || t.before);
+  }
 
   function thingNamed(name) {
     var found = null;
@@ -2389,6 +2461,13 @@
       }
     }
 
+    // Вплотную к соседу: справа от него (`after`) или слева (`before`).
+    // Просвет между ними — `shift`, в пикселях.
+    var next = thingNamed(t.after || t.before);
+    if (next) {
+      return t.after ? next.x + next.canvas.width : next.x - t.canvas.width;
+    }
+
     return EDGE + (t.limit() - EDGE) * t.at;
   }
 
@@ -2410,12 +2489,12 @@
      привязанные к ним идут следом. Взятое рукой не трогаем никогда. */
   function arrange(depsOnly) {
     things.forEach(function (t) {
-      if (t.moved || t.between) return;
+      if (t.moved || leans(t)) return;
       if (!depsOnly) setSpot(t);
     });
 
     things.forEach(function (t) {
-      if (t.between && !t.moved) setSpot(t);
+      if (leans(t) && !t.moved) setSpot(t);
     });
   }
 
@@ -2425,10 +2504,16 @@
      появлялся на 64-м пикселе и при обновлении страницы оказывался прямо в
      фикусе; место считается от самой кадки, а не числом, потому что кадка
      стоит по доле окна и на широком экране уезжает правее. */
-  var firstPot = thingNamed('ficus');
-  var startAt = firstPot && !firstPot.hidden
-    ? firstPot.x + firstPot.canvas.width + 16
-    : 64;
+  /* С 2026-09-16 левее существ стоит ещё и принтер, поэтому отсчёт идёт не от
+     кадки по имени, а от правого края всей стоящей на полу обстановки левой
+     половины окна: добавится предмет — старт уедет за него сам. */
+  var half = document.documentElement.clientWidth / 2;
+  var leftEdge = 0;
+  things.forEach(function (t) {
+    if (t.wall || t.hidden || t.x >= half) return;
+    leftEdge = Math.max(leftEdge, t.x + t.canvas.width);
+  });
+  var startAt = leftEdge ? leftEdge + 16 : 64;
 
   otto.x = clamp(startAt, EDGE, otto.limit());
   olivia.x = clamp(otto.x + SPAN + 96, EDGE, olivia.limit());
