@@ -263,6 +263,10 @@ a:not(.btn):hover { color: var(--text); }
   z-index: 30;
   background: color-mix(in srgb, var(--void) 82%, transparent);
   backdrop-filter: blur(12px);
+  /* Тонкая кромка снизу — с 2026-09-16 под планкой висит камера, и кромка
+     читается как балка, с которой она свисает. Тон шапки не меняли: владелец
+     спросил, «а раньше что было» — было ровно так же с 29 августа. */
+  border-bottom: 1px solid var(--line);
 }
 
 .topbar__inner {
