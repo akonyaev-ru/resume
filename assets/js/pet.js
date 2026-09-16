@@ -199,6 +199,26 @@
       L: '#6fae7a',          // диод готовности — единственный не серый пиксель
       k: '#2a3038',          // ножки
     },
+    desk: {
+      w: '#bd7d5c',          // столешница — то же дерево, что кадки
+      d: '#a9694c',          // её передняя грань
+      l: '#8a5340',          // ножки
+      U: '#4a5162',          // системный блок: верхняя грань
+      T: '#39404f',          // и корпус
+      g: '#6fae7a',          // диод питания
+      z: '#171c28',          // щель привода
+    },
+    computer: {
+      b: '#2a3038',          // рамка монитора
+      s: '#0b1018',          // экран
+      p: '#5fd3ce',          // приглашение — первая клетка строки
+      t: '#3aa8a3',          // строки на экране, приглушённая бирюза
+      c: '#a9f0ec',          // курсор
+      n: '#39404f',          // ножка монитора
+      k: '#5e6778',          // клавиши тёмные
+      K: '#9aa2b2',          // и светлые
+      m: '#9aa2b2',          // мышь
+    },
     camera: {
       m: '#39404f',          // кронштейн: пластина под планкой и стойка
       f: '#5e6778',          // корпус, верх — графит, выбор владельца из светлого и тёмного
@@ -1015,6 +1035,80 @@
     return frames;
   }
   var CAMERA = cameraFrames();
+
+  // Стол: столешница с передней гранью, две ножки, между ними системный блок
+  // с диодом и щелью привода. Двадцать клеток на восемь — как диван, но выше.
+  // Компьютер стоит на нём отдельным предметом: увели стол — упадёт.
+  var DESK = [
+        'wwwwwwwwwwwwwwwwwwww',
+        'dddddddddddddddddddd',
+        '.ll..........UUUUll.',
+        '.ll..........TTgTll.',
+        '.ll..........TTTTll.',
+        '.ll..........TzzTll.',
+        '.ll..........TTTTll.',
+        '.ll..........TTTTll.',
+      ];
+
+  /* Компьютер: монитор фронтально, экраном к зрителю, на ножке; перед ножкой
+     клавиатура, справа мышь — одним предметом, чтобы набор не разъезжался.
+     Экран 8x5 клеток живёт как терминал: строки набираются по клетке и уходят
+     вверх, курсор — на конце текущей. Кадры собираются кодом из корпуса и
+     круга из восьми строк разной длины: ~40 состояний, дальше по кругу, и
+     круг сшит — буфер заранее заполнен хвостом того же круга, поэтому стык
+     последнего кадра с первым выглядит как очередная новая строка. */
+  var COMPUTER_BODY = [
+        '.....bbbbbbbbbb.....',
+        '.....b........b.....',
+        '.....b........b.....',
+        '.....b........b.....',
+        '.....b........b.....',
+        '.....b........b.....',
+        '.....bbbbbbbbbb.....',
+        '.........nn.........',
+        '......kKkKkKkK.m....',
+      ];
+  var SCREEN_LINES = [3, 5, 2, 6, 4, 7, 3, 5];   // длины строк, клеток (первая — приглашение)
+  var SCREEN_ROWS = 5;
+  var SCREEN_COLS = 8;
+  var COMPUTER_MS = 120;                        // клетка набора
+
+  function computerFrames() {
+    var frames = [];
+    var lines = SCREEN_LINES.slice(-(SCREEN_ROWS - 1));   // хвост круга — чтобы стык был бесшовным
+
+    function paint() {
+      var shown = lines.slice(-SCREEN_ROWS);
+      var rows = [];
+      for (var r = 0; r < SCREEN_ROWS; r += 1) {
+        var idx = r - (SCREEN_ROWS - shown.length);
+        var cells = [];
+        for (var x = 0; x < SCREEN_COLS; x += 1) cells.push('s');
+        if (idx >= 0) {
+          var len = shown[idx];
+          if (len > 0) cells[0] = 'p';
+          for (var k = 1; k < len; k += 1) cells[k] = 't';
+          if (idx === shown.length - 1 && len < SCREEN_COLS) cells[len] = 'c';
+        }
+        rows.push(cells.join(''));
+      }
+      frames.push(COMPUTER_BODY.map(function (line, y) {
+        if (y < 1 || y > SCREEN_ROWS) return line;
+        return line.slice(0, 6) + rows[y - 1] + line.slice(6 + SCREEN_COLS);
+      }));
+    }
+
+    SCREEN_LINES.forEach(function (target) {
+      lines.push(0);
+      paint();
+      for (var n = 1; n <= target; n += 1) {
+        lines[lines.length - 1] = n;
+        paint();
+      }
+    });
+    return frames;
+  }
+  var COMPUTER = computerFrames();
 
   // Растение в кадке: четыре листа на стеблях. Кадр тоже один.
   var PLANT = [
@@ -2059,6 +2153,11 @@
     return tilt * 2 + (Math.floor(now / 1000) % 2);
   }
 
+  // Экран компьютера: кадр по времени, по кругу. Без движения — кадр покоя.
+  function computerFace(me, now) {
+    return Math.floor(now / COMPUTER_MS) % COMPUTER.length;
+  }
+
   /* --- обстановка --------------------------------------------------------- */
 
   /* Мебель — не существо: она никуда не идёт, кадров не тратит, пока стоит, и
@@ -2316,6 +2415,12 @@
     // смысл предмета. Тот же приём, что у часов над проёмом.
     { name: 'printer', art: PRINTER, skin: SKIN.printer, title: 'Подвинуть принтер',
       after: 'ficus', shift: 9 },
+    // Рабочее место: стол за принтером, компьютер на столе (`on`) — по
+    // горизонтали его левый край, по вертикали его верх. Экран живёт кадрами.
+    { name: 'desk', art: DESK, skin: SKIN.desk, title: 'Подвинуть стол',
+      after: 'printer', shift: 9 },
+    { name: 'computer', art: COMPUTER, skin: SKIN.computer, title: 'Подвинуть компьютер',
+      on: 'desk', face: computerFace, every: COMPUTER_MS, rest: 20 },
     { name: 'lamp', art: LAMP, skin: SKIN.lamp, title: 'Подвинуть торшер',
       before: 'sofa', shift: -6 },
     { name: 'sofa', art: SOFA, skin: SKIN.sofa, title: 'Подвинуть диван', at: 0.92 },
@@ -2336,6 +2441,7 @@
     thing.between = spec.between || null;
     thing.after = spec.after || null;   // стоит вплотную справа от названного
     thing.before = spec.before || null; // или слева
+    thing.on = spec.on || null;         // или на нём сверху
     thing.shift = spec.shift || 0;    // доводка на пару пикселей, по просьбе
     return thing;
   });
@@ -2344,7 +2450,7 @@
   // соседей или высоты окна: расставляется вторым проходом и на смене размера
   // окна переставляется.
   function leans(t) {
-    return !!(t.between || t.after || t.before || t.ceiling);
+    return !!(t.between || t.after || t.before || t.on || t.ceiling);
   }
 
   // Высота планки меню: под ней потолок. В песочнице проверок планки нет — 0.
@@ -2572,6 +2678,10 @@
       return t.after ? next.x + next.canvas.width : next.x - t.canvas.width;
     }
 
+    // На другом предмете (`on`): левый край общий, сдвиг — `shift`.
+    var base = thingNamed(t.on);
+    if (base) return base.x;
+
     return EDGE + (t.limit() - EDGE) * t.at;
   }
 
@@ -2582,7 +2692,9 @@
 
   function setSpot(t) {
     t.x = clamp(spotFor(t), EDGE, t.limit());
-    if (t.ceiling) t.y = Math.max(0, window.innerHeight - barHeight() - t.canvas.height);
+    var base = thingNamed(t.on);
+    if (t.on) t.y = base ? base.y + base.canvas.height : 0;
+    else if (t.ceiling) t.y = Math.max(0, window.innerHeight - barHeight() - t.canvas.height);
     else if (t.wall) t.y = t.hangs;
     t.place();
   }

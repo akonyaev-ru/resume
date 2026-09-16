@@ -847,6 +847,56 @@ check('при загрузке никто не стоит в мебели', func
   return 'Отто встаёт на ' + notes.join(', ');
 });
 
+/* Компьютер стоит на столе: при загрузке его низ — на верхе стола, увели стол
+   — падает на пол, как кулер без тумбочки. Стол уводят рукой, как кадку. */
+check('компьютер стоит на столе, стол увели — упал', function () {
+  const world = open({ seed: 5 });
+  world.step(200);
+  const byTitle = function (t) { return world.things.filter(function (one) { return one.title === t; })[0]; };
+  const desk = byTitle('Подвинуть стол');
+  const pc = byTitle('Подвинуть компьютер');
+  if (!desk || !pc) fail('стола или компьютера в обстановке нет');
+  if (pc.spot().y !== desk.height) {
+    fail('компьютер не на столе: y ' + pc.spot().y + ', верх стола ' + desk.height);
+  }
+  if (pc.spot().x !== desk.spot().x) {
+    fail('компьютер не над столом: x ' + pc.spot().x + ' против ' + desk.spot().x);
+  }
+
+  const box = desk.getBoundingClientRect();
+  desk.fire('mousedown', event(box.left + 6, box.top + 6));
+  world.step(FRAME_MS);
+  world.win('mousemove', event(box.left + 300, box.top + 6));
+  world.step(FRAME_MS);
+  world.win('mouseup', event(box.left + 300, box.top + 6));
+
+  let landed = null;
+  world.step(3000, function (t) { if (landed === null && pc.spot().y === 0) landed = t; });
+  if (landed === null) fail('стол увели, а компьютер висит на ' + pc.spot().y);
+  return 'стоит на ' + desk.height + ', без стола упал за ' + (landed / 1000).toFixed(1) + ' с';
+});
+
+/* Экран компьютера живёт: за три секунды сменяется много кадров; в тихом
+   режиме кадр один. Кадр узнаём отпечатком рисунка, как у часов. */
+check('экран компьютера живёт', function () {
+  const world = open({ seed: 5 });
+  world.step(500);
+  const pc = world.things.filter(function (one) { return one.title === 'Подвинуть компьютер'; })[0];
+  if (!pc || !pc.layers.length) fail('компьютер не нарисован');
+  const seen = {};
+  world.step(3000, function () { seen[printOf(world, pc.layers[0].id)] = true; });
+  const frames = Object.keys(seen).length;
+  if (frames < 5) fail('за три секунды экран показал ' + frames + ' кадр(а) — не живёт');
+
+  const quiet = open({ seed: 5, lessMotion: true });
+  quiet.step(500);
+  const qpc = quiet.things.filter(function (one) { return one.title === 'Подвинуть компьютер'; })[0];
+  const first = printOf(quiet, qpc.layers[0].id);
+  quiet.step(3000);
+  if (printOf(quiet, qpc.layers[0].id) !== first) fail('в тихом режиме экран мигает');
+  return 'за три секунды ' + frames + ' разных кадров, в тихом режиме стоит';
+});
+
 /* Часы идут: стрелки показывают настоящее время, огрублённое до четверти.
    Время в песочнице своё, поэтому переводим его сами и смотрим, сменился ли
    кадр. Кадр сверяем отпечатком рисунка — номера холстов сами по себе ничего
@@ -1452,6 +1502,22 @@ const BREAKS = [
     parts: [[
       '  var startAt = leftEdge ? leftEdge + 16 : 64;',
       '  var startAt = 64;',
+    ]],
+  },
+  {
+    name: 'компьютер ставится на пол, а не на стол',
+    red: 'компьютер стоит на столе, стол увели — упал',
+    parts: [[
+      '    if (t.on) t.y = base ? base.y + base.canvas.height : 0;',
+      '    if (t.on) t.y = 0;',
+    ]],
+  },
+  {
+    name: 'экран компьютера замер',
+    red: 'экран компьютера живёт',
+    parts: [[
+      '    return Math.floor(now / COMPUTER_MS) % COMPUTER.length;',
+      '    return 20;',
     ]],
   },
   {
