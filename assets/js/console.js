@@ -242,8 +242,9 @@
   var document = root.document;
   var LESS_MOTION = root.matchMedia && root.matchMedia('(prefers-reduced-motion: reduce)').matches;
   var LANG = readLang();
-  var CELL_MAX = 16;
+  var CELL_MAX = 40;        // клетка растёт с высотой окна браузера до этого предела
   var CELL_MIN = 10;
+  var CHROME = 220;         // прикидка на шапку, показатели и кнопки; точно — замером в fitWindow
   var TYPE_MS = 14;         // буква загрузки
   var LINE_MS = 160;        // пауза между строками
   var BAR_MS = 60;          // деление полосы
@@ -461,8 +462,30 @@
   /* --- игра ---------------------------------------------------------------- */
 
   function fitCell() {
-    var free = root.innerHeight - 220;
+    var free = root.innerHeight - CHROME;
     return Math.max(CELL_MIN, Math.min(CELL_MAX, Math.floor(free / ROWS)));
+  }
+
+  function applyCell(size) {
+    cell = size;
+    sizeCanvas(ui.field, COLS * cell, ROWS * cell);
+    sizeCanvas(ui.preview, 4 * cell, 2 * cell);
+  }
+
+  // Стакан — во всё окно, но окно — в экран. Прикидка по высоте даёт клетку,
+  // дальше окно измеряется по-настоящему и клетка убавляется, пока оно не
+  // влезет и по высоте, и по ширине: на телефоне стакан, показатели и кнопки
+  // стоят стопкой, и никакая формула про их высоту не переживёт правку стилей.
+  function fitWindow() {
+    applyCell(fitCell());
+    var pad = root.getComputedStyle(ui.veil);
+    var roomX = root.innerWidth - parseFloat(pad.paddingLeft) - parseFloat(pad.paddingRight);
+    var roomY = root.innerHeight - parseFloat(pad.paddingTop) - parseFloat(pad.paddingBottom);
+    while (cell > CELL_MIN) {
+      var box = ui.dialog.getBoundingClientRect();
+      if (box.width <= roomX && box.height <= roomY) break;
+      applyCell(cell - 1);
+    }
   }
 
   function sizeCanvas(canvas, w, h) {
@@ -484,9 +507,7 @@
     ui.log.hidden = true;
     ui.play.hidden = false;
     ui.overlay.hidden = true;
-    cell = fitCell();
-    sizeCanvas(ui.field, COLS * cell, ROWS * cell);
-    sizeCanvas(ui.preview, 4 * cell, 2 * cell);
+    fitWindow();
     ui.stats.best.textContent = String(readBest());
     updateStats();
     lastFrame = 0;
@@ -500,23 +521,27 @@
   }
 
   function block(ctx, x, y, size, color, ghost) {
+    // Шов и фаска растут вместе с клеткой: при 16 px это 1 и 2 px, при 40 — 3 и 5.
+    var seam = Math.max(1, Math.round(size / 16));
+    var edge = Math.max(2, Math.round(size / 8));
+    var inner = size - 2 * seam;
     if (ghost) {
       ctx.strokeStyle = color;
       ctx.globalAlpha = 0.45;
-      ctx.lineWidth = 1;
-      ctx.strokeRect(x * size + 1.5, y * size + 1.5, size - 3, size - 3);
+      ctx.lineWidth = seam;
+      ctx.strokeRect(x * size + seam * 1.5, y * size + seam * 1.5, size - 3 * seam, size - 3 * seam);
       ctx.globalAlpha = 1;
       return;
     }
     // Клетка с тёмным швом и светлым бликом сверху-слева — пиксельный объём.
     ctx.fillStyle = color;
-    ctx.fillRect(x * size + 1, y * size + 1, size - 2, size - 2);
+    ctx.fillRect(x * size + seam, y * size + seam, inner, inner);
     ctx.fillStyle = 'rgba(255,255,255,0.22)';
-    ctx.fillRect(x * size + 1, y * size + 1, size - 2, 2);
-    ctx.fillRect(x * size + 1, y * size + 1, 2, size - 2);
+    ctx.fillRect(x * size + seam, y * size + seam, inner, edge);
+    ctx.fillRect(x * size + seam, y * size + seam, edge, inner);
     ctx.fillStyle = 'rgba(0,0,0,0.28)';
-    ctx.fillRect(x * size + 1, y * size + size - 3, size - 2, 2);
-    ctx.fillRect(x * size + size - 3, y * size + 1, 2, size - 2);
+    ctx.fillRect(x * size + seam, y * size + size - seam - edge, inner, edge);
+    ctx.fillRect(x * size + size - seam - edge, y * size + seam, edge, inner);
   }
 
   function render() {
@@ -644,6 +669,12 @@
     }
   }
 
+  function onResize() {
+    if (phase !== 'play') return;
+    fitWindow();
+    render();
+  }
+
   function onBlur() {
     if (phase === 'play' && game && !game.over && !game.paused) act('pause');
   }
@@ -662,6 +693,7 @@
     document.body.classList.add('is-console');
     document.addEventListener('keydown', onKey, true);
     root.addEventListener('blur', onBlur);
+    root.addEventListener('resize', onResize);
     document.addEventListener('visibilitychange', onVisibility);
     ui.dialog.focus();
     boot();
@@ -674,6 +706,7 @@
     root.cancelAnimationFrame(raf);
     document.removeEventListener('keydown', onKey, true);
     root.removeEventListener('blur', onBlur);
+    root.removeEventListener('resize', onResize);
     document.removeEventListener('visibilitychange', onVisibility);
     ui.veil.hidden = true;
     document.body.classList.remove('is-console');

@@ -1539,7 +1539,11 @@ a:not(.btn):hover { color: var(--text); }
 .console-veil[hidden] { display: none; }
 
 .console {
-  width: min(100%, 26rem);
+  /* Окно обнимает содержимое: на загрузке это 26rem, в игре — стакан во всю
+     высоту экрана с показателями сбоку. Шире экрана не бывает. */
+  width: max-content;
+  min-width: min(100%, 26rem);
+  max-width: 100%;
   background: var(--panel);
   border: 1px solid var(--line);
   border-radius: var(--radius);
@@ -1692,6 +1696,8 @@ body.is-console { overflow: hidden; }
 @media (max-width: 480px) {
   .console__play { grid-template-columns: 1fr; grid-template-areas: 'well' 'side' 'keys'; justify-items: center; }
   .console__side { grid-template-columns: repeat(2, auto); gap: 0.5rem 1.2rem; }
+  /* На телефоне нет Esc, а подсказка не давала шапке ужаться в экран 320 px. */
+  .console__hint { display: none; }
 }
 
 @media print {
