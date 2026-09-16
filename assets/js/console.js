@@ -279,8 +279,10 @@
     '[ ok ] wake otto & olivia     2 pets',
     '[ ok ] load tetris.bin        ',
   ];
+  // Фигуры в акцентах страницы: I — accent, O — amber, S — mint, J — sky,
+  // L — magenta; у страницы нет фиолетового и красного, T и Z добраны в её тоне.
   var COLORS = {
-    I: '#3fb0c8', O: '#c9a227', T: '#7d6bb0', S: '#3fa35f', Z: '#c2554f', J: '#5a7fd6', L: '#c96fa0',
+    I: '#00c5cd', O: '#ffb454', T: '#b48cff', S: '#3ddc97', Z: '#ff6b6b', J: '#79c0ff', L: '#ff86c0',
   };
 
   function t(value) {
