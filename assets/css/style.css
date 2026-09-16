@@ -1235,8 +1235,14 @@ a:not(.btn):hover { color: var(--text); }
    в цвет линий, подкрашенная цветом группы (те же пять цветов, что у плиток
    результатов). Форма — из характера страницы «рабочая среда инженера»;
    содержание — те же слова, которые ищет рекрутер. */
+/* --out-gap — воздух между командой и её плашками, --block-gap — между
+   группами. Второй заведомо больше первого: команда должна читаться ближе к
+   своему выводу, чем к соседней группе. До 2026-09-16 первого не было вовсе —
+   плашки стояли впритык к строке команды. */
 .term {
   --gap: 4px;
+  --out-gap: 0.5rem;
+  --block-gap: 1.2rem;
   background: var(--panel);
   border: 1px solid var(--line);
   border-radius: var(--radius);
@@ -1276,7 +1282,7 @@ a:not(.btn):hover { color: var(--text); }
 .term__body {
   padding: 1rem 1.1rem 1.1rem;
   display: grid;
-  gap: 0.85rem;
+  gap: var(--block-gap);
 }
 
 /* Команда — кнопка: сброс вида, текст слева, курсор по назначению. */
@@ -1303,20 +1309,16 @@ a:not(.btn):hover { color: var(--text); }
 .cmd__comment { color: var(--muted); }
 .cmd__comment em { font-style: normal; color: var(--g, var(--accent)); }
 
-.cmd:hover .cmd__text,
-.cmd:focus-visible .cmd__text,
-.cmd[aria-pressed="true"] .cmd__text {
-  text-decoration: underline;
-  text-decoration-color: var(--g, var(--accent));
-  text-underline-offset: 3px;
-}
-
+/* Наведение и нажатие текст команды не подчёркивают — решение владельца
+   2026-09-16. Выбранная группа читается по остальным: у них .is-off гасит
+   команду до 0.5 и прячет вывод. Фокус с клавиатуры показывает кольцо. */
 .cmd:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; }
 
 .term__out {
   display: flex;
   flex-wrap: wrap;
   gap: var(--gap);
+  margin-block-start: var(--out-gap);
   padding-inline-start: 1.4rem;
 }
 
