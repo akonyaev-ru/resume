@@ -199,6 +199,19 @@
       L: '#6fae7a',          // диод готовности — единственный не серый пиксель
       k: '#2a3038',          // ножки
     },
+    exit: {
+      b: '#39404f',          // кронштейны к планке меню
+      f: '#1e3b2b',          // рамка таблички
+      g: '#2f7d52',          // поле — зелёное, как у настоящих, но приглушённое
+      w: '#e6f4ea',          // буквы
+    },
+    camera: {
+      m: '#39404f',          // пластина крепления под планкой
+      d: '#4a5162',          // купол — тот же серый, что рама часов
+      h: '#7a8598',          // блик на куполе, свет слева
+      p: '#12141c',          // объектив — чёрный, как зрачки существ
+      r: '#c9534f',          // диод записи, мигает раз в секунду
+    },
   };
 
   /* --- кадры ------------------------------------------------------------- */
@@ -948,6 +961,51 @@
         'gwwwwwwff',
         '.kk...kk.',
       ];
+
+  // Табличка EXIT: висит на двух кронштейнах под планкой меню в правом поле.
+  // Буквы 3x5 клеток с просветом в клетку — меньше не читается; с рамкой и
+  // кронштейнами 17x9. Зелёное поле и светлые буквы — как у настоящих.
+  var EXIT = [
+        '...b.........b...',
+        '...b.........b...',
+        'fffffffffffffffff',
+        'fwwwgwgwgwwwgwwwf',
+        'fwgggwgwggwgggwgf',
+        'fwwwggwgggwgggwgf',
+        'fwgggwgwggwgggwgf',
+        'fwwwgwgwgwwwggwgf',
+        'fffffffffffffffff',
+      ];
+
+  /* Камера наблюдения: купол под пластиной крепления в левом верхнем углу.
+     Кадров десять — пять положений объектива (он сдвигается к курсору) на два
+     состояния диода. Собираются из одного рисунка здесь же: рисовать десять
+     таблиц руками, отличающихся двумя клетками, — плодить расхождения. */
+  var CAMERA_BASE = [
+        'mmmmmmmmmmmm',
+        '..dhdddddd..',
+        '.dddddddddd.',
+        '.dddddddddd.',
+        '..dddddddd..',
+        '....dddd....',
+      ];
+  var CAMERA_EYE = [2, 3, 5, 7, 8];   // левая клетка объектива по положению
+
+  function cameraFrames() {
+    var frames = [];
+    CAMERA_EYE.forEach(function (eye) {
+      [false, true].forEach(function (led) {
+        frames.push(CAMERA_BASE.map(function (row, y) {
+          var out = row.split('');
+          if (y === 2 || y === 3) { out[eye] = 'p'; out[eye + 1] = 'p'; }
+          if (y === 4 && led) out[9] = 'r';
+          return out.join('');
+        }));
+      });
+    });
+    return frames;
+  }
+  var CAMERA = cameraFrames();
 
   // Растение в кадке: четыре листа на стеблях. Кадр тоже один.
   var PLANT = [
@@ -1971,6 +2029,25 @@
     return Math.floor((t.getHours() % 12) / 3) * 4 + Math.floor(t.getMinutes() / 15);
   }
 
+  /* Камера следит за курсором: объектив сдвигается в его сторону, диод мигает
+     раз в секунду. Направление — доля горизонтали в векторе на курсор: -1
+     курсор слева, 1 справа, 0 прямо под камерой. Курсора нет (тач, страница
+     только открылась) — смотрит прямо. Спрашивается раз в полсекунды, чтобы
+     не дёргаться за каждым движением руки. */
+  var pointer = null;
+
+  function cameraFace(me, now) {
+    var pos = 2;
+    if (pointer) {
+      var cx = me.x + me.canvas.width / 2;
+      var cy = window.innerHeight - me.y - me.canvas.height / 2;
+      var dx = pointer.x - cx;
+      var dy = Math.max(1, pointer.y - cy);
+      pos = clamp(Math.round((dx / (Math.abs(dx) + dy) + 1) * 2), 0, 4);
+    }
+    return pos * 2 + (Math.floor(now / 1000) % 2);
+  }
+
   /* --- обстановка --------------------------------------------------------- */
 
   /* Мебель — не существо: она никуда не идёт, кадров не тратит, пока стоит, и
@@ -1988,8 +2065,9 @@
     var art = sheet[0];
 
     var canvas = document.createElement('canvas');
-    // Висящему на стене — свой класс: он лежит слоем ниже стоящей мебели.
-    canvas.className = spec.wall ? 'thing thing--wall' : 'thing';
+    // Висящему на стене и на потолке — свой класс: слоем ниже стоящей мебели,
+    // и на узком окне, где боковых полей нет, оно спрятано.
+    canvas.className = spec.wall || spec.ceiling ? 'thing thing--wall' : 'thing';
     canvas.width = art.width;
     canvas.height = art.height;
     canvas.setAttribute('aria-hidden', 'true');
@@ -2004,7 +2082,7 @@
       vy: 0,
       grab: null,
       hidden: false,
-      frame: 0,              // какой кадр показан: у часов их шестнадцать
+      frame: spec.rest || 0, // какой кадр показан; `rest` — кадр покоя, у камеры объектив прямо
       askedAt: -1000,        // когда в последний раз спрашивали время
       canvas: canvas,
     };
@@ -2029,14 +2107,14 @@
       ctx.drawImage(sheet[me.frame], 0, 0);
     }
 
-    /* Часы переставляют стрелки. Время спрашиваем раз в секунду, а не в каждом
-       кадре: чаще оно всё равно не меняется. Перерисовываем только когда кадр
-       и правда сменился. */
+    /* Часы переставляют стрелки, камера — объектив. Спрашиваем раз в секунду
+       (или в свой `every`), а не в каждом кадре: чаще оно всё равно не
+       меняется. Перерисовываем только когда кадр и правда сменился. */
     function tick(now) {
-      if (!spec.face || now - me.askedAt < 1000) return;
+      if (!spec.face || now - me.askedAt < (spec.every || 1000)) return;
 
       me.askedAt = now;
-      var next = spec.face();
+      var next = spec.face(me, now);
       if (next === me.frame) return;
 
       me.frame = next;
@@ -2140,8 +2218,9 @@
     function update(now, step) {
       if (me.grab) return;
 
-      // Висящее не падает вовсе: где повесили, там и осталось.
-      if (spec.wall) return;
+      // Висящее — на стене или под потолком — не падает вовсе: где повесили,
+      // там и осталось.
+      if (spec.wall || spec.ceiling) return;
 
       var floor = support();
 
@@ -2230,10 +2309,18 @@
       before: 'sofa', shift: -6 },
     { name: 'sofa', art: SOFA, skin: SKIN.sofa, title: 'Подвинуть диван', at: 0.92 },
     { name: 'plant', art: PLANT, skin: SKIN.plant, title: 'Подвинуть растение', at: 0.97 },
+    /* Потолок — нижняя кромка липкой планки меню. Под ней в боковых полях, где
+       нет текста: камера в левом углу, табличка EXIT в правом. Как и висящее на
+       стене, без гравитации и спрятано на узком окне. */
+    { name: 'camera', art: CAMERA, skin: SKIN.camera, title: 'Перевесить камеру',
+      at: 0, ceiling: true, face: cameraFace, every: 500, rest: 4 },
+    { name: 'exit', art: EXIT, skin: SKIN.exit, title: 'Перевесить табличку',
+      at: 1, ceiling: true },
   ].map(function (spec) {
     var thing = makeThing(spec);
     thing.name = spec.name;
-    thing.wall = !!spec.wall;
+    thing.wall = !!(spec.wall || spec.ceiling);
+    thing.ceiling = !!spec.ceiling;
     thing.at = spec.at || 0;
     thing.hangs = spec.wall || 0;
     thing.between = spec.between || null;
@@ -2243,10 +2330,17 @@
     return thing;
   });
 
-  // Предмет, чьё место считается от соседей, а не от полосы: расставляется
-  // вторым проходом и на смене ширины идёт за ними.
+  // Предмет, чьё место считается не от полосы, а от чего-то подвижного —
+  // соседей или высоты окна: расставляется вторым проходом и на смене размера
+  // окна переставляется.
   function leans(t) {
-    return !!(t.between || t.after || t.before);
+    return !!(t.between || t.after || t.before || t.ceiling);
+  }
+
+  // Высота планки меню: под ней потолок. В песочнице проверок планки нет — 0.
+  function barHeight() {
+    var bar = document.querySelector ? document.querySelector('.topbar') : null;
+    return bar ? bar.offsetHeight : 0;
   }
 
   function thingNamed(name) {
@@ -2478,7 +2572,8 @@
 
   function setSpot(t) {
     t.x = clamp(spotFor(t), EDGE, t.limit());
-    if (t.wall) t.y = t.hangs;
+    if (t.ceiling) t.y = Math.max(0, window.innerHeight - barHeight() - t.canvas.height);
+    else if (t.wall) t.y = t.hangs;
     t.place();
   }
 
@@ -2499,6 +2594,14 @@
   }
 
   arrange(false);
+
+  /* Планку меню строит app.js по DOMContentLoaded, а сцена собирается раньше,
+     при разборе страницы: потолка в этот момент ещё нет, и висящее под ним
+     встало бы за планкой. Когда разметка готова — зависимое расставляется
+     заново, тем же путём, что и на смене размера окна. */
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', function () { arrange(true); });
+  }
 
   /* Существ ставим после мебели: Отто встаёт правее левой кадки. Раньше он
      появлялся на 64-м пикселе и при обновлении страницы оказывался прямо в
@@ -2528,6 +2631,7 @@
   wake();
 
   window.addEventListener('mousemove', function (event) {
+    pointer = { x: event.clientX, y: event.clientY };
     pets.forEach(function (p) { p.haul(event); });
     things.forEach(function (t) { t.haul(event); });
   }, { passive: true });

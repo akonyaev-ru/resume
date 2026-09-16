@@ -1418,7 +1418,7 @@ const BREAKS = [
     name: 'доска падает, как мебель',
     red: 'доску перевешивают, и она висит',
     parts: [[
-      '      if (spec.wall) return;',
+      '      if (spec.wall || spec.ceiling) return;',
       '      if (false) return;',
     ]],
   },
@@ -1458,7 +1458,7 @@ const BREAKS = [
     name: 'часы не переставляют стрелки',
     red: 'часы показывают время',
     parts: [[
-      '      if (!spec.face || now - me.askedAt < 1000) return;',
+      '      if (!spec.face || now - me.askedAt < (spec.every || 1000)) return;',
       '      if (true) return;',
     ]],
   },
