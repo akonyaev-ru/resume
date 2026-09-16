@@ -1239,6 +1239,168 @@ check('сорванную камеру не вернуть на кронштей
   return 'у крепления не защёлкнулась, висит на проводе; после смены окна там же';
 });
 
+
+/* --- подсказки: «можно трогать» и «нажми на компьютер» --------------------- */
+
+// Верх рисунка в кадре: у подскочившего тело выше, чем у стоящего.
+function topOf(world, id) {
+  const el = world.made[id];
+  if (!el || !el.paint.length) fail('кадр ' + id + ' пуст — рисовать нечем');
+  return Math.min.apply(null, el.paint.map(function (c) { return c.y; }));
+}
+
+/* Курсор подошёл к стоящему существу — оно подскакивает один раз: кадр выше
+   кадров покоя, и в пределах такта прыжка снова стоит. Пока курсор просто
+   стоит рядом, повторов нет; ушёл и вернулся раньше NOTICE_EVERY — тоже. */
+check('существо подскакивает навстречу курсору', function () {
+  const world = open({ seed: 7 });
+  world.step(1500);
+  const el = world.otto;
+  let tries = 0;
+  let hop = null;
+
+  while (tries < 8 && hop === null) {
+    tries += 1;
+    // Дождаться, пока стоит без дела: в слое предмета пусто и пузыря нет.
+    let calm = 0;
+    world.step(6000, function () {
+      const l = look(el);
+      calm = l.prop === null && !l.bubble ? calm + 1 : 0;
+    });
+    if (calm < 30) continue;
+
+    // Покой — оба кадра дыхания и моргание: выше них только прыжок.
+    let restTop = Infinity;
+    world.step(2 * NUM.BREATH_MS + 200, function () {
+      const l = look(el);
+      if (l.body !== null) restTop = Math.min(restTop, topOf(world, l.body));
+    });
+
+    const box = el.getBoundingClientRect();
+    world.win('mousemove', event(box.left - 60, box.bottom - 10));
+    let raised = null;
+    world.step(NUM.JUMP_UP_MS - 30, function () {
+      const l = look(el);
+      if (l.body !== null && topOf(world, l.body) < restTop) raised = topOf(world, l.body);
+    });
+    if (raised !== null) {
+      hop = { restTop: restTop, raised: raised, box: box };
+      break;
+    }
+    world.win('mousemove', event(box.left - 500, box.bottom - 10));
+    world.step(NUM.NOTICE_EVERY + 300);
+  }
+  if (hop === null) fail('курсор подходил ' + tries + ' раз — подскока не было');
+
+  // Через такт прыжка стоит, курсор рядом — второго подскока нет.
+  world.step(NUM.JUMP_MS + 100);
+  let again = false;
+  world.win('mousemove', event(hop.box.left - 55, hop.box.bottom - 12));
+  world.step(NUM.JUMP_UP_MS, function () {
+    const l = look(el);
+    if (l.body !== null && topOf(world, l.body) < hop.restTop) again = true;
+  });
+  if (again) fail('курсор стоит рядом, а он подскакивает снова');
+
+  return 'подскочил на ' + (hop.restTop - hop.raised) + ' px с ' + tries + '-й попытки, рядом стоящему курсору не кланяется';
+});
+
+/* Под курсором предмет приподнимается на клетку рисунка, ушёл курсор —
+   опустился. В руке подъёма нет: место после броска считается точно. */
+check('предмет под курсором приподнимается', function () {
+  const world = open({ seed: 5 });
+  world.step(300);
+  const couch = world.things.filter(function (t) { return t.title === 'Подвинуть диван'; })[0];
+  if (!couch) fail('дивана в обстановке нет');
+  const was = couch.spot();
+  const box = couch.getBoundingClientRect();
+
+  world.win('mousemove', event(box.left + 20, box.top + 10));
+  const up = couch.spot();
+  if (up.y !== was.y + NUM.PIXEL || up.x !== was.x) {
+    fail('под курсором не приподнялся: был ' + was.x + ',' + was.y + ', стал ' + up.x + ',' + up.y);
+  }
+  world.win('mousemove', event(box.left - 200, box.top + 10));
+  const down = couch.spot();
+  if (down.y !== was.y) fail('курсор ушёл, а он не опустился: ' + down.y + ' против ' + was.y);
+
+  // Взяли под курсором — в руке без подъёма, отпустили — ровно где ведут.
+  world.win('mousemove', event(box.left + 20, box.top + 10));
+  couch.fire('mousedown', event(box.left + 20, box.top + 10));
+  world.step(FRAME_MS);
+  const toX = was.x - 60;
+  world.win('mousemove', event(toX + 20, box.top + 10));
+  world.step(33);
+  world.win('mousemove', event(toX + 20, box.top + 10));   // рука замерла: броска нет
+  world.step(33);
+  world.win('mouseup', event(toX + 20, box.top + 10));
+  world.step(1500);
+  const put = couch.spot();
+  if (put.y !== was.y || Math.abs(put.x - toX) > 1) {
+    fail('после переноса стоит не там: ' + put.x + ',' + put.y + ', ждали ' + toX + ',' + was.y);
+  }
+
+  return 'приподнялся на ' + NUM.PIXEL + ' px, опустился, перенесён точно';
+});
+
+/* Экран компьютера зовёт нажать: пока консоль не открывали, раз в CALL_EVERY
+   терминал гаснет и стрелка-курсор мигает; курсор на компьютере — стрелка
+   горит ровно; после первого щелчка зов кончается, ответ на наведение остаётся. */
+check('экран компьютера зовёт нажать', function () {
+  const world = open({ seed: 5 });
+  world.step(200);
+  const pc = world.things.filter(function (one) { return one.title === 'Включить компьютер'; })[0];
+  if (!pc) fail('компьютера в обстановке нет');
+  const CURSOR = /#a9f0ec/i;
+  const pointerCells = function () {
+    const id = pc.layers[0] && pc.layers[0].id;
+    if (id === undefined) return 0;
+    return world.made[id].paint.filter(function (c) { return CURSOR.test(c.c); }).length;
+  };
+  const tally = function (ms) {
+    const out = { pointer: 0, blank: 0, text: 0 };
+    world.step(ms, function () {
+      const n = pointerCells();
+      if (n >= 10) out.pointer += 1;
+      else if (n === 0 && world.made[pc.layers[0].id].paint.some(function (c) { return /#0b1018/i.test(c.c); }) &&
+        !world.made[pc.layers[0].id].paint.some(function (c) { return /#3aa8a3|#5fd3ce/i.test(c.c); })) out.blank += 1;
+      else out.text += 1;
+    });
+    return out;
+  };
+
+  // Курсор далеко: за круг зова видны и стрелка, и пустой экран, и терминал.
+  world.win('mousemove', event(5, 5));
+  const cycle = tally(NUM.CALL_EVERY + 200);
+  if (!cycle.pointer) fail('за ' + NUM.CALL_EVERY + ' мс стрелка не появилась');
+  if (!cycle.blank) fail('стрелка мигает без пауз: пустого экрана не было');
+  if (!cycle.text) fail('терминал не вернулся после зова');
+
+  // Курсор на компьютере — стрелка горит ровно, терминала нет.
+  const box = pc.getBoundingClientRect();
+  world.win('mousemove', event(box.left + 10, box.top + 10));
+  world.step(NUM.COMPUTER_MS * 2);
+  const hover = tally(1500);
+  if (hover.text || hover.blank) fail('под курсором экран не держит стрелку: ' + JSON.stringify(hover));
+
+  // Щелчок — консоль открыта, зов кончается; на наведение по-прежнему отвечает.
+  pc.fire('mousedown', event(box.left + 10, box.top + 10));
+  world.step(FRAME_MS);
+  world.win('mouseup', event(box.left + 10, box.top + 10));
+  pc.fire('click', event(box.left + 10, box.top + 10));
+  world.step(FRAME_MS * 3);
+  if (world.opens() !== 1) fail('щелчок не открыл консоль');
+  world.win('mousemove', event(5, 5));
+  world.step(NUM.COMPUTER_MS * 2);
+  const after = tally(2 * NUM.CALL_EVERY + 300);
+  if (after.pointer || after.blank) fail('после щелчка экран всё ещё зовёт: ' + JSON.stringify(after));
+  world.win('mousemove', event(box.left + 10, box.top + 10));
+  world.step(NUM.COMPUTER_MS * 2);
+  if (pointerCells() < 10) fail('после щелчка под курсором стрелки нет');
+
+  return 'зовёт (' + cycle.pointer + ' кадров стрелки за круг), под курсором горит, после щелчка молчит';
+});
+
 /* На узком экране стили прячут обоих, и кадры считаться не должны. Окно могли
    растянуть обратно — тогда они просыпаются. */
 check('узкий экран', function () {
@@ -1678,6 +1840,38 @@ const BREAKS = [
     ]],
   },
   {
+    name: 'существо не подскакивает навстречу курсору',
+    red: 'существо подскакивает навстречу курсору',
+    parts: [[
+      "        enter('greet', now, now + JUMP_MS);",
+      "        enter('idle', now, now + JUMP_MS);",
+    ]],
+  },
+  {
+    name: 'предмет под курсором не приподнимается',
+    red: 'предмет под курсором приподнимается',
+    parts: [[
+      '      var lift = on && !me.torn ? PIXEL : 0;',
+      '      var lift = 0;',
+    ]],
+  },
+  {
+    name: 'экран компьютера не зовёт',
+    red: 'экран компьютера зовёт нажать',
+    parts: [[
+      '    if (!me.used && !LESS_MOTION && now % CALL_EVERY < CALL_MS) {',
+      '    if (false) {',
+    ]],
+  },
+  {
+    name: 'зов не кончается после первого щелчка',
+    red: 'экран компьютера зовёт нажать',
+    parts: [[
+      '        me.used = true;                  // консоль открыли — зов больше не нужен',
+      '        me.used = false;',
+    ]],
+  },
+  {
     name: 'опоры под предметом не существует',
     red: 'предмет стоит на другом и падает без него',
     parts: [[
@@ -1729,7 +1923,7 @@ const BREAKS = [
     name: 'экран компьютера замер',
     red: 'экран компьютера живёт',
     parts: [[
-      '    return Math.floor(now / COMPUTER_MS) % COMPUTER.length;',
+      '    return Math.floor(now / COMPUTER_MS) % COMPUTER_LOOP;',
       '    return 20;',
     ]],
   },

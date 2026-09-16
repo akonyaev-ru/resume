@@ -34,6 +34,10 @@
   var BLINK_EVERY = 4600;    // как часто моргает
   var BLINK_MS = 140;
   var WATCH_PX = 110;        // на каком расстоянии замечает курсор
+  var NOTICE_EVERY = 4000;   // мс — не чаще этого подпрыгивает, заметив курсор: «можно трогать»
+  var CALL_EVERY = 6000;     // мс — как часто экран компьютера зовёт нажать
+  var CALL_MS = 1200;        // мс — сколько зовёт: две вспышки стрелки
+  var CALL_BLINK_MS = 300;   // мс — такт вспышки
   var HOP_MS = 260;          // прыжок в ответ на щелчок
   var EDGE = 12;             // отступ от краёв окна
   var CLICK_SLOP = 3;        // сдвиг руки меньше этого — щелчок, а не захват
@@ -1127,6 +1131,29 @@
     return frames;
   }
   var COMPUTER = computerFrames();
+  var COMPUTER_LOOP = COMPUTER.length;          // круг терминала; дальше — служебные кадры
+
+  /* Экран зовёт нажать: пиксельная стрелка-курсор на пустом экране, как
+     значок мыши. Мигает в пустоту, чтобы читалась именно она, а не текст. */
+  var SCREEN_POINTER = [
+        '..c.....',
+        '..cc....',
+        '..ccc...',
+        '..cccc..',
+        '...c....',
+      ];
+  function screenFrame(rows) {
+    return COMPUTER_BODY.map(function (line, y) {
+      if (y < 1 || y > SCREEN_ROWS) return line;
+      return line.slice(0, 6) + rows[y - 1] + line.slice(6 + SCREEN_COLS);
+    });
+  }
+  var COMPUTER_CALL = COMPUTER.length;
+  COMPUTER.push(screenFrame(SCREEN_POINTER));
+  var COMPUTER_BLANK = COMPUTER.length;
+  COMPUTER.push(screenFrame(['........', '........', '........', '........', '........'].map(function (r) {
+    return r.split('.').join('s');
+  })));
 
   // Растение в кадке: четыре листа на стеблях. Кадр тоже один.
   var PLANT = [
@@ -1511,6 +1538,8 @@
       frame: 0,
       frameAt: 0,
       blinkAt: 0,
+      noticedAt: -1e9,       // когда в последний раз подскакивал навстречу курсору
+      nearCursor: false,     // курсор сейчас рядом — второй раз не подскакивать
       swearUntil: 0,         // до какого времени висит пузырь
       hurry: false,          // на выручку он бежит, а не идёт
       errand: null,          // куда позвал режиссёр встреч; null — занят собой
@@ -1888,6 +1917,12 @@
       // режиссёр, сам из них никто не выходит.
       if (me.state === 'wait' || me.state === 'jump' || me.state === 'pet') return;
 
+      // Подскочил навстречу курсору — приземлился и стоит, дальше решает сам.
+      if (me.state === 'greet') {
+        if (now >= me.until) enter('idle', now, now + 900);
+        return;
+      }
+
       /* Брошенный летит по параболе, отскакивает от стен и от пола, пока не
          выдохнется. Пол — низ окна, стены — те же отступы, что и при ходьбе. */
       if (me.state === 'fly') {
@@ -1975,6 +2010,9 @@
         return draw((now - me.frameAt) % JUMP_MS < JUMP_UP_MS ? 'hop' : 'idle', 0, null);
       }
 
+      // Один подскок навстречу курсору: в воздухе, потом стоит.
+      if (me.state === 'greet') return draw(now - me.frameAt < JUMP_UP_MS ? 'hop' : 'idle', 0, null);
+
       if (now - me.blinkAt > BLINK_EVERY) {
         if (now - me.blinkAt > BLINK_EVERY + BLINK_MS) me.blinkAt = now;
         return draw('blink', 0, null);
@@ -2014,19 +2052,35 @@
        Убегать не надо: оно любопытное, а не пугливое. За делом и по дороге на
        встречу не отвлекается, иначе оно обрывалось бы на полуслове. */
     function watch(x, y) {
-      if (me.grab || me.errand !== null) return;
-      if (me.state === 'open' || me.state === 'busy' || me.state === 'close' ||
-        me.state === 'fly' || me.state === 'held' || me.state === 'dance' ||
-        me.state === 'wait' || me.state === 'jump' || me.state === 'pet') return;
-
       var box = canvas.getBoundingClientRect();
       var near = x > box.left - WATCH_PX && x < box.right + WATCH_PX &&
         y > box.top - WATCH_PX && y < box.bottom + WATCH_PX;
 
+      // «Вошёл / вышел» считается всегда, до всех отсевов: иначе курсор,
+      // ушедший, пока существо было занято, оставался бы «рядом» навсегда.
+      var arrived = near && !me.nearCursor;
+      me.nearCursor = near;
       if (!near) return;
 
+      if (me.grab || me.errand !== null) return;
+      if (me.state === 'open' || me.state === 'busy' || me.state === 'close' ||
+        me.state === 'fly' || me.state === 'held' || me.state === 'dance' ||
+        me.state === 'wait' || me.state === 'jump' || me.state === 'pet' ||
+        me.state === 'greet') return;
+
+      var now = performance.now();
       me.dir = x < box.left + box.width / 2 ? -1 : 1;
-      if (me.state === 'walk') enter('idle', performance.now(), performance.now() + 900);
+      if (me.state === 'walk') enter('idle', now, now + 900);
+
+      /* Курсор только что подошёл — подскакивает: «заметил, можно трогать».
+         Не чаще NOTICE_EVERY и не пока курсор просто стоит рядом; сидящего и
+         поливающего не дёргает. */
+      if (arrived && now - me.noticedAt > NOTICE_EVERY &&
+        (me.state === 'idle' || me.state === 'walk')) {
+        me.noticedAt = now;
+        enter('greet', now, now + JUMP_MS);
+        wake();
+      }
     }
 
     /* Холст выше и шире рисунка: сверху запас под бантик и прыжок, справа —
@@ -2176,7 +2230,14 @@
 
   // Экран компьютера: кадр по времени, по кругу. Без движения — кадр покоя.
   function computerFace(me, now) {
-    return Math.floor(now / COMPUTER_MS) % COMPUTER.length;
+    // Курсор на компьютере — стрелка горит ровно: «нажми». Пока консоль ни
+    // разу не открывали, экран сам зовёт раз в CALL_EVERY двумя вспышками;
+    // просившим меньше движения не мигает.
+    if (me.near) return COMPUTER_CALL;
+    if (!me.used && !LESS_MOTION && now % CALL_EVERY < CALL_MS) {
+      return Math.floor(now / CALL_BLINK_MS) % 2 ? COMPUTER_CALL : COMPUTER_BLANK;
+    }
+    return Math.floor(now / COMPUTER_MS) % COMPUTER_LOOP;
   }
 
   /* --- обстановка --------------------------------------------------------- */
@@ -2239,6 +2300,9 @@
       askedAt: -1000,        // когда в последний раз спрашивали время
       torn: false,           // камера: сорвана с кронштейна, держится на проводе
       swing: null,           // и качается на нём: угол от вертикали и скорость
+      near: false,           // курсор на предмете
+      lift: 0,               // и предмет приподнят под ним, px: «можно взять»
+      used: false,           // компьютер: консоль уже открывали
       canvas: canvas,
     };
 
@@ -2270,7 +2334,7 @@
 
     function place() {
       canvas.style.transform = 'translate(' + Math.round(me.x) + 'px,' +
-        Math.round(-me.y) + 'px)';
+        Math.round(-(me.y + me.lift)) + 'px)';
     }
 
     function draw() {
@@ -2382,6 +2446,12 @@
       var on = x > box.left && x < box.right && y > box.top && y < box.bottom;
 
       canvas.style.pointerEvents = on ? 'auto' : 'none';
+
+      // Под курсором предмет приподнимается на клетку рисунка — его можно
+      // взять. Ушёл курсор — опустился. Сорванной камере на проводе не до того.
+      me.near = on;
+      var lift = on && !me.torn ? PIXEL : 0;
+      if (lift !== me.lift) { me.lift = lift; place(); }
     }
 
     function take(event) {
@@ -2408,6 +2478,7 @@
       me.moved = true;               // дальше висит там, где повесили
       me.vx = 0;
       me.vy = 0;
+      me.lift = 0;                   // в руке подъёма нет: место считается точно
       canvas.classList.add('is-held');
       wake();
     }
@@ -2636,7 +2707,10 @@
     { name: 'computer', art: COMPUTER, skin: SKIN.computer, title: 'Включить компьютер',
       on: 'desk', face: computerFace, every: COMPUTER_MS, rest: 20,
       // Щелчок открывает окно-консоль из console.js; без него — просто мебель.
-      click: function (me) { if (window.OfficeConsole) window.OfficeConsole.open(me.canvas); } },
+      click: function (me) {
+        me.used = true;                  // консоль открыли — зов больше не нужен
+        if (window.OfficeConsole) window.OfficeConsole.open(me.canvas);
+      } },
     { name: 'lamp', art: LAMP, skin: SKIN.lamp, title: 'Подвинуть торшер',
       before: 'sofa', shift: -6 },
     { name: 'sofa', art: SOFA, skin: SKIN.sofa, title: 'Подвинуть диван', at: 0.92 },
