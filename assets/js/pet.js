@@ -35,9 +35,9 @@
   var BLINK_MS = 140;
   var WATCH_PX = 110;        // на каком расстоянии замечает курсор
   var NOTICE_EVERY = 4000;   // мс — не чаще этого подпрыгивает, заметив курсор: «можно трогать»
-  var CALL_EVERY = 6000;     // мс — как часто экран компьютера зовёт нажать
-  var CALL_MS = 1200;        // мс — сколько зовёт: две вспышки стрелки
-  var CALL_BLINK_MS = 300;   // мс — такт вспышки
+  var CALL_EVERY = 6000;     // мс — как часто компьютер подпрыгивает, зовя нажать
+  var CALL_FIRST = 3000;     // мс — первый подскок после загрузки
+  var CALL_HOP = 260;        // px/с — толчок вверх: около 12 px высоты
   var HOP_MS = 260;          // прыжок в ответ на щелчок
   var EDGE = 12;             // отступ от краёв окна
   var CLICK_SLOP = 3;        // сдвиг руки меньше этого — щелчок, а не захват
@@ -1131,29 +1131,6 @@
     return frames;
   }
   var COMPUTER = computerFrames();
-  var COMPUTER_LOOP = COMPUTER.length;          // круг терминала; дальше — служебные кадры
-
-  /* Экран зовёт нажать: пиксельная стрелка-курсор на пустом экране, как
-     значок мыши. Мигает в пустоту, чтобы читалась именно она, а не текст. */
-  var SCREEN_POINTER = [
-        '..c.....',
-        '..cc....',
-        '..ccc...',
-        '..cccc..',
-        '...c....',
-      ];
-  function screenFrame(rows) {
-    return COMPUTER_BODY.map(function (line, y) {
-      if (y < 1 || y > SCREEN_ROWS) return line;
-      return line.slice(0, 6) + rows[y - 1] + line.slice(6 + SCREEN_COLS);
-    });
-  }
-  var COMPUTER_CALL = COMPUTER.length;
-  COMPUTER.push(screenFrame(SCREEN_POINTER));
-  var COMPUTER_BLANK = COMPUTER.length;
-  COMPUTER.push(screenFrame(['........', '........', '........', '........', '........'].map(function (r) {
-    return r.split('.').join('s');
-  })));
 
   // Растение в кадке: четыре листа на стеблях. Кадр тоже один.
   var PLANT = [
@@ -2230,14 +2207,7 @@
 
   // Экран компьютера: кадр по времени, по кругу. Без движения — кадр покоя.
   function computerFace(me, now) {
-    // Курсор на компьютере — стрелка горит ровно: «нажми». Пока консоль ни
-    // разу не открывали, экран сам зовёт раз в CALL_EVERY двумя вспышками;
-    // просившим меньше движения не мигает.
-    if (me.near) return COMPUTER_CALL;
-    if (!me.used && !LESS_MOTION && now % CALL_EVERY < CALL_MS) {
-      return Math.floor(now / CALL_BLINK_MS) % 2 ? COMPUTER_CALL : COMPUTER_BLANK;
-    }
-    return Math.floor(now / COMPUTER_MS) % COMPUTER_LOOP;
+    return Math.floor(now / COMPUTER_MS) % COMPUTER.length;
   }
 
   /* --- обстановка --------------------------------------------------------- */
@@ -2303,6 +2273,7 @@
       near: false,           // курсор на предмете
       lift: 0,               // и предмет приподнят под ним, px: «можно взять»
       used: false,           // компьютер: консоль уже открывали
+      hoppedAt: CALL_FIRST - CALL_EVERY,   // когда в последний раз подпрыгивал, зовя нажать
       canvas: canvas,
     };
 
@@ -2613,6 +2584,16 @@
 
       if (me.torn) return dangle(step / 1000);
 
+      /* Компьютер зовёт нажать: пока консоль не открывали, раз в CALL_EVERY
+         подпрыгивает на месте — толчок вверх, дальше обычное падение на
+         стол. Просившим меньше движения не прыгает. Стрелка на экране
+         побывала и снята: в восьми клетках курсор не читался. */
+      if (spec.hops && !me.used && !LESS_MOTION && me.vy === 0 && me.vx === 0 &&
+        now - me.hoppedAt >= CALL_EVERY) {
+        me.hoppedAt = now;
+        me.vy = CALL_HOP;
+      }
+
       // Висящее — на стене или под потолком — не падает вовсе: где повесили,
       // там и осталось.
       if (spec.wall || spec.ceiling) return;
@@ -2707,6 +2688,8 @@
     { name: 'computer', art: COMPUTER, skin: SKIN.computer, title: 'Включить компьютер',
       on: 'desk', face: computerFace, every: COMPUTER_MS, rest: 20,
       // Щелчок открывает окно-консоль из console.js; без него — просто мебель.
+      // Пока консоль не открывали, компьютер зовёт нажать — подпрыгивает.
+      hops: true,
       click: function (me) {
         me.used = true;                  // консоль открыли — зов больше не нужен
         if (window.OfficeConsole) window.OfficeConsole.open(me.canvas);

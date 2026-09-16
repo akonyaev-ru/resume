@@ -1343,62 +1343,44 @@ check('предмет под курсором приподнимается', fun
   return 'приподнялся на ' + NUM.PIXEL + ' px, опустился, перенесён точно';
 });
 
-/* Экран компьютера зовёт нажать: пока консоль не открывали, раз в CALL_EVERY
-   терминал гаснет и стрелка-курсор мигает; курсор на компьютере — стрелка
-   горит ровно; после первого щелчка зов кончается, ответ на наведение остаётся. */
-check('экран компьютера зовёт нажать', function () {
+/* Компьютер зовёт нажать: пока консоль не открывали, раз в CALL_EVERY
+   подпрыгивает на месте и садится обратно на стол; после первого щелчка —
+   молчит. Стрелка на экране побывала до этого и не читалась курсором. */
+check('компьютер подпрыгивает, зовя нажать', function () {
   const world = open({ seed: 5 });
   world.step(200);
   const pc = world.things.filter(function (one) { return one.title === 'Включить компьютер'; })[0];
   if (!pc) fail('компьютера в обстановке нет');
-  const CURSOR = /#a9f0ec/i;
-  const pointerCells = function () {
-    const id = pc.layers[0] && pc.layers[0].id;
-    if (id === undefined) return 0;
-    return world.made[id].paint.filter(function (c) { return CURSOR.test(c.c); }).length;
-  };
-  const tally = function (ms) {
-    const out = { pointer: 0, blank: 0, text: 0 };
-    world.step(ms, function () {
-      const n = pointerCells();
-      if (n >= 10) out.pointer += 1;
-      else if (n === 0 && world.made[pc.layers[0].id].paint.some(function (c) { return /#0b1018/i.test(c.c); }) &&
-        !world.made[pc.layers[0].id].paint.some(function (c) { return /#3aa8a3|#5fd3ce/i.test(c.c); })) out.blank += 1;
-      else out.text += 1;
-    });
-    return out;
-  };
+  const rest = pc.spot().y;
+  if (rest <= 0) fail('компьютер при загрузке не на столе: y = ' + rest);
 
-  // Курсор далеко: за круг зова видны и стрелка, и пустой экран, и терминал.
-  world.win('mousemove', event(5, 5));
-  const cycle = tally(NUM.CALL_EVERY + 200);
-  if (!cycle.pointer) fail('за ' + NUM.CALL_EVERY + ' мс стрелка не появилась');
-  if (!cycle.blank) fail('стрелка мигает без пауз: пустого экрана не было');
-  if (!cycle.text) fail('терминал не вернулся после зова');
+  let peak = rest;
+  let hops = 0;
+  let up = false;
+  world.step(NUM.CALL_EVERY + 1500, function () {
+    const y = pc.spot().y;
+    if (y > peak) peak = y;
+    if (y > rest + 2 && !up) { up = true; hops += 1; }
+    if (y <= rest) up = false;
+  });
+  if (hops < 1) fail('за ' + (NUM.CALL_EVERY + 1500) + ' мс ни разу не подпрыгнул');
+  if (peak - rest < 6) fail('подскок слишком низкий: ' + (peak - rest) + ' px');
+  const settled = pc.spot();
+  if (settled.y !== rest) fail('после подскока стоит не на столе: ' + settled.y + ' против ' + rest);
 
-  // Курсор на компьютере — стрелка горит ровно, терминала нет.
+  // Щелчок открывает консоль — зов кончается.
   const box = pc.getBoundingClientRect();
-  world.win('mousemove', event(box.left + 10, box.top + 10));
-  world.step(NUM.COMPUTER_MS * 2);
-  const hover = tally(1500);
-  if (hover.text || hover.blank) fail('под курсором экран не держит стрелку: ' + JSON.stringify(hover));
-
-  // Щелчок — консоль открыта, зов кончается; на наведение по-прежнему отвечает.
   pc.fire('mousedown', event(box.left + 10, box.top + 10));
   world.step(FRAME_MS);
   world.win('mouseup', event(box.left + 10, box.top + 10));
   pc.fire('click', event(box.left + 10, box.top + 10));
   world.step(FRAME_MS * 3);
   if (world.opens() !== 1) fail('щелчок не открыл консоль');
-  world.win('mousemove', event(5, 5));
-  world.step(NUM.COMPUTER_MS * 2);
-  const after = tally(2 * NUM.CALL_EVERY + 300);
-  if (after.pointer || after.blank) fail('после щелчка экран всё ещё зовёт: ' + JSON.stringify(after));
-  world.win('mousemove', event(box.left + 10, box.top + 10));
-  world.step(NUM.COMPUTER_MS * 2);
-  if (pointerCells() < 10) fail('после щелчка под курсором стрелки нет');
+  let after = 0;
+  world.step(2 * NUM.CALL_EVERY + 500, function () { if (pc.spot().y > rest + 2) after += 1; });
+  if (after) fail('после щелчка всё ещё подпрыгивает (' + after + ' кадров в воздухе)');
 
-  return 'зовёт (' + cycle.pointer + ' кадров стрелки за круг), под курсором горит, после щелчка молчит';
+  return 'подпрыгнул на ' + (peak - rest) + ' px и сел на стол; после щелчка молчит';
 });
 
 /* На узком экране стили прячут обоих, и кадры считаться не должны. Окно могли
@@ -1856,16 +1838,16 @@ const BREAKS = [
     ]],
   },
   {
-    name: 'экран компьютера не зовёт',
-    red: 'экран компьютера зовёт нажать',
+    name: 'компьютер не зовёт нажать',
+    red: 'компьютер подпрыгивает, зовя нажать',
     parts: [[
-      '    if (!me.used && !LESS_MOTION && now % CALL_EVERY < CALL_MS) {',
-      '    if (false) {',
+      '        me.vy = CALL_HOP;',
+      '        me.vy = 0;',
     ]],
   },
   {
     name: 'зов не кончается после первого щелчка',
-    red: 'экран компьютера зовёт нажать',
+    red: 'компьютер подпрыгивает, зовя нажать',
     parts: [[
       '        me.used = true;                  // консоль открыли — зов больше не нужен',
       '        me.used = false;',
@@ -1923,7 +1905,7 @@ const BREAKS = [
     name: 'экран компьютера замер',
     red: 'экран компьютера живёт',
     parts: [[
-      '    return Math.floor(now / COMPUTER_MS) % COMPUTER_LOOP;',
+      '    return Math.floor(now / COMPUTER_MS) % COMPUTER.length;',
       '    return 20;',
     ]],
   },
