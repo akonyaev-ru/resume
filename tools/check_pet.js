@@ -1354,17 +1354,28 @@ check('компьютер подпрыгивает, зовя нажать', func
   const rest = pc.spot().y;
   if (rest <= 0) fail('компьютер при загрузке не на столе: y = ' + rest);
 
+  // Зов — два прыжка с паузой на столе между ними (решение владельца, 5.22):
+  // без паузы приземление длится кадр и два толчка сливаются в один.
   let peak = rest;
   let hops = 0;
   let up = false;
+  let ground = 0;            // кадров на столе с момента первого приземления
+  let pause = null;          // сколько их было перед вторым прыжком
   world.step(NUM.CALL_EVERY + 1500, function () {
     const y = pc.spot().y;
     if (y > peak) peak = y;
-    if (y > rest + 2 && !up) { up = true; hops += 1; }
-    if (y <= rest) up = false;
+    if (y > rest + 2 && !up) {
+      up = true;
+      hops += 1;
+      if (hops === 2) pause = ground;
+    }
+    if (y <= rest) { if (up) ground = 0; up = false; if (hops === 1) ground += 1; }
   });
-  if (hops < 1) fail('за ' + (NUM.CALL_EVERY + 1500) + ' мс ни разу не подпрыгнул');
+  if (hops !== 2) fail('за зов ждали два прыжка, а было ' + hops);
   if (peak - rest < 6) fail('подскок слишком низкий: ' + (peak - rest) + ' px');
+  if (pause === null || pause * FRAME_MS < NUM.CALL_GAP - FRAME_MS) {
+    fail('между прыжками нет паузы на столе: ' + (pause === null ? 'нет' : Math.round(pause * FRAME_MS) + ' мс') + ' при CALL_GAP ' + NUM.CALL_GAP);
+  }
   const settled = pc.spot();
   if (settled.y !== rest) fail('после подскока стоит не на столе: ' + settled.y + ' против ' + rest);
 
@@ -1380,7 +1391,7 @@ check('компьютер подпрыгивает, зовя нажать', func
   world.step(2 * NUM.CALL_EVERY + 500, function () { if (pc.spot().y > rest + 2) after += 1; });
   if (after) fail('после щелчка всё ещё подпрыгивает (' + after + ' кадров в воздухе)');
 
-  return 'подпрыгнул на ' + (peak - rest) + ' px и сел на стол; после щелчка молчит';
+  return 'два прыжка по ' + (peak - rest) + ' px с паузой ' + Math.round(pause * FRAME_MS) + ' мс, сел на стол; после щелчка молчит';
 });
 
 /* На узком экране стили прячут обоих, и кадры считаться не должны. Окно могли
@@ -1841,8 +1852,16 @@ const BREAKS = [
     name: 'компьютер не зовёт нажать',
     red: 'компьютер подпрыгивает, зовя нажать',
     parts: [[
-      '        me.vy = CALL_HOP;',
-      '        me.vy = 0;',
+      '        if (me.hopQueue.length && now >= me.hopWait) me.vy = me.hopQueue.shift();',
+      '        if (false) me.vy = me.hopQueue.shift();',
+    ]],
+  },
+  {
+    name: 'второй прыжок без паузы — сливается с первым',
+    red: 'компьютер подпрыгивает, зовя нажать',
+    parts: [[
+      '        if (spec.hops) me.hopWait = now + CALL_GAP;   // приземлился — пауза перед следующим толчком',
+      '        if (spec.hops) me.hopWait = now;',
     ]],
   },
   {
