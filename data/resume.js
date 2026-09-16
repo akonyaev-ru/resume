@@ -51,6 +51,7 @@ window.RESUME = {
     openOnGithub: { ru: 'Открыть на GitHub →', en: 'Open on GitHub →' },
     releaseLabel: { ru: 'Выпуск', en: 'Release' },
     skillsTitle: { ru: 'Навыки', en: 'Skills' },
+    skillsLegend: { ru: 'Группы навыков — наведите, чтобы подсветить', en: 'Skill groups — hover to highlight' },
     educationTitle: { ru: 'Образование', en: 'Education' },
     coursesTitle: { ru: 'Повышение квалификации', en: 'Professional training' },
     languagesTitle: { ru: 'Языки', en: 'Languages' },
@@ -301,6 +302,8 @@ window.RESUME = {
   ],
 
   skillGroups: [
+    // Порядок групп — порядок укладки в стакан навыков снизу вверх: юридическая
+    // практика — дно, искусственный интеллект — вершина. Легенда читает его сверху.
     {
       title: { ru: 'Юридическая практика', en: 'Legal practice' },
       skills: [
@@ -310,27 +313,6 @@ window.RESUME = {
         { name: { ru: 'Комплаенс 275-ФЗ (ГОЗ)', en: 'Defence procurement compliance' } },
         { name: { ru: 'Защита персональных данных (152-ФЗ)', en: 'Personal data protection' } },
         { name: { ru: 'КонсультантПлюс', en: 'ConsultantPlus' } },
-      ],
-    },
-    {
-      title: { ru: 'Искусственный интеллект', en: 'Artificial intelligence' },
-      skills: [
-        { name: { ru: 'ИИ-агенты', en: 'AI agents' } },
-        { name: 'Claude' },
-        { name: 'ChatGPT' },
-        { name: 'Prompt Engineering' },
-        { name: 'RAG' },
-      ],
-    },
-    {
-      title: { ru: 'Разработка и интеграции', en: 'Development and integrations' },
-      skills: [
-        { name: 'Python' },
-        { name: 'API' },
-        { name: 'Apps Script' },
-        { name: 'n8n' },
-        { name: 'RPA' },
-        { name: { ru: 'No-code платформы', en: 'No-code platforms' } },
       ],
     },
     {
@@ -355,6 +337,27 @@ window.RESUME = {
         { name: 'MS Excel' },
         { name: { ru: 'Деперсонализация данных', en: 'Data de-identification' } },
         { name: { ru: 'Информационная безопасность', en: 'Information security' } },
+      ],
+    },
+    {
+      title: { ru: 'Разработка и интеграции', en: 'Development and integrations' },
+      skills: [
+        { name: 'Python' },
+        { name: 'API' },
+        { name: 'Apps Script' },
+        { name: 'n8n' },
+        { name: 'RPA' },
+        { name: { ru: 'No-code платформы', en: 'No-code platforms' } },
+      ],
+    },
+    {
+      title: { ru: 'Искусственный интеллект', en: 'Artificial intelligence' },
+      skills: [
+        { name: { ru: 'ИИ-агенты', en: 'AI agents' } },
+        { name: 'Claude' },
+        { name: 'ChatGPT' },
+        { name: 'Prompt Engineering' },
+        { name: 'RAG' },
       ],
     },
   ],

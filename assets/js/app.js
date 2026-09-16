@@ -568,25 +568,135 @@
 
   /* --- навыки ------------------------------------------------------------ */
 
-  /* Чипы появляются в кадре волной: у каждого сквозной номер `--i` через все
-     группы, задержку из него считает CSS. Номер сквозной, а не внутри группы:
-     группы встают одна за другой, а не все разом.
+  /* Навыки уложены стопкой, как в тетрисе: блок — прежний чип (полупрозрачная
+     панель со скруглением), ряды заполняются до края и лежат друг на друге —
+     ни один блок не висит над пустотой. Порядок групп — порядок в
+     data/resume.js: юридическая практика на дне, искусственный интеллект на
+     вершине, та же история, что в заголовке. Ширина блока зависит от шрифта и
+     окна, поэтому сама укладка — в layoutTetris, после отрисовки, загрузки
+     шрифтов и при изменении ширины.
      Связи навыка с задачами и проектами нет намеренно — решение владельца
      2026-09-03: логика связи через теги читалась непрозрачно. */
   function buildSkills() {
-    var order = 0;
-    var groups = el('div', { class: 'skill-groups enter' }, R.skillGroups.map(function (group) {
-      return el('div', {}, [
-        el('h3', { class: 'skill-group__title', text: t(group.title) }),
-        el('div', { class: 'chips' }, group.skills.map(function (skill) {
-          var chip = el('span', { class: 'chip', style: '--i:' + order, text: t(skill.name) });
-          order += 1;
-          return chip;
-        })),
-      ]);
-    }));
+    var well = el('div', { class: 'well enter', role: 'list', 'aria-label': u('skillsTitle') });
+    var box = el('div', { class: 'tetris' });
 
-    return section('skills', u('skillsTitle'), [groups]);
+    /* Подсветка группы: навёл на строку легенды или на блок — блоки этой группы
+       загораются, остальные гаснут. Ряды после укладки полные, и на стыках
+       цвета групп смешиваются; подсветка возвращает слоям читаемость. Строки
+       легенды — кнопки: с клавиатуры подсвечивает фокус, на касании — тап.
+       Состояние лежит одним атрибутом на контейнере, стили читают его. */
+    function highlight(index) {
+      if (index === null) box.removeAttribute('data-hi');
+      else box.setAttribute('data-hi', String(index));
+    }
+
+    // Легенда читается сверху вниз, как и слои стопки: верхняя группа — первой.
+    var legend = el('div', { class: 'tetris__legend', role: 'group', 'aria-label': u('skillsLegend') },
+      R.skillGroups.slice().reverse().map(function (group) {
+        var index = R.skillGroups.indexOf(group);
+        return el('button', {
+          class: 'tetris__key', type: 'button', 'data-g': index,
+          onmouseenter: function () { highlight(index); },
+          onmouseleave: function () { highlight(null); },
+          onfocus: function () { highlight(index); },
+          onblur: function () { highlight(null); },
+        }, [
+          el('span', { class: 'tetris__swatch', 'aria-hidden': 'true' }),
+          el('span', { class: 'tetris__name', text: t(group.title) }),
+        ]);
+      }));
+
+    // Блоки перекладываются при изменении ширины, поэтому слушаем стопку, а не блоки.
+    well.addEventListener('mouseover', function (event) {
+      var block = event.target.closest('.tblock');
+      if (block) highlight(block.getAttribute('data-g'));
+    });
+    well.addEventListener('mouseleave', function () { highlight(null); });
+
+    box.appendChild(well);
+    box.appendChild(legend);
+    return section('skills', u('skillsTitle'), [box]);
+  }
+
+  var TETRIS_RESYNC_MS = 150;
+  var tetrisBound = false;
+
+  /* Укладка по текущей ширине. Ширина блока — замер текста скрытым пробником
+     в том же шрифте; блок кладётся в самый нижний ряд, где он помещается
+     (первым подходящим, через все группы — как фигура в игре проваливается в
+     свободное место). Ряды, кроме верхнего, CSS растягивает до края, поэтому
+     под каждым блоком всегда есть опора. Повторная укладка (шрифт подгрузился,
+     окно сузили) не роняет блоки заново: стопка помечается data-settled. */
+  function layoutTetris(force) {
+    var well = $('.well');
+    if (!well) return;
+
+    var width = well.clientWidth;
+    var gap = parseFloat(getComputedStyle(well).getPropertyValue('--gap')) || 4;
+    var key = width + '/' + LANG;
+    if (!force && well.getAttribute('data-key') === key) return;
+    well.setAttribute('data-key', key);
+    if (well.childNodes.length) well.setAttribute('data-settled', '');
+    well.textContent = '';
+
+    var probe = el('span', { class: 'tblock', style: 'position:absolute;visibility:hidden;left:-9999px' });
+    document.body.appendChild(probe);
+
+    var rows = [];
+    var order = 0;
+    R.skillGroups.forEach(function (group, gi) {
+      group.skills.forEach(function (skill) {
+        var label = t(skill.name);
+        probe.textContent = label;
+        // +2 px запаса: на границе округление раскладки давало текст на пиксель шире блока
+        var w = Math.min(width, Math.ceil(probe.getBoundingClientRect().width) + 2);
+
+        var row = null;
+        for (var r = 0; r < rows.length; r += 1) {
+          if (rows[r].used + (rows[r].count ? gap : 0) + w <= width) { row = rows[r]; break; }
+        }
+        if (!row) {
+          row = { used: 0, count: 0, node: el('div', { class: 'well__row' }) };
+          rows.push(row);
+          well.appendChild(row.node);
+        }
+
+        row.node.appendChild(el('span', {
+          class: 'tblock',
+          role: 'listitem',
+          'data-g': gi,
+          style: '--w:' + w + 'px;--i:' + order,
+          title: t(group.title),
+          text: label,
+        }));
+        row.used += (row.count ? gap : 0) + w;
+        row.count += 1;
+        order += 1;
+      });
+    });
+
+    probe.remove();
+  }
+
+  function initTetris() {
+    layoutTetris();
+
+    /* Ширина блока зависит от шрифта, а к первой отрисовке он загружен не
+       всегда: замер запасным шрифтом на 4–6 px уже, и текст резался по краям.
+       После загрузки укладка повторяется принудительно — ключ ширины тот же. */
+    if (document.fonts && document.fonts.ready && document.fonts.ready.then) {
+      document.fonts.ready.then(function () { layoutTetris(true); });
+    }
+
+    if (tetrisBound) return;
+    tetrisBound = true;
+
+    var timer = 0;
+    window.addEventListener('resize', function () {
+      window.clearTimeout(timer);
+      timer = window.setTimeout(layoutTetris, TETRIS_RESYNC_MS);
+    });
   }
 
   /* --- образование ------------------------------------------------------- */
@@ -1425,6 +1535,7 @@
 
     initObservers();
     initFacts();
+    initTetris();
     initTitleDecode();
     initGlyphPortrait();
     collectMagnets();

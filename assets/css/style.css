@@ -1218,16 +1218,181 @@ a:not(.btn):hover { color: var(--text); }
 
 /* --- Навыки ------------------------------------------------------------- */
 
-/* Групп четыре, поэтому две колонки: при автоподборе четвёртая уезжала
-   в отдельный ряд, а длинные названия навыков ломались пополам. */
-.skill-groups {
+/* Стопка навыков. Блок — прежний чип: полупрозрачная панель со скруглением и
+   рамкой в цвет линий, чуть подкрашенная цветом группы (те же пять цветов, что
+   у плиток результатов). Никакой клеточной сетки — фон страницы просвечивает.
+   Ряды лежат друг на друге и, кроме верхнего, растянуты до края: у каждого
+   блока под ним опора, ничего не висит над пустотой. Внизу — одна линия пола,
+   на ней стопка стоит. */
+.tetris {
+  --row: 32px;
+  --gap: 4px;
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: clamp(1.5rem, 3vw, 2.75rem);
+  grid-template-columns: minmax(0, 1fr) 13rem;
+  gap: 1.5rem;
+  align-items: end;
+}
+
+.tetris [data-g="0"] { --g: var(--amber); }
+.tetris [data-g="1"] { --g: var(--mint); }
+.tetris [data-g="2"] { --g: var(--magenta); }
+.tetris [data-g="3"] { --g: var(--sky); }
+.tetris [data-g="4"] { --g: var(--accent); }
+
+.well {
+  display: flex;
+  flex-direction: column-reverse;
+  gap: var(--gap);
+  padding-block-end: var(--gap);
+  border-block-end: 1px solid var(--line);
+}
+
+.well__row {
+  display: flex;
+  gap: var(--gap);
+  height: var(--row);
+}
+
+.tblock {
+  box-sizing: border-box;
+  flex: 1 1 var(--w, auto);
+  min-width: 0;
+  height: var(--row);
+  padding-inline: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-body);
+  font-size: var(--step--1);
+  color: var(--text-dim);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  background:
+    linear-gradient(0deg, color-mix(in srgb, var(--g) 10%, transparent), color-mix(in srgb, var(--g) 10%, transparent)),
+    rgba(15, 19, 28, 0.62);
+  border: 1px solid color-mix(in srgb, var(--g) 32%, var(--line));
+  border-radius: 6px;
+  transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+}
+
+/* Верхний ряд стопки не растягивается: это верх кучи, а не полка. В DOM он
+   последний — ряды идут снизу вверх. */
+.well__row:last-child .tblock { flex-grow: 0; }
+
+.tblock:hover {
+  background:
+    linear-gradient(0deg, color-mix(in srgb, var(--g) 20%, transparent), color-mix(in srgb, var(--g) 20%, transparent)),
+    rgba(20, 25, 38, 0.8);
+  border-color: color-mix(in srgb, var(--g) 55%, var(--line));
+  color: var(--text);
+}
+
+/* Подсветка группы: атрибут data-hi на контейнере ставит app.js по наведению
+   на легенду или блок. Чужие блоки гаснут через filter, а не opacity: после
+   падения у блока держится opacity из анимации (fill-mode both), и каскад её
+   не перебил бы. Своя группа загорается сильнее обычного наведения. */
+.tblock,
+.tetris__key { transition: filter 0.22s ease, background 0.2s ease, border-color 0.2s ease, color 0.2s ease; }
+
+.tetris[data-hi] .tblock { filter: saturate(0.2) brightness(0.5); }
+.tetris[data-hi] .tetris__key { filter: brightness(0.55); }
+
+.tetris[data-hi="0"] [data-g="0"],
+.tetris[data-hi="1"] [data-g="1"],
+.tetris[data-hi="2"] [data-g="2"],
+.tetris[data-hi="3"] [data-g="3"],
+.tetris[data-hi="4"] [data-g="4"] { filter: none; }
+
+.tetris[data-hi="0"] .tblock[data-g="0"],
+.tetris[data-hi="1"] .tblock[data-g="1"],
+.tetris[data-hi="2"] .tblock[data-g="2"],
+.tetris[data-hi="3"] .tblock[data-g="3"],
+.tetris[data-hi="4"] .tblock[data-g="4"] {
+  background:
+    linear-gradient(0deg, color-mix(in srgb, var(--g) 22%, transparent), color-mix(in srgb, var(--g) 22%, transparent)),
+    rgba(20, 25, 38, 0.8);
+  border-color: color-mix(in srgb, var(--g) 70%, var(--line));
+  color: var(--text);
+}
+
+/* Падение: блок приходит сверху, коротко оседает и встаёт. Шаг между блоками
+   45 мс по сквозному номеру `--i` снизу вверх — стопка из тридцати блоков
+   собирается за полторы секунды. После повторной укладки (data-settled) блоки
+   стоят сразу. */
+.well.enter .tblock { opacity: 0; }
+
+.well.is-in .tblock {
+  animation: tblock-drop 0.42s cubic-bezier(0.2, 0.9, 0.3, 1) both;
+  animation-delay: calc(var(--i, 0) * 45ms);
+}
+
+.well[data-settled] .tblock { opacity: 1; animation: none; }
+
+@keyframes tblock-drop {
+  from { opacity: 0; transform: translateY(calc(var(--row) * -8)); }
+  70% { opacity: 1; }
+  88% { transform: translateY(3px); }
+  to { opacity: 1; transform: none; }
+}
+
+.tetris__legend {
+  display: grid;
+  gap: 0.55rem;
+  align-content: end;
+  padding-block-end: 0.25rem;
+}
+
+.tetris__key {
+  display: grid;
+  grid-template-columns: var(--row) minmax(0, 1fr);
+  gap: 0.7rem;
+  align-items: center;
+  /* это кнопка: сброс вида, текст слева, курсор по назначению */
+  appearance: none;
+  background: none;
+  border: 0;
+  padding: 0;
+  margin: 0;
+  text-align: left;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  border-radius: 6px;
+}
+
+.tetris__key:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+
+.tetris__swatch {
+  height: var(--row);
+  background:
+    linear-gradient(0deg, color-mix(in srgb, var(--g) 10%, transparent), color-mix(in srgb, var(--g) 10%, transparent)),
+    rgba(15, 19, 28, 0.62);
+  border: 1px solid color-mix(in srgb, var(--g) 32%, var(--line));
+  border-radius: 6px;
+}
+
+.tetris__name {
+  font-family: var(--font-mono);
+  font-size: var(--step--2);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--g);
+  line-height: 1.25;
 }
 
 @media (max-width: 760px) {
-  .skill-groups { grid-template-columns: minmax(0, 1fr); }
+  .tetris { --row: 28px; grid-template-columns: minmax(0, 1fr); gap: 1rem; }
+  .tetris__legend { order: -1; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.45rem 1rem; }
+  .tblock { font-size: var(--step--2); padding-inline: 8px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .well.enter .tblock { opacity: 1; animation: none; }
+  .tblock, .tetris__key { transition: none; }
 }
 
 .skill-group__title {
@@ -1239,22 +1404,6 @@ a:not(.btn):hover { color: var(--text); }
   padding-block-end: 0.5rem;
   border-bottom: 1px solid var(--line);
   margin-block-end: 0.9rem;
-}
-
-.chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.4rem;
-}
-
-.chip {
-  font-family: var(--font-body);
-  font-size: var(--step--1);
-  color: var(--text-dim);
-  background: var(--panel);
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  padding: 0.34rem 0.62rem;
 }
 
 /* --- Образование -------------------------------------------------------- */
@@ -1364,28 +1513,6 @@ a:not(.btn):hover { color: var(--text); }
   .enter { opacity: 1; transform: none; }
 }
 
-/* Чипы навыков проявляются волной, а не разом: каждому своя задержка по
-   сквозному номеру `--i`, который ставит app.js, шаг 20 мс — двадцать шесть
-   чипов встают за полсекунды. Анимация с `both`: она держит конечное
-   состояние, поэтому базовое `opacity: 0` после волны не мешает.
-   Специфичность у трёх правил ниже одинаковая, решает порядок: тихий режим и
-   печать стоят позже и выигрывают. */
-.skill-groups.enter .chip { opacity: 0; }
-
-.skill-groups.is-in .chip {
-  animation: chip-in 0.35s ease both;
-  animation-delay: calc(var(--i, 0) * 20ms);
-}
-
-@keyframes chip-in {
-  from { opacity: 0; transform: translateY(6px); }
-  to { opacity: 1; transform: none; }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .skill-groups.enter .chip { opacity: 1; animation: none; }
-}
-
 /* --- Печать ------------------------------------------------------------- */
 
 @media print {
@@ -1462,7 +1589,7 @@ a:not(.btn):hover { color: var(--text); }
   .job, .project, .metric, .record { break-inside: avoid; }
   .job__meta { position: static; }
   .enter { opacity: 1; transform: none; }
-  .skill-groups.enter .chip { opacity: 1; animation: none; }
+  .well.enter .tblock { opacity: 1; animation: none; }
   .projects { grid-template-columns: 1fr 1fr; }
   a { text-decoration: none; color: #000; }
 
