@@ -37,6 +37,7 @@ jobs:
         run: |
           node tools/check_pet.js
           node tools/check_pet.js --selftest
+          node tools/check_tetris.js
 
       - uses: actions/setup-python@v5
         with:

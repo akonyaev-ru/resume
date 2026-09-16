@@ -139,6 +139,8 @@ function open(options) {
       layers: layers,
       paint: paint,
       setAttribute: function () {},
+      removeAttribute: function () {},
+      focus: function () {},
       getContext: function () { return ctx; },
       addEventListener: function (type, fn) {
         (handlers[type] || (handlers[type] = [])).push(fn);
@@ -171,7 +173,10 @@ function open(options) {
     return el;
   }
 
+  let consoleOpens = 0;
   const win = {
+    // Окно-консоль компьютера здесь заглушка: считаем, сколько раз открывали.
+    OfficeConsole: { open: function () { consoleOpens += 1; } },
     innerWidth: opt.width,
     innerHeight: opt.height,
     matchMedia: function (query) {
@@ -245,6 +250,7 @@ function open(options) {
       world.win('resize', {});
     },
     hide: function (flag) { opt.petsHidden = flag; },
+    opens: function () { return consoleOpens; },
     // Размеры окна нужны проверкам, чтобы считать, куда вести курсор.
     wide: function () { return opt.width; },
     high: function () { return opt.height; },
@@ -854,7 +860,7 @@ check('компьютер стоит на столе, стол увели — у
   world.step(200);
   const byTitle = function (t) { return world.things.filter(function (one) { return one.title === t; })[0]; };
   const desk = byTitle('Подвинуть стол');
-  const pc = byTitle('Подвинуть компьютер');
+  const pc = byTitle('Включить компьютер');
   if (!desk || !pc) fail('стола или компьютера в обстановке нет');
   if (pc.spot().y !== desk.height) {
     fail('компьютер не на столе: y ' + pc.spot().y + ', верх стола ' + desk.height);
@@ -876,12 +882,49 @@ check('компьютер стоит на столе, стол увели — у
   return 'стоит на ' + desk.height + ', без стола упал за ' + (landed / 1000).toFixed(1) + ' с';
 });
 
+/* Щелчок по компьютеру открывает консоль, перетаскивание — нет. Щелчок —
+   нажал и отпустил, сдвинув руку меньше чем на CLICK_SLOP; браузер после
+   mouseup присылает click, и предмет решает по сдвигу, что это было. От
+   щелчка компьютер не сдвигается ни на пиксель. */
+check('щелчок по компьютеру открывает консоль, перетаскивание — нет', function () {
+  const world = open({ seed: 5 });
+  world.step(200);
+  const pc = world.things.filter(function (one) { return one.title === 'Включить компьютер'; })[0];
+  if (!pc) fail('компьютера в обстановке нет');
+  const x0 = pc.spot().x;
+  const y0 = pc.spot().y;
+
+  let box = pc.getBoundingClientRect();
+  pc.fire('mousedown', event(box.left + 10, box.top + 10));
+  world.step(FRAME_MS);
+  world.win('mousemove', event(box.left + 11, box.top + 10));   // дрожь руки в пиксель
+  world.win('mouseup', event(box.left + 11, box.top + 10));
+  pc.fire('click', event(box.left + 11, box.top + 10));
+  world.step(FRAME_MS * 3);
+  if (world.opens() !== 1) fail('щелчок открыл консоль ' + world.opens() + ' раз(а), а не один');
+  if (pc.spot().x !== x0 || pc.spot().y !== y0) {
+    fail('от щелчка компьютер сдвинулся: ' + x0 + ',' + y0 + ' → ' + pc.spot().x + ',' + pc.spot().y);
+  }
+
+  box = pc.getBoundingClientRect();
+  pc.fire('mousedown', event(box.left + 10, box.top + 10));
+  world.step(FRAME_MS);
+  world.win('mousemove', event(box.left + 70, box.top + 10));
+  world.step(FRAME_MS);
+  world.win('mouseup', event(box.left + 70, box.top + 10));
+  pc.fire('click', event(box.left + 70, box.top + 10));
+  world.step(FRAME_MS * 3);
+  if (world.opens() !== 1) fail('перетаскивание открыло консоль');
+  if (pc.spot().x === x0) fail('перетаскивание не сдвинуло компьютер');
+  return 'щелчок открыл, компьютер на месте; перетаскивание сдвинуло на ' + (pc.spot().x - x0) + ' px и не открыло';
+});
+
 /* Экран компьютера живёт: за три секунды сменяется много кадров; в тихом
    режиме кадр один. Кадр узнаём отпечатком рисунка, как у часов. */
 check('экран компьютера живёт', function () {
   const world = open({ seed: 5 });
   world.step(500);
-  const pc = world.things.filter(function (one) { return one.title === 'Подвинуть компьютер'; })[0];
+  const pc = world.things.filter(function (one) { return one.title === 'Включить компьютер'; })[0];
   if (!pc || !pc.layers.length) fail('компьютер не нарисован');
   const seen = {};
   world.step(3000, function () { seen[printOf(world, pc.layers[0].id)] = true; });
@@ -890,7 +933,7 @@ check('экран компьютера живёт', function () {
 
   const quiet = open({ seed: 5, lessMotion: true });
   quiet.step(500);
-  const qpc = quiet.things.filter(function (one) { return one.title === 'Подвинуть компьютер'; })[0];
+  const qpc = quiet.things.filter(function (one) { return one.title === 'Включить компьютер'; })[0];
   const first = printOf(quiet, qpc.layers[0].id);
   quiet.step(3000);
   if (printOf(quiet, qpc.layers[0].id) !== first) fail('в тихом режиме экран мигает');
@@ -1502,6 +1545,14 @@ const BREAKS = [
     parts: [[
       '  var startAt = leftEdge ? leftEdge + 16 : 64;',
       '  var startAt = 64;',
+    ]],
+  },
+  {
+    name: 'щелчок не отличают от перетаскивания',
+    red: 'щелчок по компьютеру открывает консоль, перетаскивание — нет',
+    parts: [[
+      '        if (!me.dragged) spec.click(me);',
+      '        spec.click(me);',
     ]],
   },
   {

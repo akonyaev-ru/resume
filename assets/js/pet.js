@@ -36,6 +36,7 @@
   var WATCH_PX = 110;        // на каком расстоянии замечает курсор
   var HOP_MS = 260;          // прыжок в ответ на щелчок
   var EDGE = 12;             // отступ от краёв окна
+  var CLICK_SLOP = 3;        // сдвиг руки меньше этого — щелчок, а не захват
 
   var GRAVITY = 1700;        // px/с² — с каким ускорением падает брошенный
   var BOUNCE = 0.42;         // сколько скорости остаётся после удара о пол
@@ -2178,10 +2179,32 @@
     // Висящему на стене и на потолке — свой класс: слоем ниже стоящей мебели,
     // и на узком окне, где боковых полей нет, оно спрятано.
     canvas.className = spec.wall || spec.ceiling ? 'thing thing--wall' : 'thing';
+    if (spec.click) canvas.className += ' thing--button';
     canvas.width = art.width;
     canvas.height = art.height;
     canvas.setAttribute('aria-hidden', 'true');
     canvas.title = spec.title;
+
+    /* Предмет, который нажимают (компьютер), — кнопка и для клавиатуры: в
+       обходе по Tab, с именем, открывается Enter и пробелом. Мышью: нажал и
+       отпустил, не сдвинув руку больше CLICK_SLOP, — щелчок; сдвинул — обычный
+       захват, и тогда браузерный click, который приходит после mouseup,
+       пропускается. */
+    if (spec.click) {
+      canvas.removeAttribute('aria-hidden');
+      canvas.setAttribute('role', 'button');
+      canvas.setAttribute('aria-label', spec.title);
+      canvas.tabIndex = 0;
+      canvas.addEventListener('click', function () {
+        if (!me.dragged) spec.click(me);
+        me.dragged = false;
+      });
+      canvas.addEventListener('keydown', function (event) {
+        if (event.key !== 'Enter' && event.key !== ' ') return;
+        event.preventDefault();
+        spec.click(me);
+      });
+    }
 
     var ctx = canvas.getContext('2d');
 
@@ -2259,10 +2282,14 @@
         dy: event.clientY - box.top,
         x: event.clientX,
         y: event.clientY,
+        x0: event.clientX,             // откуда взяли: по этому отличаем щелчок
+        y0: event.clientY,
+        wasMoved: me.moved,            // вернуть, если это окажется щелчок
         at: performance.now(),
         vx: 0,
         vy: 0,
       };
+      me.dragged = false;
       me.moved = true;               // дальше висит там, где повесили
       me.vx = 0;
       me.vy = 0;
@@ -2272,6 +2299,14 @@
 
     function haul(event) {
       if (!me.grab) return;
+
+      // Мёртвая зона: пока рука не ушла дальше CLICK_SLOP от места захвата,
+      // предмет стоит — иначе щелчок сдвигал бы компьютер на пиксель.
+      if (!me.dragged) {
+        if (Math.abs(event.clientX - me.grab.x0) < CLICK_SLOP &&
+          Math.abs(event.clientY - me.grab.y0) < CLICK_SLOP) return;
+        me.dragged = true;
+      }
 
       // Скорость руки — по последнему отрезку: бросок слушается того, как рука
       // шла перед самым отпусканием, а не всего пути.
@@ -2297,6 +2332,14 @@
       // Доля от руки одна на обе оси: иначе брошенный вбок предмет взмывает.
       me.vx = clamp(me.grab.vx * THING_THROW, -THING_THROW_MAX, THING_THROW_MAX);
       me.vy = clamp(-me.grab.vy * THING_THROW, -THING_THROW_MAX, THING_THROW_MAX);
+
+      // Щелчок: рука не сдвинулась — предмет никуда не летит и своё место
+      // в расстановке не теряет.
+      if (!me.dragged) {
+        me.vx = 0;
+        me.vy = 0;
+        me.moved = me.grab.wasMoved;
+      }
 
       me.grab = null;
       canvas.classList.remove('is-held');
@@ -2419,8 +2462,10 @@
     // горизонтали его левый край, по вертикали его верх. Экран живёт кадрами.
     { name: 'desk', art: DESK, skin: SKIN.desk, title: 'Подвинуть стол',
       after: 'printer', shift: 9 },
-    { name: 'computer', art: COMPUTER, skin: SKIN.computer, title: 'Подвинуть компьютер',
-      on: 'desk', face: computerFace, every: COMPUTER_MS, rest: 20 },
+    { name: 'computer', art: COMPUTER, skin: SKIN.computer, title: 'Включить компьютер',
+      on: 'desk', face: computerFace, every: COMPUTER_MS, rest: 20,
+      // Щелчок открывает окно-консоль из console.js; без него — просто мебель.
+      click: function (me) { if (window.OfficeConsole) window.OfficeConsole.open(me.canvas); } },
     { name: 'lamp', art: LAMP, skin: SKIN.lamp, title: 'Подвинуть торшер',
       before: 'sofa', shift: -6 },
     { name: 'sofa', art: SOFA, skin: SKIN.sofa, title: 'Подвинуть диван', at: 0.92 },
