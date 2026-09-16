@@ -117,7 +117,7 @@
   }
 
   function $(sel) { return document.querySelector(sel); }
-  function $$(sel) { return Array.prototype.slice.call(document.querySelectorAll(sel)); }
+  function $$(sel, root) { return Array.prototype.slice.call((root || document).querySelectorAll(sel)); }
 
   function randomFrom(set) {
     return set.charAt(Math.floor(Math.random() * set.length));
@@ -568,135 +568,123 @@
 
   /* --- навыки ------------------------------------------------------------ */
 
-  /* Навыки уложены стопкой, как в тетрисе: блок — прежний чип (полупрозрачная
-     панель со скруглением), ряды заполняются до края и лежат друг на друге —
-     ни один блок не висит над пустотой. Порядок групп — порядок в
-     data/resume.js: юридическая практика на дне, искусственный интеллект на
-     вершине, та же история, что в заголовке. Ширина блока зависит от шрифта и
-     окна, поэтому сама укладка — в layoutTetris, после отрисовки, загрузки
-     шрифтов и при изменении ширины.
+  /* Навыки — окно терминала: каждая группа — команда `skills --group <flag>`,
+     вывод — плашки навыков. Щелчок по команде «выполняет» её: остаётся вывод
+     одной группы, остальные команды тускнеют; повторный щелчок или
+     `skills --all` возвращает всё. При появлении в кадре команды и плашки
+     выходят по очереди, как вывод программы (playTerminal). Выбор владельца
+     2026-09-16 после стопки, пирамид, графа и планеты: форма из характера
+     страницы, а содержание — те же 31 слово, которые ищет рекрутер.
      Связи навыка с задачами и проектами нет намеренно — решение владельца
      2026-09-03: логика связи через теги читалась непрозрачно. */
+  /* Формы числа: русские три (1 навык, 2 навыка, 5 навыков), английские две. */
+  function plural(n, forms) {
+    if (LANG === 'en') return n === 1 ? forms[0] : forms[1];
+    var m10 = n % 10, m100 = n % 100;
+    if (m10 === 1 && m100 !== 11) return forms[0];
+    if (m10 >= 2 && m10 <= 4 && (m100 < 12 || m100 > 14)) return forms[1];
+    return forms[2];
+  }
+
   function buildSkills() {
-    var well = el('div', { class: 'well enter', role: 'list', 'aria-label': u('skillsTitle') });
-    var box = el('div', { class: 'tetris' });
+    var groups = R.skillGroups;
+    var total = groups.reduce(function (n, g) { return n + g.skills.length; }, 0);
+    var blocks = [];
 
-    /* Подсветка группы: навёл на строку легенды или на блок — блоки этой группы
-       загораются, остальные гаснут. Ряды после укладки полные, и на стыках
-       цвета групп смешиваются; подсветка возвращает слоям читаемость. Строки
-       легенды — кнопки: с клавиатуры подсвечивает фокус, на касании — тап.
-       Состояние лежит одним атрибутом на контейнере, стили читают его. */
-    function highlight(index) {
-      if (index === null) box.removeAttribute('data-hi');
-      else box.setAttribute('data-hi', String(index));
+    function command(flag, comment, index) {
+      var btn = el('button', { class: 'cmd', type: 'button', 'aria-pressed': 'false' }, [
+        el('span', { class: 'cmd__prompt', 'aria-hidden': 'true', text: '$' }),
+        el('span', { class: 'cmd__text' }, [
+          document.createTextNode('skills '),
+          el('span', { class: 'cmd__flag', text: flag }),
+        ]),
+        el('span', { class: 'cmd__comment' }, [
+          document.createTextNode('# '),
+          el('em', { text: comment }),
+        ]),
+      ]);
+      if (index !== null) btn.setAttribute('data-g', index);
+      return btn;
     }
 
-    // Легенда читается сверху вниз, как и слои стопки: верхняя группа — первой.
-    var legend = el('div', { class: 'tetris__legend', role: 'group', 'aria-label': u('skillsLegend') },
-      R.skillGroups.slice().reverse().map(function (group) {
-        var index = R.skillGroups.indexOf(group);
-        return el('button', {
-          class: 'tetris__key', type: 'button', 'data-g': index,
-          onmouseenter: function () { highlight(index); },
-          onmouseleave: function () { highlight(null); },
-          onfocus: function () { highlight(index); },
-          onblur: function () { highlight(null); },
-        }, [
-          el('span', { class: 'tetris__swatch', 'aria-hidden': 'true' }),
-          el('span', { class: 'tetris__name', text: t(group.title) }),
-        ]);
-      }));
-
-    // Блоки перекладываются при изменении ширины, поэтому слушаем стопку, а не блоки.
-    well.addEventListener('mouseover', function (event) {
-      var block = event.target.closest('.tblock');
-      if (block) highlight(block.getAttribute('data-g'));
-    });
-    well.addEventListener('mouseleave', function () { highlight(null); });
-
-    box.appendChild(well);
-    box.appendChild(legend);
-    return section('skills', u('skillsTitle'), [box]);
-  }
-
-  var TETRIS_RESYNC_MS = 150;
-  var tetrisBound = false;
-
-  /* Укладка по текущей ширине. Ширина блока — замер текста скрытым пробником
-     в том же шрифте; блок кладётся в самый нижний ряд, где он помещается
-     (первым подходящим, через все группы — как фигура в игре проваливается в
-     свободное место). Ряды, кроме верхнего, CSS растягивает до края, поэтому
-     под каждым блоком всегда есть опора. Повторная укладка (шрифт подгрузился,
-     окно сузили) не роняет блоки заново: стопка помечается data-settled. */
-  function layoutTetris(force) {
-    var well = $('.well');
-    if (!well) return;
-
-    var width = well.clientWidth;
-    var gap = parseFloat(getComputedStyle(well).getPropertyValue('--gap')) || 4;
-    var key = width + '/' + LANG;
-    if (!force && well.getAttribute('data-key') === key) return;
-    well.setAttribute('data-key', key);
-    if (well.childNodes.length) well.setAttribute('data-settled', '');
-    well.textContent = '';
-
-    var probe = el('span', { class: 'tblock', style: 'position:absolute;visibility:hidden;left:-9999px' });
-    document.body.appendChild(probe);
-
-    var rows = [];
-    var order = 0;
-    R.skillGroups.forEach(function (group, gi) {
-      group.skills.forEach(function (skill) {
-        var label = t(skill.name);
-        probe.textContent = label;
-        // +2 px запаса: на границе округление раскладки давало текст на пиксель шире блока
-        var w = Math.min(width, Math.ceil(probe.getBoundingClientRect().width) + 2);
-
-        var row = null;
-        for (var r = 0; r < rows.length; r += 1) {
-          if (rows[r].used + (rows[r].count ? gap : 0) + w <= width) { row = rows[r]; break; }
-        }
-        if (!row) {
-          row = { used: 0, count: 0, node: el('div', { class: 'well__row' }) };
-          rows.push(row);
-          well.appendChild(row.node);
-        }
-
-        row.node.appendChild(el('span', {
-          class: 'tblock',
-          role: 'listitem',
-          'data-g': gi,
-          style: '--w:' + w + 'px;--i:' + order,
-          title: t(group.title),
-          text: label,
-        }));
-        row.used += (row.count ? gap : 0) + w;
-        row.count += 1;
-        order += 1;
+    function setSolo(index) {
+      blocks.forEach(function (block) {
+        var off = index !== null && block.index !== index;
+        block.node.classList.toggle('is-off', off);
+        block.cmd.setAttribute('aria-pressed', String(index !== null && block.index === index));
       });
-    });
-
-    probe.remove();
-  }
-
-  function initTetris() {
-    layoutTetris();
-
-    /* Ширина блока зависит от шрифта, а к первой отрисовке он загружен не
-       всегда: замер запасным шрифтом на 4–6 px уже, и текст резался по краям.
-       После загрузки укладка повторяется принудительно — ключ ширины тот же. */
-    if (document.fonts && document.fonts.ready && document.fonts.ready.then) {
-      document.fonts.ready.then(function () { layoutTetris(true); });
     }
 
-    if (tetrisBound) return;
-    tetrisBound = true;
+    var all = command('--all', groups.length + ' ' + plural(groups.length, t(R.ui.termGroups)) + ' · ' +
+      total + ' ' + plural(total, t(R.ui.termSkills)), null);
+    all.addEventListener('click', function () { setSolo(null); });
 
-    var timer = 0;
-    window.addEventListener('resize', function () {
-      window.clearTimeout(timer);
-      timer = window.setTimeout(layoutTetris, TETRIS_RESYNC_MS);
+    var body = el('div', { class: 'term__body' }, [el('div', { class: 'term__block' }, [all])]);
+
+    groups.forEach(function (group, index) {
+      var cmd = command('--group ' + group.flag, t(group.title), index);
+      var out = el('div', { class: 'term__out', role: 'list', 'aria-label': t(group.title) },
+        group.skills.map(function (skill) {
+          return el('span', { class: 'tblock', role: 'listitem', 'data-g': index, text: t(skill.name) });
+        }));
+      var node = el('div', { class: 'term__block', 'data-g': index }, [cmd, out]);
+      var block = { node: node, cmd: cmd, index: index };
+      cmd.addEventListener('click', function () {
+        var solo = blocks.every(function (b) { return b.node.classList.contains('is-off') === (b.index !== index); });
+        setSolo(solo ? null : index);
+      });
+      blocks.push(block);
+      body.appendChild(node);
     });
+
+    body.appendChild(el('div', { class: 'term__block term__tail' }, [
+      el('span', { class: 'cmd__prompt', 'aria-hidden': 'true', text: '$' }),
+      el('span', { class: 'cursor', 'aria-hidden': 'true' }),
+    ]));
+
+    var term = el('div', { class: 'term enter' }, [
+      el('div', { class: 'term__bar', 'aria-hidden': 'true' }, [
+        el('span', { class: 'term__dots' }, [el('i'), el('i'), el('i')]),
+        el('b', { text: R.ui.termHost }),
+        el('span', { text: R.ui.termPath }),
+        el('span', { class: 'term__hint', text: u('termHint') }),
+      ]),
+      body,
+    ]);
+
+    return section('skills', u('skillsTitle'), [term]);
+  }
+
+  /* Вывод терминала появляется по очереди: команда, затем её плашки одна за
+     другой. Скрывается visibility, а не display — раскладка стоит с самого
+     начала, страница не прыгает. Без анимации или без наблюдателя всё видно
+     сразу; в печати visibility снимает CSS. */
+  var TERM_CMD_MS = 220;
+  var TERM_CHIP_MS = 40;
+
+  function playTerminal(term) {
+    if (term.getAttribute('data-played')) return;
+    term.setAttribute('data-played', '');
+    if (LESS_MOTION) return;
+
+    var items = [];
+    $$('.term__block', term).forEach(function (block) {
+      var cmd = block.querySelector('.cmd, .term__tail > .cmd__prompt');
+      if (cmd) items.push({ node: cmd, wait: TERM_CMD_MS });
+      $$('.tblock', block).forEach(function (chip) { items.push({ node: chip, wait: TERM_CHIP_MS }); });
+    });
+    var cursor = term.querySelector('.cursor');
+    if (cursor) items.push({ node: cursor, wait: 0 });
+
+    items.forEach(function (it) { it.node.style.visibility = 'hidden'; });
+    var i = 0;
+    (function step() {
+      if (i >= items.length) return;
+      var it = items[i];
+      i += 1;
+      it.node.style.visibility = '';
+      window.setTimeout(step, it.wait);
+    })();
   }
 
   /* --- образование ------------------------------------------------------- */
@@ -1442,6 +1430,7 @@
         entry.target.classList.add('is-in');
         appear.unobserve(entry.target);
         entry.target.querySelectorAll('.metric__value').forEach(countTo);
+        if (entry.target.classList.contains('term')) playTerminal(entry.target);
       });
     }, { rootMargin: '0px 0px -12% 0px', threshold: 0.05 });
 
@@ -1535,7 +1524,6 @@
 
     initObservers();
     initFacts();
-    initTetris();
     initTitleDecode();
     initGlyphPortrait();
     collectMagnets();

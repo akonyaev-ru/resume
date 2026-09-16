@@ -51,7 +51,14 @@ window.RESUME = {
     openOnGithub: { ru: 'Открыть на GitHub →', en: 'Open on GitHub →' },
     releaseLabel: { ru: 'Выпуск', en: 'Release' },
     skillsTitle: { ru: 'Навыки', en: 'Skills' },
-    skillsLegend: { ru: 'Группы навыков — наведите, чтобы подсветить', en: 'Skill groups — hover to highlight' },
+    // Окно терминала: подписи шапки и команд. Формы множественного числа —
+    // для 1, 2–4 и 5+ (в английском две последние совпадают).
+    termHost: 'alexey@legalops',
+    termPath: '~/skills',
+    termAll: { ru: 'все группы', en: 'all groups' },
+    termGroups: { ru: ['группа', 'группы', 'групп'], en: ['group', 'groups', 'groups'] },
+    termSkills: { ru: ['навык', 'навыка', 'навыков'], en: ['skill', 'skills', 'skills'] },
+    termHint: { ru: 'Щёлкните по команде, чтобы оставить одну группу', en: 'Click a command to keep one group' },
     educationTitle: { ru: 'Образование', en: 'Education' },
     coursesTitle: { ru: 'Повышение квалификации', en: 'Professional training' },
     languagesTitle: { ru: 'Языки', en: 'Languages' },
@@ -302,10 +309,10 @@ window.RESUME = {
   ],
 
   skillGroups: [
-    // Порядок групп — порядок укладки в стакан навыков снизу вверх: юридическая
-    // практика — дно, искусственный интеллект — вершина. Легенда читает его сверху.
+    // `flag` — имя группы в команде `skills --group <flag>`; общее для языков.
     {
       title: { ru: 'Юридическая практика', en: 'Legal practice' },
+      flag: 'legal',
       skills: [
         { name: { ru: 'Договорная работа', en: 'Contract work' } },
         { name: { ru: 'Претензионно-исковая работа', en: 'Claims and litigation' } },
@@ -317,6 +324,7 @@ window.RESUME = {
     },
     {
       title: { ru: 'Процессы и системы', en: 'Processes and systems' },
+      flag: 'process',
       skills: [
         { name: { ru: 'Автоматизация юридической функции', en: 'Legal function automation' } },
         { name: { ru: 'Описание процессов AS IS / TO BE', en: 'Process mapping AS IS / TO BE' } },
@@ -331,6 +339,7 @@ window.RESUME = {
     },
     {
       title: { ru: 'Данные и безопасность', en: 'Data and security' },
+      flag: 'data',
       skills: [
         { name: { ru: 'BI-дашборды', en: 'BI dashboards' } },
         { name: 'Google Sheets' },
@@ -341,6 +350,7 @@ window.RESUME = {
     },
     {
       title: { ru: 'Разработка и интеграции', en: 'Development and integrations' },
+      flag: 'dev',
       skills: [
         { name: 'Python' },
         { name: 'API' },
@@ -352,6 +362,7 @@ window.RESUME = {
     },
     {
       title: { ru: 'Искусственный интеллект', en: 'Artificial intelligence' },
+      flag: 'ai',
       skills: [
         { name: { ru: 'ИИ-агенты', en: 'AI agents' } },
         { name: 'Claude' },

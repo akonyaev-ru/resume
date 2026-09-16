@@ -1218,56 +1218,109 @@ a:not(.btn):hover { color: var(--text); }
 
 /* --- Навыки ------------------------------------------------------------- */
 
-/* Стопка навыков. Блок — прежний чип: полупрозрачная панель со скруглением и
-   рамкой в цвет линий, чуть подкрашенная цветом группы (те же пять цветов, что
-   у плиток результатов). Никакой клеточной сетки — фон страницы просвечивает.
-   Ряды лежат друг на друге и, кроме верхнего, растянуты до края: у каждого
-   блока под ним опора, ничего не висит над пустотой. Внизу — одна линия пола,
-   на ней стопка стоит. */
-.tetris {
-  --row: 32px;
+/* Навыки — окно терминала. Рамка и шапка в цветах панелей, команды
+   моноширинным, вывод — плашки: полупрозрачная панель со скруглением и рамкой
+   в цвет линий, подкрашенная цветом группы (те же пять цветов, что у плиток
+   результатов). Форма — из характера страницы «рабочая среда инженера»;
+   содержание — те же слова, которые ищет рекрутер. */
+.term {
   --gap: 4px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  overflow: hidden;
+  font-family: var(--font-mono);
+  font-size: 13px;
+}
+
+.term [data-g="0"] { --g: var(--amber); }
+.term [data-g="1"] { --g: var(--mint); }
+.term [data-g="2"] { --g: var(--magenta); }
+.term [data-g="3"] { --g: var(--sky); }
+.term [data-g="4"] { --g: var(--accent); }
+
+.term__bar {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.55rem 0.9rem;
+  border-bottom: 1px solid var(--line);
+  color: var(--muted);
+  font-size: var(--step--2);
+  letter-spacing: 0.06em;
+}
+
+.term__bar b { font-weight: 500; color: var(--text-dim); }
+.term__hint { margin-inline-start: auto; letter-spacing: 0; }
+.term__dots { display: inline-flex; gap: 6px; }
+.term__dots i {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--line);
+  border: 1px solid color-mix(in srgb, var(--muted) 40%, var(--line));
+}
+
+.term__body {
+  padding: 1rem 1.1rem 1.1rem;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 13rem;
-  gap: 1.5rem;
-  align-items: end;
+  gap: 0.85rem;
 }
 
-.tetris [data-g="0"] { --g: var(--amber); }
-.tetris [data-g="1"] { --g: var(--mint); }
-.tetris [data-g="2"] { --g: var(--magenta); }
-.tetris [data-g="3"] { --g: var(--sky); }
-.tetris [data-g="4"] { --g: var(--accent); }
-
-.well {
+/* Команда — кнопка: сброс вида, текст слева, курсор по назначению. */
+.cmd {
   display: flex;
-  flex-direction: column-reverse;
-  gap: var(--gap);
-  padding-block-end: var(--gap);
-  border-block-end: 1px solid var(--line);
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.5rem;
+  appearance: none;
+  background: none;
+  border: 0;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  border-radius: 3px;
 }
 
-.well__row {
-  display: flex;
-  gap: var(--gap);
-  height: var(--row);
+.cmd__prompt { color: var(--accent); }
+.cmd__text { color: var(--text); }
+.cmd__flag { color: var(--g, var(--accent)); }
+.cmd__comment { color: var(--muted); }
+.cmd__comment em { font-style: normal; color: var(--g, var(--accent)); }
+
+.cmd:hover .cmd__text,
+.cmd:focus-visible .cmd__text,
+.cmd[aria-pressed="true"] .cmd__text {
+  text-decoration: underline;
+  text-decoration-color: var(--g, var(--accent));
+  text-underline-offset: 3px;
 }
+
+.cmd:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; }
+
+.term__out {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--gap);
+  padding-inline-start: 1.4rem;
+}
+
+.term__block.is-off .term__out { display: none; }
+.term__block.is-off .cmd { opacity: 0.5; }
 
 .tblock {
   box-sizing: border-box;
-  flex: 1 1 var(--w, auto);
-  min-width: 0;
-  height: var(--row);
+  height: 32px;
   padding-inline: 10px;
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  justify-content: center;
   font-family: var(--font-body);
   font-size: var(--step--1);
   color: var(--text-dim);
   white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
   background:
     linear-gradient(0deg, color-mix(in srgb, var(--g) 10%, transparent), color-mix(in srgb, var(--g) 10%, transparent)),
     rgba(15, 19, 28, 0.62);
@@ -1275,10 +1328,6 @@ a:not(.btn):hover { color: var(--text); }
   border-radius: 6px;
   transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease;
 }
-
-/* Верхний ряд стопки не растягивается: это верх кучи, а не полка. В DOM он
-   последний — ряды идут снизу вверх. */
-.well__row:last-child .tblock { flex-grow: 0; }
 
 .tblock:hover {
   background:
@@ -1288,111 +1337,33 @@ a:not(.btn):hover { color: var(--text); }
   color: var(--text);
 }
 
-/* Подсветка группы: атрибут data-hi на контейнере ставит app.js по наведению
-   на легенду или блок. Чужие блоки гаснут через filter, а не opacity: после
-   падения у блока держится opacity из анимации (fill-mode both), и каскад её
-   не перебил бы. Своя группа загорается сильнее обычного наведения. */
-.tblock,
-.tetris__key { transition: filter 0.22s ease, background 0.2s ease, border-color 0.2s ease, color 0.2s ease; }
+.term__tail { color: var(--muted); }
 
-.tetris[data-hi] .tblock { filter: saturate(0.2) brightness(0.5); }
-.tetris[data-hi] .tetris__key { filter: brightness(0.55); }
-
-.tetris[data-hi="0"] [data-g="0"],
-.tetris[data-hi="1"] [data-g="1"],
-.tetris[data-hi="2"] [data-g="2"],
-.tetris[data-hi="3"] [data-g="3"],
-.tetris[data-hi="4"] [data-g="4"] { filter: none; }
-
-.tetris[data-hi="0"] .tblock[data-g="0"],
-.tetris[data-hi="1"] .tblock[data-g="1"],
-.tetris[data-hi="2"] .tblock[data-g="2"],
-.tetris[data-hi="3"] .tblock[data-g="3"],
-.tetris[data-hi="4"] .tblock[data-g="4"] {
-  background:
-    linear-gradient(0deg, color-mix(in srgb, var(--g) 22%, transparent), color-mix(in srgb, var(--g) 22%, transparent)),
-    rgba(20, 25, 38, 0.8);
-  border-color: color-mix(in srgb, var(--g) 70%, var(--line));
-  color: var(--text);
+/* Курсор виден всегда, мигает только при разрешённом движении. */
+.cursor {
+  display: inline-block;
+  width: 0.6em;
+  height: 1.05em;
+  background: var(--accent);
+  vertical-align: -0.15em;
+  margin-inline-start: 0.35rem;
+  animation: cursor-blink 1s steps(1) infinite;
 }
 
-/* Падение: блок приходит сверху, коротко оседает и встаёт. Шаг между блоками
-   45 мс по сквозному номеру `--i` снизу вверх — стопка из тридцати блоков
-   собирается за полторы секунды. После повторной укладки (data-settled) блоки
-   стоят сразу. */
-.well.enter .tblock { opacity: 0; }
-
-.well.is-in .tblock {
-  animation: tblock-drop 0.42s cubic-bezier(0.2, 0.9, 0.3, 1) both;
-  animation-delay: calc(var(--i, 0) * 45ms);
-}
-
-.well[data-settled] .tblock { opacity: 1; animation: none; }
-
-@keyframes tblock-drop {
-  from { opacity: 0; transform: translateY(calc(var(--row) * -8)); }
-  70% { opacity: 1; }
-  88% { transform: translateY(3px); }
-  to { opacity: 1; transform: none; }
-}
-
-.tetris__legend {
-  display: grid;
-  gap: 0.55rem;
-  align-content: end;
-  padding-block-end: 0.25rem;
-}
-
-.tetris__key {
-  display: grid;
-  grid-template-columns: var(--row) minmax(0, 1fr);
-  gap: 0.7rem;
-  align-items: center;
-  /* это кнопка: сброс вида, текст слева, курсор по назначению */
-  appearance: none;
-  background: none;
-  border: 0;
-  padding: 0;
-  margin: 0;
-  text-align: left;
-  color: inherit;
-  font: inherit;
-  cursor: pointer;
-  border-radius: 6px;
-}
-
-.tetris__key:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 3px;
-}
-
-.tetris__swatch {
-  height: var(--row);
-  background:
-    linear-gradient(0deg, color-mix(in srgb, var(--g) 10%, transparent), color-mix(in srgb, var(--g) 10%, transparent)),
-    rgba(15, 19, 28, 0.62);
-  border: 1px solid color-mix(in srgb, var(--g) 32%, var(--line));
-  border-radius: 6px;
-}
-
-.tetris__name {
-  font-family: var(--font-mono);
-  font-size: var(--step--2);
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--g);
-  line-height: 1.25;
-}
+@keyframes cursor-blink { 50% { opacity: 0; } }
 
 @media (max-width: 760px) {
-  .tetris { --row: 28px; grid-template-columns: minmax(0, 1fr); gap: 1rem; }
-  .tetris__legend { order: -1; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.45rem 1rem; }
-  .tblock { font-size: var(--step--2); padding-inline: 8px; }
+  .term { font-size: 12px; }
+  .term__body { padding: 0.8rem; }
+  .term__out { padding-inline-start: 0.6rem; }
+  .term__hint { display: none; }
+  /* комментарий команды — второй строкой с отступом, иначе рвётся посреди слова */
+  .cmd__comment { flex-basis: 100%; padding-inline-start: 1.1rem; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .well.enter .tblock { opacity: 1; animation: none; }
-  .tblock, .tetris__key { transition: none; }
+  .cursor { animation: none; }
+  .tblock, .cmd { transition: none; }
 }
 
 .skill-group__title {
@@ -1589,7 +1560,9 @@ a:not(.btn):hover { color: var(--text); }
   .job, .project, .metric, .record { break-inside: avoid; }
   .job__meta { position: static; }
   .enter { opacity: 1; transform: none; }
-  .well.enter .tblock { opacity: 1; animation: none; }
+  .term .cmd, .term .tblock, .term .cursor { visibility: visible !important; }
+  .term__block.is-off .term__out { display: flex; }
+  .cursor { animation: none; }
   .projects { grid-template-columns: 1fr 1fr; }
   a { text-decoration: none; color: #000; }
 
