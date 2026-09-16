@@ -1353,6 +1353,17 @@ a:not(.btn):hover { color: var(--text); }
 
 .term__tail { color: var(--muted); }
 
+/* Каретка набора: стоит вплотную за последней набранной буквой, не мигает —
+   в терминале курсор мигает в простое, а не во время печати. Живёт только
+   пока команда набирается, ставит и убирает её playTerminal. */
+.cmd__caret {
+  display: inline-block;
+  width: 0.6em;
+  height: 1.05em;
+  background: var(--accent);
+  vertical-align: -0.15em;
+}
+
 /* Курсор виден всегда, мигает только при разрешённом движении. */
 .cursor {
   display: inline-block;
@@ -1574,7 +1585,8 @@ a:not(.btn):hover { color: var(--text); }
   .job, .project, .metric, .record { break-inside: avoid; }
   .job__meta { position: static; }
   .enter { opacity: 1; transform: none; }
-  .term .cmd, .term .tblock, .term .cursor { visibility: visible !important; }
+  .term .cmd, .term .cmd__comment, .term .tblock, .term .cursor { visibility: visible !important; }
+  .cmd__caret { display: none; }
   .term__block.is-off .term__out { display: flex; }
   .cursor { animation: none; }
   .projects { grid-template-columns: 1fr 1fr; }

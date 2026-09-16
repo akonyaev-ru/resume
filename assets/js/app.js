@@ -663,34 +663,74 @@
     return section('skills', u('skillsTitle'), [term]);
   }
 
-  /* Вывод терминала появляется по очереди: команда, затем её плашки одна за
-     другой. Скрывается visibility, а не display — раскладка стоит с самого
-     начала, страница не прыгает. Без анимации или без наблюдателя всё видно
-     сразу; в печати visibility снимает CSS. */
-  var TERM_CMD_MS = 220;
-  var TERM_CHIP_MS = 40;
+  /* Вывод терминала появляется как в настоящем окне: промпт, затем команда
+     набирается по буквам с кареткой на строке, после «Enter» выходят
+     комментарий группы и плашки одна за другой; в конце мигает курсор
+     хвоста. Скрывается visibility, а не display — раскладка стоит с самого
+     начала, страница не прыгает: пока команда короткая, невидимый комментарий
+     просто едет за ней. Без анимации или без наблюдателя всё видно сразу;
+     в печати visibility снимает CSS. */
+  var TERM_CHAR_MS = 16;    // буква команды
+  var TERM_PROMPT_MS = 60;  // каретка у промпта перед набором
+  var TERM_ENTER_MS = 90;   // от конца набора до вывода
+  var TERM_CHIP_MS = 30;    // плашка
 
   function playTerminal(term) {
     if (term.getAttribute('data-played')) return;
     term.setAttribute('data-played', '');
     if (LESS_MOTION) return;
 
-    var items = [];
-    $$('.term__block', term).forEach(function (block) {
-      var cmd = block.querySelector('.cmd, .term__tail > .cmd__prompt');
-      if (cmd) items.push({ node: cmd, wait: TERM_CMD_MS });
-      $$('.tblock', block).forEach(function (chip) { items.push({ node: chip, wait: TERM_CHIP_MS }); });
-    });
-    var cursor = term.querySelector('.cursor');
-    if (cursor) items.push({ node: cursor, wait: 0 });
+    var steps = [];
+    function add(run, wait) { steps.push({ run: run, wait: wait }); }
+    function hide(node) { if (node) node.style.visibility = 'hidden'; }
+    function show(node) { if (node) node.style.visibility = ''; }
 
-    items.forEach(function (it) { it.node.style.visibility = 'hidden'; });
+    $$('.term__block', term).forEach(function (block) {
+      var cmd = block.querySelector('.cmd');
+      if (cmd) {
+        var text = cmd.querySelector('.cmd__text');
+        var comment = cmd.querySelector('.cmd__comment');
+        /* Буквы набираются по текстовым узлам: «skills » и флаг — у флага
+           свой цвет, поэтому узлы не сливаются в одну строку. */
+        var runs = [];
+        Array.prototype.forEach.call(text.childNodes, function (n) {
+          var t = n.nodeType === 3 ? n : n.firstChild;
+          if (!t || t.nodeType !== 3) return;
+          runs.push({ node: t, full: t.nodeValue });
+          t.nodeValue = '';
+        });
+        var caret = el('span', { class: 'cmd__caret', 'aria-hidden': 'true' });
+        hide(cmd);
+        hide(comment);
+        add(function () { show(cmd); text.appendChild(caret); }, TERM_PROMPT_MS);
+        runs.forEach(function (r) {
+          for (var k = 1; k <= r.full.length; k += 1) {
+            add(function (n) { return function () { r.node.nodeValue = r.full.slice(0, n); }; }(k), TERM_CHAR_MS);
+          }
+        });
+        add(function () { text.removeChild(caret); show(comment); }, TERM_ENTER_MS);
+      }
+      $$('.tblock', block).forEach(function (chip) {
+        hide(chip);
+        add(function () { show(chip); }, TERM_CHIP_MS);
+      });
+    });
+
+    var tail = term.querySelector('.term__tail');
+    if (tail) {
+      var prompt = tail.querySelector('.cmd__prompt');
+      var cursor = tail.querySelector('.cursor');
+      hide(prompt);
+      hide(cursor);
+      add(function () { show(prompt); show(cursor); }, 0);
+    }
+
     var i = 0;
     (function step() {
-      if (i >= items.length) return;
-      var it = items[i];
+      if (i >= steps.length) return;
+      var it = steps[i];
       i += 1;
-      it.node.style.visibility = '';
+      it.run();
       window.setTimeout(step, it.wait);
     })();
   }
