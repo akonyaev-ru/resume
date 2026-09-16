@@ -81,21 +81,22 @@ window.RESUME = {
   person: {
     name: { ru: 'Алексей Коняев', en: 'Alexey Konyaev' },
     role: {
-      // \u00A0 перед ИИ: иначе союз «и» повисает в конце строки заголовка.
-      ru: 'Специалист по LegalOPS и\u00A0внедрению AI-агентов',
-      en: 'LegalOPS and AI-agent implementation specialist',
+      // \n — явный перенос: первая строка «Специалист по LegalOPS», вторая — остальное.
+      // На узком экране перенос снимается стилями, строки ложатся сами.
+      ru: 'Специалист по LegalOPS\nи внедрению AI-агентов',
+      en: 'LegalOPS and AI-agent\nimplementation specialist',
     },
     // Термины, которые подсвечиваются акцентом внутри заголовка. Порядок важен:
     // roleNode ищет их последовательно, отрезая уже разобранное начало.
     roleAccent: {
-      ru: ['AI-агентов'],
-      en: ['AI-agent implementation'],
+      ru: ['LegalOPS', 'AI-агентов'],
+      en: ['LegalOPS', 'AI-agent'],
     },
     photo: 'assets/img/portrait.webp',
     age: 25,
     city: { ru: 'Москва', en: 'Moscow' },
     github: 'akonyaev-ru',
-    updated: { ru: '15 сентября 2026', en: '15 September 2026' },
+    updated: { ru: '16 сентября 2026', en: '16 September 2026' },
     experienceTotal: { ru: '3 года 3 месяца', en: '3 years 3 months' },
     employment: { ru: 'полная занятость', en: 'full-time' },
     schedule: { ru: 'Удаленно или гибрид', en: 'Remote or hybrid' },
@@ -108,8 +109,8 @@ window.RESUME = {
       en: ['Lawyer', 'Business analyst'],
     },
     lede: {
-      ru: 'Юрист по практике: перевожу юридическую функцию на AI-агентов — и\u00A0сам пишу то, что для этого нужно.',
-      en: 'A practising lawyer: I move the legal function onto AI agents — and write what that takes myself.',
+      ru: 'Перевожу ручные процессы на AI-агентов — и\u00A0сам пишу то, что для этого нужно.',
+      en: 'I move manual processes onto AI agents — and write what that takes myself.',
     },
     about: {
       ru: 'Юрист с практикой в договорной, претензионно-исковой и судебной работе, который автоматизирует юридическую функцию своими руками: нахожу узкие места, собираю требования от юристов и бизнес-заказчиков, формирую ТЗ, довожу решение до внедрения, тестирования и обучения команды, а вокруг инструментов выстраиваю методологию — регламенты, инструкции, маршруты согласования. Два юридических образования плюс Python, API и интеграция LLM. Роботизировал согласование договоров, внедрил шесть ИИ-агентов на базе Claude, выстроил контур безопасного использования ИИ в компании — способен и спроектировать архитектуру автоматизации, и реализовать ее руками, от постановки задачи до пользовательского тестирования.',

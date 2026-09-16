@@ -176,19 +176,27 @@
   /* --- первый экран ------------------------------------------------------ */
 
   /* Термины из roleAccent подсвечиваются акцентом прямо в заголовке. */
+  /* Перенос строки в тексте роли (символ новой строки в данных) становится
+     <br>: владелец задаёт, где именно рвётся заголовок. Акценты ищутся внутри
+     каждой строки по очереди. */
   function roleNode(text, accents) {
     var host = el('h1', { class: 'hero__role' });
-    var rest = text;
+    var pending = (accents || []).slice();
 
-    (accents || []).forEach(function (term) {
-      var at = rest.indexOf(term);
-      if (at === -1) return;
-      if (at > 0) host.appendChild(document.createTextNode(rest.slice(0, at)));
-      host.appendChild(el('em', { text: term }));
-      rest = rest.slice(at + term.length);
+    text.split('\n').forEach(function (line, index) {
+      if (index) host.appendChild(el('br'));
+      var rest = line;
+      while (pending.length) {
+        var at = rest.indexOf(pending[0]);
+        if (at === -1) break;
+        if (at > 0) host.appendChild(document.createTextNode(rest.slice(0, at)));
+        host.appendChild(el('em', { text: pending[0] }));
+        rest = rest.slice(at + pending[0].length);
+        pending.shift();
+      }
+      if (rest) host.appendChild(document.createTextNode(rest));
     });
 
-    if (rest) host.appendChild(document.createTextNode(rest));
     return host;
   }
 

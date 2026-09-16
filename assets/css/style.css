@@ -475,7 +475,7 @@ a:not(.btn):hover { color: var(--text); }
 
 .hero__grid {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 22rem;
+  grid-template-columns: minmax(0, 1fr) 19rem;
   gap: clamp(1.5rem, 4vw, 3.5rem);
   align-items: start;
 }
@@ -521,12 +521,23 @@ a:not(.btn):hover { color: var(--text); }
 
 .hero__role {
   font-family: var(--font-display);
-  font-size: var(--step-4);
+  /* Кегль подобран под две строки «Специалист по LegalOPS / и внедрению
+     AI-агентов» в колонке при 19rem под портрет: --step-4 давал четыре. */
+  font-size: clamp(1.8rem, 0.9rem + 2.55vw, 2.85rem);
   font-weight: 700;
-  line-height: 1.06;
+  line-height: 1.08;
   letter-spacing: -0.035em;
   margin-block: 0.7rem 0;
-  text-wrap: balance;
+}
+
+/* Между 920 и 1100 px колонка уже, и первая строка не помещается — кегль ниже. */
+@media (min-width: 921px) and (max-width: 1100px) {
+  .hero__role { font-size: clamp(1.8rem, 0.4rem + 2.7vw, 2.4rem); }
+}
+
+/* На узком экране явный перенос не нужен: строки ложатся по ширине. */
+@media (max-width: 600px) {
+  .hero__role br { display: none; }
 }
 
 .hero__role em {
@@ -542,7 +553,8 @@ a:not(.btn):hover { color: var(--text); }
 .hero__lede {
   font-size: var(--step-1);
   color: var(--text-dim);
-  max-width: var(--measure);
+  /* портрет шире своей колонки и заходит в зазор — подзаголовок останавливается раньше */
+  max-width: min(var(--measure), 30rem);
   margin-block-start: 1.2rem;
 }
 
