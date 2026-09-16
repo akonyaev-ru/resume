@@ -282,7 +282,11 @@ function open(options) {
   // Сравнение по началу строки, а не по всему классу: у предмета может
   // появиться свой вариант класса, и точное сравнение потеряет его целиком —
   // так однажды из проверок выпал ковёр.
-  world.things = appended.filter(function (el) { return el.className.indexOf('thing') === 0; });
+  world.things = appended.filter(function (el) {
+    // Провод камеры — не предмет обстановки: без подписи, до срыва спрятан.
+    return el.className.indexOf('thing') === 0 && el.className.indexOf('--cord') < 0;
+  });
+  world.cord = appended.filter(function (el) { return el.className.indexOf('--cord') > 0; })[0] || null;
   world.otto = world.pets[0];
   world.olivia = world.pets[1];
   return world;
@@ -1109,6 +1113,132 @@ check('доску перевешивают, и она висит', function () {
     ' — висит';
 });
 
+
+/* --- камера на проводе --------------------------------------------------- */
+
+/* Камера в обстановке, её холст провода и точки: вход провода в камеру и
+   крепление на потолке — там, где она висела при загрузке. Считаем сами, а не
+   спрашиваем скрипт: иначе сверяли бы его с ним же. */
+function cameraOf(world) {
+  const cam = world.things.filter(function (t) { return t.title === 'Перевесить камеру'; })[0];
+  if (!cam) fail('камеры в обстановке нет');
+  if (!world.cord) fail('холста провода нет');
+  const mount = cam.spot();
+  const anchor = {
+    x: mount.x + 2 * NUM.PIXEL,
+    y: (world.high() - mount.y - cam.height) + 3 * NUM.PIXEL,
+  };
+  return {
+    el: cam,
+    anchor: anchor,
+    plug: function () {
+      const b = cam.getBoundingClientRect();
+      return { x: b.left + 2 * NUM.PIXEL, y: b.top + 3 * NUM.PIXEL };
+    },
+    stretch: function () {
+      const at = this.plug();
+      return Math.hypot(at.x - anchor.x, at.y - anchor.y);
+    },
+    // Сколько разных кадров показано за отрезок: мигает диод — их два.
+    frames: function (ms) {
+      const seen = new Set();
+      world.step(ms, function () { if (cam.layers[0]) seen.add(cam.layers[0].id); });
+      return seen.size;
+    },
+  };
+}
+
+check('камеру сорвали — висит на проводе и не работает', function () {
+  const world = open({ seed: 3 });
+  world.step(500);
+  const cam = cameraOf(world);
+  if (!world.cord.hidden) fail('провод виден до срыва');
+  if (cam.frames(2500) < 2) fail('до срыва диод не мигает');
+
+  const box = cam.el.getBoundingClientRect();
+  const hold = { dx: 10, dy: 12 };
+  cam.el.fire('mousedown', event(box.left + hold.dx, box.top + hold.dy));
+  world.step(FRAME_MS);
+
+  // Тянем далеко вправо-вниз: дальше провода не уйти, он натянут.
+  const far = event(box.left + hold.dx + 300, box.top + hold.dy + 200);
+  world.win('mousemove', far);
+  world.step(FRAME_MS);
+  const pulled = cam.stretch();
+  if (pulled > NUM.CABLE + 1) fail('утащили дальше провода: ' + pulled.toFixed(1) + ' при длине ' + NUM.CABLE);
+  if (pulled < NUM.CABLE - 1) fail('провод не натянулся: ' + pulled.toFixed(1) + ' из ' + NUM.CABLE);
+  if (world.cord.hidden) fail('после срыва провод не показан');
+  if (!world.cord.layers.length) fail('кронштейн на потолке не нарисован');
+  if (world.cord.paint.length < NUM.CABLE / NUM.PIXEL) {
+    fail('провод не нарисован: клеток ' + world.cord.paint.length);
+  }
+  if (cam.frames(2500) !== 1) fail('в руке диод продолжает мигать');
+
+  // Отпустили: качается, потом висит строго под кронштейном — и молчит.
+  world.win('mouseup', far);
+  let swings = 0;
+  let prev = cam.el.spot().x;
+  world.step(4000, function () {
+    const x = cam.el.spot().x;
+    if (x !== prev) swings += 1;
+    prev = x;
+  });
+  if (swings < 10) fail('после отпускания не качалась: сдвигов ' + swings);
+  const at = cam.plug();
+  if (Math.abs(at.x - cam.anchor.x) > 2 || Math.abs(at.y - (cam.anchor.y + NUM.CABLE)) > 2) {
+    fail('повисла не под кронштейном: вход провода ' + at.x.toFixed(0) + ',' + at.y.toFixed(0) +
+      ', ждали ' + cam.anchor.x + ',' + (cam.anchor.y + NUM.CABLE));
+  }
+  const rest = cam.el.spot();
+  if (cam.frames(2000) !== 1) fail('на проводе диод мигает');
+  const still = cam.el.spot();
+  if (still.x !== rest.x || still.y !== rest.y) fail('висящая камера ползёт');
+
+  return 'натянулся на ' + pulled.toFixed(0) + ' px, качалась (' + swings + ' сдвигов), висит на ' +
+    still.x + ',' + still.y;
+});
+
+/* Решение владельца: обратно на кронштейн камера не встаёт до перезагрузки.
+   Принесли к самому креплению и отпустили — всё равно повисла на проводе; окно
+   поменяли — висит под тем же креплением. */
+check('сорванную камеру не вернуть на кронштейн', function () {
+  const world = open({ seed: 3 });
+  world.step(500);
+  const cam = cameraOf(world);
+  const home = cam.el.spot();
+
+  const box = cam.el.getBoundingClientRect();
+  const hold = { dx: 10, dy: 12 };
+  cam.el.fire('mousedown', event(box.left + hold.dx, box.top + hold.dy));
+  world.step(FRAME_MS);
+  world.win('mousemove', event(box.left + hold.dx + 200, box.top + hold.dy + 120));
+  world.step(200);
+  // Назад, точно на место крепления.
+  world.win('mousemove', event(box.left + hold.dx, box.top + hold.dy));
+  world.step(FRAME_MS);
+  const back = cam.el.spot();
+  if (Math.abs(back.x - home.x) > 1 || Math.abs(back.y - home.y) > 1) {
+    fail('к креплению не поднесли: ' + back.x + ',' + back.y + ' против ' + home.x + ',' + home.y);
+  }
+  world.win('mouseup', event(box.left + hold.dx, box.top + hold.dy));
+  world.step(5000);
+
+  const at = cam.plug();
+  if (Math.abs(at.x - cam.anchor.x) > 2 || Math.abs(at.y - (cam.anchor.y + NUM.CABLE)) > 2) {
+    fail('отпущенная у крепления не повисла на проводе: вход ' + at.x.toFixed(0) + ',' + at.y.toFixed(0));
+  }
+  if (cam.frames(2500) !== 1) fail('у крепления снова заработала: диод мигает');
+
+  world.resize(1000);
+  world.step(500);
+  const after = cam.plug();
+  if (Math.abs(after.x - cam.anchor.x) > 2 || Math.abs(after.y - (cam.anchor.y + NUM.CABLE)) > 2) {
+    fail('после смены окна висит не под креплением: ' + after.x.toFixed(0) + ',' + after.y.toFixed(0));
+  }
+
+  return 'у крепления не защёлкнулась, висит на проводе; после смены окна там же';
+});
+
 /* На узком экране стили прячут обоих, и кадры считаться не должны. Окно могли
    растянуть обратно — тогда они просыпаются. */
 check('узкий экран', function () {
@@ -1513,6 +1643,38 @@ const BREAKS = [
     parts: [[
       '      if (spec.wall || spec.ceiling) return;',
       '      if (false) return;',
+    ]],
+  },
+  {
+    name: 'провод камеры бесконечный',
+    red: 'камеру сорвали — висит на проводе и не работает',
+    parts: [[
+      '      if (len > CABLE) moor(a.x + dx * CABLE / len, a.y + dy * CABLE / len);',
+      '      if (false) moor(a.x + dx * CABLE / len, a.y + dy * CABLE / len);',
+    ]],
+  },
+  {
+    name: 'сорванная камера продолжает работать',
+    red: 'камеру сорвали — висит на проводе и не работает',
+    parts: [[
+      '    if (me.torn) return CAMERA_BARE + (me.grab ? 1 : 2) * 2;',
+      '    if (false) return CAMERA_BARE + (me.grab ? 1 : 2) * 2;',
+    ]],
+  },
+  {
+    name: 'отпущенная камера не висит на проводе',
+    red: 'камеру сорвали — висит на проводе и не работает',
+    parts: [[
+      '      if (me.torn) return dangle(step / 1000);',
+      '      if (false) return dangle(step / 1000);',
+    ]],
+  },
+  {
+    name: 'провод после срыва не показывают',
+    red: 'камеру сорвали — висит на проводе и не работает',
+    parts: [[
+      '      cord.hidden = false;',
+      '      cord.hidden = true;',
     ]],
   },
   {

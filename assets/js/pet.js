@@ -62,6 +62,14 @@
   var THING_HOP = 240;       // и не больше этого, px/с — предел отскока
   var THING_STICK = 110;     // ниже этой скорости отскок прекращается
 
+  /* Камера держится на проводе. Сорвали с кронштейна — дальше провода её не
+     утащить, отпустили — качается на нём и повисает под кронштейном;
+     обратно не вешается до перезагрузки (решение владельца). */
+  var CABLE = 72;            // px — длина провода, около трёх высот камеры
+  var CABLE_DAMP = 2;        // 1/с — затухание качания: через пару секунд висит ровно
+  var CABLE_REST = 0.02;     // рад и рад/с — тише этого качание считается конченым
+  var CABLE_PAD = 12;        // px — запас холста провода вокруг досягаемости
+
   var LAND_MS = 200;         // сколько лежит осевшим после падения
   var SWEAR_MS = 1900;       // сколько висит пузырь с восклицательными
   var PET_MS = 2800;         // сколько гладит упавшую
@@ -228,6 +236,7 @@
       l: '#6fb7d6',          // объектив — голубой, как принято рисовать
       h: '#e7eaf2',          // блик на объективе
       r: '#c9534f',          // диод записи, мигает раз в секунду
+      c: '#2a3038',          // провод — темнее кронштейна, светлее бленды
     },
   };
 
@@ -1023,11 +1032,13 @@
       ],
   ];
 
-  function cameraFrames() {
+  function cameraFrames(bare) {
     var frames = [];
     CAMERA_TILTS.forEach(function (tilt) {
       [false, true].forEach(function (led) {
         frames.push(tilt.map(function (row, y) {
+          // Без кронштейна: сорванная камера рисуется одним корпусом.
+          if (bare) row = row.split('m').join('.');
           if (y !== 3 || !led) return row;
           return row.slice(0, 2) + 'r' + row.slice(3);
         }));
@@ -1035,7 +1046,13 @@
     });
     return frames;
   }
-  var CAMERA = cameraFrames();
+  // Кадры 0–5 — на кронштейне (наклон × 2 + диод), 6–11 — те же без кронштейна.
+  var CAMERA = cameraFrames(false).concat(cameraFrames(true));
+  var CAMERA_BARE = 6;
+  // Кронштейн сам по себе: остаётся на потолке, когда камеру сорвали.
+  var BRACKET = ['mmmm', '.mm.', '.mm.'];
+  // Где провод входит в камеру — клетка диода, там же корпус сидел на стойке.
+  var CAMERA_PLUG = { x: 2 * PIXEL, y: 3 * PIXEL };
 
   // Стол: столешница с передней гранью, две ножки, между ними системный блок
   // с диодом и щелью привода. Двадцать клеток на восемь — как диван, но выше.
@@ -2142,6 +2159,9 @@
   var pointer = null;
 
   function cameraFace(me, now) {
+    // Сорвана — диод погас, за курсором не следит: в руке смотрит прямо,
+    // на проводе висит объективом вниз.
+    if (me.torn) return CAMERA_BARE + (me.grab ? 1 : 2) * 2;
     var tilt = 1;
     if (pointer) {
       var cx = me.x + me.canvas.width / 2;
@@ -2217,8 +2237,26 @@
       hidden: false,
       frame: spec.rest || 0, // какой кадр показан; `rest` — кадр покоя, у камеры объектив прямо
       askedAt: -1000,        // когда в последний раз спрашивали время
+      torn: false,           // камера: сорвана с кронштейна, держится на проводе
+      swing: null,           // и качается на нём: угол от вертикали и скорость
       canvas: canvas,
     };
+
+    /* Провод и кронштейн — свой холст, прибитый к месту крепления: камера
+       уходит, они остаются. Слоем ниже камеры, щелчков не ловит, до срыва
+       спрятан. Квадрат со стороной в две длины провода — вся досягаемость. */
+    var cord = null;
+    var bracket = null;
+    if (spec.cable) {
+      cord = document.createElement('canvas');
+      cord.className = 'thing thing--wall thing--cord';
+      cord.width = 2 * (CABLE + CABLE_PAD);
+      cord.height = 2 * (CABLE + CABLE_PAD);
+      cord.setAttribute('aria-hidden', 'true');
+      cord.hidden = true;
+      bracket = render(BRACKET, false, spec.skin);
+      document.body.appendChild(cord);
+    }
 
     function limit() {
       // Ширина без полосы прокрутки: `innerWidth` считает её своей, и предмет
@@ -2238,6 +2276,83 @@
     function draw() {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       ctx.drawImage(sheet[me.frame], 0, 0);
+    }
+
+    /* Крепление — там, где камера висела бы по расстановке: под планкой, у
+       края. Считается каждый раз заново, чтобы при смене окна провод шёл за
+       планкой, а не за старым местом. Координаты экранные: y растёт вниз. */
+    function anchor() {
+      var mountX = clamp(spotFor(me), EDGE, limit());
+      return { x: mountX + CAMERA_PLUG.x, y: barHeight() + CAMERA_PLUG.y, mountX: mountX };
+    }
+
+    // Куда провод входит в камеру, по её нынешнему месту.
+    function plug() {
+      return { x: me.x + CAMERA_PLUG.x, y: window.innerHeight - me.y - canvas.height + CAMERA_PLUG.y };
+    }
+
+    // Поставить камеру так, чтобы вход провода оказался в экранной точке.
+    function moor(x, y) {
+      me.x = x - CAMERA_PLUG.x;
+      me.y = window.innerHeight - (y - CAMERA_PLUG.y) - canvas.height;
+    }
+
+    /* Провод не длиннее CABLE: если камеру увели дальше, она остаётся на его
+       конце. */
+    function leash() {
+      var a = anchor();
+      var at = plug();
+      var dx = at.x - a.x;
+      var dy = at.y - a.y;
+      var len = Math.sqrt(dx * dx + dy * dy);
+      if (len > CABLE) moor(a.x + dx * CABLE / len, a.y + dy * CABLE / len);
+    }
+
+    /* Кронштейн на потолке и провод от него до камеры. Провод рисуется
+       клетками, как всё здесь: пока он длиннее расстояния — провисает дугой,
+       натянулся — прямой. Холст стоит центром в креплении. */
+    function drawCord() {
+      if (!cord) return;
+      var a = anchor();
+      var at = plug();
+      var left = a.x - cord.width / 2;
+      var top = a.y - cord.height / 2;
+      cord.style.transform = 'translate(' + Math.round(left) + 'px,' +
+        Math.round(-(window.innerHeight - top - cord.height)) + 'px)';
+
+      var c = cord.getContext('2d');
+      c.clearRect(0, 0, cord.width, cord.height);
+      c.drawImage(bracket, Math.round(a.mountX - left), Math.round(barHeight() - top));
+
+      var ax = a.x - left;
+      var ay = a.y - top;
+      var bx = at.x - left;
+      var by = at.y - top;
+      var dx = bx - ax;
+      var dy = by - ay;
+      var len = Math.sqrt(dx * dx + dy * dy);
+      var sag = Math.max(0, CABLE - len) * 0.5;
+      var mx = (ax + bx) / 2;
+      var my = (ay + by) / 2 + sag;
+      var steps = Math.max(8, Math.ceil((len + sag) / 2));
+      c.fillStyle = spec.skin.c;
+      for (var i = 0; i <= steps; i += 1) {
+        var t = i / steps;
+        var u = 1 - t;
+        var x = u * u * ax + 2 * u * t * mx + t * t * bx;
+        var y = u * u * ay + 2 * u * t * my + t * t * by;
+        c.fillRect(Math.floor(x / PIXEL) * PIXEL, Math.floor(y / PIXEL) * PIXEL, PIXEL, PIXEL);
+      }
+    }
+
+    /* Сорвали: провод показывается, диод гаснет сразу, а не через полсекунды
+       опроса. Обратно на кронштейн камера не встаёт — до перезагрузки. */
+    function tear() {
+      if (!spec.cable || me.torn) return;
+      me.torn = true;
+      me.swing = null;
+      me.askedAt = -1e9;
+      cord.hidden = false;
     }
 
     /* Часы переставляют стрелки, камера — объектив. Спрашиваем раз в секунду
@@ -2322,6 +2437,11 @@
       me.x = clamp(event.clientX - me.grab.dx, EDGE, limit());
       me.y = clamp(window.innerHeight - (event.clientY - me.grab.dy) - canvas.height,
         0, ceiling());
+      if (spec.cable) {
+        tear();
+        leash();
+        drawCord();
+      }
       place();
     }
 
@@ -2332,6 +2452,7 @@
       // Доля от руки одна на обе оси: иначе брошенный вбок предмет взмывает.
       me.vx = clamp(me.grab.vx * THING_THROW, -THING_THROW_MAX, THING_THROW_MAX);
       me.vy = clamp(-me.grab.vy * THING_THROW, -THING_THROW_MAX, THING_THROW_MAX);
+      me.swing = null;                 // на проводе: сперва летит, натянется — закачается
 
       // Щелчок: рука не сдвинулась — предмет никуда не летит и своё место
       // в расстановке не теряет.
@@ -2366,10 +2487,60 @@
       return level;
     }
 
+    /* Сорванная камера на проводе. Пока провод провисает — летит как брошенная
+       мебель; натянулся — дальше маятник от крепления: угол от вертикали,
+       ускорение −g/L·sin, трение гасит за пару секунд. Успокоилась — висит
+       строго под кронштейном и только идёт за ним при смене окна. */
+    function dangle(dt) {
+      var a = anchor();
+
+      if (!me.swing) {
+        me.vy -= THING_GRAVITY * dt;
+        me.x += me.vx * dt;
+        me.y += me.vy * dt;
+        var at = plug();
+        var dx = at.x - a.x;
+        var dy = at.y - a.y;
+        if (dx * dx + dy * dy < CABLE * CABLE) { place(); drawCord(); return; }
+
+        // Провод натянулся: скорость вдоль него гаснет, поперёк — уходит в
+        // качание. Экранная вертикаль вниз — это −vy.
+        var theta = Math.atan2(dx, dy);
+        me.swing = {
+          theta: theta,
+          omega: (me.vx * Math.cos(theta) + me.vy * Math.sin(theta)) / CABLE,
+          done: false,
+        };
+        me.vx = 0;
+        me.vy = 0;
+      }
+
+      var sw = me.swing;
+      if (!sw.done) {
+        sw.omega -= (THING_GRAVITY / CABLE) * Math.sin(sw.theta) * dt + CABLE_DAMP * sw.omega * dt;
+        sw.theta += sw.omega * dt;
+        if (Math.abs(sw.theta) < CABLE_REST && Math.abs(sw.omega) < CABLE_REST) {
+          sw.theta = 0;
+          sw.omega = 0;
+          sw.done = true;
+        }
+      }
+
+      var x = a.x + CABLE * Math.sin(sw.theta);
+      var y = a.y + CABLE * Math.cos(sw.theta);
+      var was = plug();
+      if (sw.done && Math.abs(was.x - x) < 0.5 && Math.abs(was.y - y) < 0.5) return;
+      moor(x, y);
+      place();
+      drawCord();
+    }
+
     /* Пока стоит на своей опоре — кадр не считается вовсе. Иначе мебель
        тратила бы время в каждом кадре, ничего не делая. */
     function update(now, step) {
       if (me.grab) return;
+
+      if (me.torn) return dangle(step / 1000);
 
       // Висящее — на стене или под потолком — не падает вовсе: где повесили,
       // там и осталось.
@@ -2475,7 +2646,7 @@
        на узком окне. Табличка EXIT в правом поле побывала и убрана в тот же
        день: владельцу не понравилась ни в тексте, ни с человечком. */
     { name: 'camera', art: CAMERA, skin: SKIN.camera, title: 'Перевесить камеру',
-      at: 0, ceiling: true, face: cameraFace, every: 500, rest: 2 },
+      at: 0, ceiling: true, face: cameraFace, every: 500, rest: 2, cable: true },
   ].map(function (spec) {
     var thing = makeThing(spec);
     thing.name = spec.name;
