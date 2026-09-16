@@ -245,6 +245,11 @@
   var CELL_MAX = 40;        // клетка растёт с высотой окна браузера до этого предела
   var CELL_MIN = 10;
   var CHROME = 220;         // прикидка на шапку, показатели и кнопки; точно — замером в fitWindow
+  var CAP_MAX = 40;         // клавиша-колпачок, px: ужимается, пока ряд не встанет в одну строку
+  var CAP_MIN = 28;
+  var CAP_TOUCH = 46;       // под палец меньше не бывает (44 по гайдлайнам, с запасом)
+  var CAP_LEGEND = 34;      // мельче этого подпись клавиши нечитаема — прячется
+  var COARSE = root.matchMedia && root.matchMedia('(pointer: coarse)').matches;
   var TYPE_MS = 14;         // буква загрузки
   var LINE_MS = 160;        // пауза между строками
   var BAR_MS = 60;          // деление полосы
@@ -357,8 +362,11 @@
       return el('div', { class: 'console__stat' }, [el('span', { text: t(TEXT[key]) }), stats[key]]);
     }
     var keys = {};
-    function key(name, glyph, action) {
-      keys[name] = el('button', { class: 'console__key', type: 'button', 'aria-label': t(TEXT.keys[name]), title: t(TEXT.keys[name]), text: glyph });
+    // Кнопка — клавиша-колпачок: крупно знак действия, мелко подпись клавиши,
+    // если она не совпадает со знаком (↑ у поворота, пробел у сброса, P у паузы).
+    function key(name, glyph, action, legend, wide) {
+      var kids = [glyph, legend ? el('small', { class: 'console__key-legend', 'aria-hidden': 'true', text: legend }) : null];
+      keys[name] = el('button', { class: 'console__key' + (wide ? ' console__key--wide' : ''), type: 'button', 'aria-label': t(TEXT.keys[name]), title: t(TEXT.keys[name]) }, kids);
       keys[name].addEventListener('click', function () { action(); });
       return keys[name];
     }
@@ -367,20 +375,24 @@
       el('span', { class: 'console__over-text' }),
     ]);
     var log = el('pre', { class: 'console__log', 'aria-live': 'polite' });
+    // Одна строка под стаканом: стрелки как на клавиатуре, широкий пробел, P.
+    var keyRow = el('div', { class: 'console__keys' }, [
+      el('span', { class: 'console__keys-group' }, [
+        key('left', '←', function () { act('left'); }),
+        key('down', '↓', function () { act('down'); }),
+        key('right', '→', function () { act('right'); }),
+        key('rotate', '↻', function () { act('rotate'); }, '↑'),
+      ]),
+      key('drop', '⤓', function () { act('drop'); }, 'space', true),
+      key('pause', 'II', function () { act('pause'); }, 'P'),
+    ]);
     var play = el('div', { class: 'console__play', hidden: true }, [
       el('div', { class: 'console__well' }, [field, overlay]),
       el('div', { class: 'console__side' }, [
         el('div', { class: 'console__stat' }, [el('span', { text: t(TEXT.next) }), preview]),
         stat('score'), stat('level'), stat('lines'), stat('best'),
       ]),
-      el('div', { class: 'console__keys' }, [
-        key('left', '←', function () { act('left'); }),
-        key('rotate', '↻', function () { act('rotate'); }),
-        key('right', '→', function () { act('right'); }),
-        key('down', '↓', function () { act('down'); }),
-        key('drop', '⤓', function () { act('drop'); }),
-        key('pause', 'II', function () { act('pause'); }),
-      ]),
+      keyRow,
     ]);
     var closeBtn = el('button', { class: 'console__close', type: 'button', 'aria-label': t(TEXT.close), title: t(TEXT.close), text: '×' });
     closeBtn.addEventListener('click', close);
@@ -398,7 +410,7 @@
     veil.addEventListener('mousedown', function (event) { if (event.target === veil) close(); });
     document.body.appendChild(veil);
 
-    ui = { veil: veil, dialog: dialog, log: log, play: play, field: field, preview: preview, stats: stats, overlay: overlay, keys: keys, closeBtn: closeBtn };
+    ui = { veil: veil, dialog: dialog, log: log, play: play, field: field, preview: preview, stats: stats, overlay: overlay, keys: keys, keyRow: keyRow, closeBtn: closeBtn };
     return ui;
   }
 
@@ -470,6 +482,21 @@
     cell = size;
     sizeCanvas(ui.field, COLS * cell, ROWS * cell);
     sizeCanvas(ui.preview, 4 * cell, 2 * cell);
+    fitKeys();
+  }
+
+  // Ряд клавиш — в одну строку под стаканом: колпачок убавляется, пока ряд не
+  // перестанет переноситься (высота ряда — один колпачок). Под палец ниже
+  // CAP_TOUCH не идём: если и так не влезает, пусть переносится.
+  function fitKeys() {
+    var floor = COARSE ? CAP_TOUCH : CAP_MIN;
+    var cap = Math.max(floor, CAP_MAX);
+    for (;;) {
+      ui.dialog.style.setProperty('--cap', cap + 'px');
+      ui.dialog.classList.toggle('console--tight', cap < CAP_LEGEND);
+      if (cap <= floor || ui.keyRow.getBoundingClientRect().height <= cap + 1) return;
+      cap -= 1;
+    }
   }
 
   // Стакан — во всё окно, но окно — в экран. Прикидка по высоте даёт клетку,
