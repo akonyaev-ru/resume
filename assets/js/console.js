@@ -369,7 +369,6 @@
   var LINE_MS = 160;        // пауза между строками
   var BAR_MS = 60;          // деление полосы
   var START_MS = 500;       // от «готово» до игры
-  var OVER_MS = 1500;       // от «игра окончена» до таблицы рекордов: стакан ещё виден
   /* Приёмник общей таблицы — Google-форма владельца: страница шлёт в неё
      POST с ником и счётом. Ответ формы не читается (`no-cors`), успеха
      страница не знает и не ждёт: свой рекорд у неё в браузере, общая
@@ -817,9 +816,10 @@
     }
   }
 
-  /* Третий экран: общая десятка со своей записью на своём месте, счёт
-     партии и подсказка. Данные — `window.RECORDS` из `data/records.js`;
-     без файла или с пустым — только своя запись, либо честное «пока никого». */
+  /* Третий экран — сразу после конца партии: «Игра окончена» со счётом
+     партии первой строкой, общая десятка со своей записью на своём месте,
+     подсказка. Данные — `window.RECORDS` из `data/records.js`; без файла
+     или с пустым — только своя запись, либо честное «пока никого». */
   function readTop() {
     var data = root.RECORDS;
     return data && data.top && data.top.length ? data.top : [];
@@ -861,6 +861,8 @@
 
     var pane = ui.scores;
     pane.textContent = '';
+    pane.appendChild(el('span', { class: 'console__scores-over', text: t(TEXT.over) }));
+    pane.appendChild(document.createTextNode(' · ' + t(TEXT.score) + ' ' + game.score + '\n\n'));
     pane.appendChild(el('span', { class: 'console__scores-title', text: TEXT.scores + '\n' }));
     var table = mergeScores(readTop(), readRecord());
     if (!table.rows.length) pane.appendChild(document.createTextNode(t(TEXT.nobody) + '\n'));
@@ -869,7 +871,7 @@
       pane.appendChild(document.createTextNode('\n'));
       pane.appendChild(scoreLine(null, table.extra));
     }
-    pane.appendChild(el('span', { class: 'console__scores-foot', text: t(TEXT.score) + ' ' + game.score + ' · ' + t(TEXT.again) + ' · ' + t(TEXT.hint) + '\n' }));
+    pane.appendChild(el('span', { class: 'console__scores-foot', text: t(TEXT.again) + ' · ' + t(TEXT.hint) + '\n' }));
     pane.appendChild(ui.again);
     pane.hidden = false;
     ui.dialog.focus();
@@ -897,9 +899,8 @@
         if (worthSending(readTop(), record)) submitRecord(record);
         ui.stats.best.textContent = bestLabel();
       }
-      showOverlay(t(TEXT.over), t(TEXT.score) + ' ' + game.score + ' · ' + t(TEXT.again) + ' · ' + t(TEXT.hint));
-      later(showScores, OVER_MS);
-      return;   // без кадров: дальше таблица, R или Esc
+      showScores();   // сразу, без плашки над стаканом — решение владельца
+      return;         // без кадров: дальше таблица, R или Esc
     }
     raf = root.requestAnimationFrame(loop);
   }

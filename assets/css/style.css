@@ -1626,6 +1626,7 @@ a:not(.btn):hover { color: var(--text); }
 }
 
 .console__scores[hidden] { display: none; }
+.console__scores-over { color: var(--accent); font-weight: 500; }
 .console__scores-title { color: var(--text); }
 .console__scores-row.is-mine { color: var(--accent); }
 /* Пьедестал: три металла, начертание 500 — второе из двух загруженных у
