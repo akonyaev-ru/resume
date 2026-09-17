@@ -64,7 +64,7 @@ for (const name of ['EDGE', 'MEET_GAP', 'PIXEL', 'SPEED', 'RUN_SPEED', 'SCENE_MA
   }
 }
 
-/* --- часы, случайность, заглушки ---------------------------------------- */
+/* --- случайность, заглушки ---------------------------------------------- */
 
 /* Генератор с зерном (mulberry32). Со штатным `Math.random` проверка то падала
    бы, то нет, а такой ответ хуже, чем никакого. */
@@ -92,6 +92,7 @@ function open(options) {
     lessMotion: false,
     finePointer: true,
     petsHidden: false,
+    records: null,
   }, options);
 
   let now = 0;
@@ -190,6 +191,8 @@ function open(options) {
     getComputedStyle: function () {
       return { display: opt.petsHidden ? 'none' : 'block' };
     },
+    // Общая таблица рекордов (`data/records.js`) — снаружи, как на странице.
+    RECORDS: opt.records ? { updated: '2026-09-17', top: opt.records } : undefined,
     requestAnimationFrame: function (cb) { frames += 1; pending.push(cb); return frames; },
     addEventListener: function (type, fn) {
       (winHandlers[type] || (winHandlers[type] = [])).push(fn);
@@ -209,21 +212,11 @@ function open(options) {
     },
   };
 
-  /* Настенные часы спрашивают настоящее время, поэтому в песочнице оно своё и
-     управляемое: `world.clock(h, m)` переводит стрелки. */
-  let clockAt = { h: 10, m: 5 };
-
-  function Stub() {
-    this.getHours = function () { return clockAt.h; };
-    this.getMinutes = function () { return clockAt.m; };
-  }
-
   const sandbox = {
     window: win,
     document: doc,
     performance: { now: function () { return now; } },
     Math: Object.create(Math),
-    Date: Stub,
     console: console,
   };
   sandbox.Math.random = rng(opt.seed);
@@ -235,7 +228,6 @@ function open(options) {
     otto: null,
     olivia: null,
     frames: function () { return frames; },
-    clock: function (h, m) { clockAt = { h: h, m: m }; },
     at: function () { return now; },
     limit: function () {
       const el = world.pets[0];
@@ -935,31 +927,52 @@ check('щелчок по компьютеру открывает консоль,
   return 'щелчок открыл, компьютер на месте; перетаскивание сдвинуло на ' + (pc.spot().x - x0) + ' px и не открыло';
 });
 
-/* Табло рекорда: висит под планкой у правого края, строка бежит, а новый
-   рекорд из консоли (событие `office:record`) меняет её текст на месте. */
-check('табло рекорда бежит справа под планкой и слышит новый рекорд', function () {
-  const world = open({ seed: 5 });
+/* Табло рекорда: висит на стене над промежутком между диваном и растением —
+   там, где были часы, — и бежит вершиной общей таблицы (`window.RECORDS`);
+   свой рекорд из консоли (событие `office:record`) выходит на него, только
+   когда выше вершины. */
+check('табло рекорда на стене бежит вершиной общей таблицы и слышит новый рекорд', function () {
+  const world = open({ seed: 5, records: [{ nick: 'orbit-42', best: 999 }, { nick: 'comet-07', best: 5 }] });
   world.step(300);
   const board = world.things.filter(function (one) { return one.title === 'Табло рекорда'; })[0];
   if (!board || !board.layers.length) fail('табло не нарисовано');
-  const at = board.spot();
-  if (at.x !== world.wide() - board.width - NUM.EDGE) fail('табло не у правого края: x ' + at.x);
-  if (at.y !== world.high() - board.height) fail('табло не под потолком: y ' + at.y);
   if (!wall(board)) fail('табло не висящее — на него можно поставить мебель');
+  const at = board.spot();
+  const sofa = world.things.filter(function (one) { return one.title === 'Подвинуть диван'; })[0];
+  const plant = world.things.filter(function (one) { return one.title === 'Подвинуть растение'; })[0];
+  if (!sofa || !plant) fail('дивана или растения нет — табло не к чему привязать');
+  const gap = (sofa.spot().x + sofa.width + plant.spot().x) / 2;
+  const mid = at.x + board.width / 2;
+  if (Math.abs(mid - gap) > 24) fail('табло не над промежутком диван–растение: середина ' + mid + ', промежуток ' + gap);
+  if (mid >= gap) fail('табло должно висеть чуть левее середины промежутка: ' + mid + ' против ' + gap);
+  if (at.y < 60 || at.y > 80) fail('табло не на высоте часов: y ' + at.y);
+  if (at.y === world.high() - board.height) fail('табло всё ещё под потолком');
 
   const seen = {};
   world.step(2000, function () { seen[printOf(world, board.layers[0].id)] = true; });
   const frames = Object.keys(seen).length;
   if (frames < 8) fail('за две секунды строка показала ' + frames + ' кадр(а) — не бежит');
 
-  world.doc('office:record', { detail: { nick: 'otto', best: 777 } });
+  // Строка — вершина общей таблицы: без таблицы кадры другие.
+  const bare = open({ seed: 5 });
+  bare.step(300);
+  const bareBoard = bare.things.filter(function (one) { return one.title === 'Табло рекорда'; })[0];
+  const bareSeen = {};
+  bare.step(2000, function () { bareSeen[printOf(bare, bareBoard.layers[0].id)] = true; });
+  if (Object.keys(seen).some(function (k) { return bareSeen[k]; })) fail('с общей таблицей и без неё табло бежит одним и тем же');
+
+  // Свой рекорд ниже вершины — табло не трогает; выше — выходит на него.
+  world.doc('office:record', { detail: { nick: 'otto', best: 500 } });
+  world.step(FRAME_MS);
+  if (!seen[printOf(world, board.layers[0].id)]) fail('рекорд ниже вершины сменил кадры табло');
+  world.doc('office:record', { detail: { nick: 'otto', best: 1000 } });
   world.step(FRAME_MS);
   const after = printOf(world, board.layers[0].id);
-  if (seen[after]) fail('после нового рекорда табло показывает старые кадры');
+  if (seen[after]) fail('рекорд выше вершины не сменил кадры табло');
   const later = {};
   world.step(2000, function () { later[printOf(world, board.layers[0].id)] = true; });
   if (Object.keys(later).length < 8) fail('после нового рекорда строка перестала бежать');
-  return 'кадров ' + frames + ', после рекорда новые и бегут';
+  return 'над промежутком, y ' + at.y + ', кадров ' + frames + '; ниже вершины — молчит, выше — бежит новым';
 });
 
 /* Табло на двух держателях: неподвижно — захват его не сдвигает, провода у
@@ -1012,43 +1025,6 @@ check('экран компьютера живёт', function () {
   quiet.step(3000);
   if (printOf(quiet, qpc.layers[0].id) !== first) fail('в тихом режиме экран мигает');
   return 'за три секунды ' + frames + ' разных кадров, в тихом режиме стоит';
-});
-
-/* Часы идут: стрелки показывают настоящее время, огрублённое до четверти.
-   Время в песочнице своё, поэтому переводим его сами и смотрим, сменился ли
-   кадр. Кадр сверяем отпечатком рисунка — номера холстов сами по себе ничего
-   не значат. */
-check('часы показывают время', function () {
-  const world = open({ seed: 5 });
-  world.clock(10, 5);
-  world.step(2000);
-
-  const clock = world.things.filter(wall)[1];
-  if (!clock) fail('вторых висящих часов в обстановке нет');
-  if (!clock.layers.length) fail('часы не нарисованы');
-
-  const morning = printOf(world, clock.layers[0].id);
-
-  // Полчаса вперёд: минутная обязана переставиться.
-  world.clock(10, 40);
-  world.step(2000);
-  const later = printOf(world, clock.layers[0].id);
-  if (later === morning) fail('прошло полчаса, а стрелки не двинулись');
-
-  // Четыре часа вперёд: теперь и часовая.
-  world.clock(14, 40);
-  world.step(2000);
-  const afternoon = printOf(world, clock.layers[0].id);
-  if (afternoon === later) fail('прошло четыре часа, а часовая не двинулась');
-
-  // Вернули время — вернулся и кадр: показ зависит от времени, а не от счётчика.
-  world.clock(10, 5);
-  world.step(2000);
-  if (printOf(world, clock.layers[0].id) !== morning) {
-    fail('время то же, а кадр другой — часы идут сами по себе');
-  }
-
-  return 'стрелки идут за временем и возвращаются вместе с ним';
 });
 
 /* Льётся ли из лейки: ищем в кадре предмета клетку цвета воды. Цвет заглушка
@@ -1984,10 +1960,10 @@ const BREAKS = [
   },
   {
     name: 'табло не слышит новый рекорд',
-    red: 'табло рекорда бежит справа под планкой и слышит новый рекорд',
+    red: 'табло рекорда на стене бежит вершиной общей таблицы и слышит новый рекорд',
     parts: [[
-      '    if (board) board.repaint(tickerFrames(tickerText(event.detail)));',
-      '    if (board) return;',
+      '    board.repaint(tickerFrames(text));',
+      '    return;',
     ]],
   },
   {
@@ -2015,8 +1991,8 @@ const BREAKS = [
     ]],
   },
   {
-    name: 'часы не переставляют стрелки',
-    red: 'часы показывают время',
+    name: 'предметы не спрашивают кадр',
+    red: 'табло рекорда на стене бежит вершиной общей таблицы и слышит новый рекорд',
     parts: [[
       '      if (!spec.face || now - me.askedAt < (spec.every || 1000)) return;',
       '      if (true) return;',

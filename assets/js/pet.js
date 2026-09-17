@@ -166,12 +166,6 @@
       w: '#bd7d5c',          // светлая грань кадки
       n: '#2e2018',          // земля под ободом
     },
-    clock: {
-      f: '#4a5162',          // рама
-      w: '#eef1f6',          // циферблат
-      m: '#9aa2b2',          // метки
-      h: '#2a3038',          // стрелки
-    },
     board: {
       r: '#9aa2b2',          // рама и полочка под маркеры
       w: '#eef1f6',          // полотно
@@ -1166,13 +1160,16 @@
     ' ': ['...', '...', '...', '...', '...'],
   };
 
-  /* Табло рекорда — бегущая строка: узкая точечная матрица под планкой меню
-     у правого края, зеркально камере слева. По окну в 25 столбцов едет
-     «HI <ник> <счёт>» из хранилища браузера; без рекорда — «HI-SCORE ---», а не
-     выдуманные цифры. Кадр — на каждый столбец сдвига, точки 2x2 px внутри
-     клетки (`dots`), чтобы читалось как светодиоды, а не как кирпичи. Новый
-     рекорд консоль объявляет событием `office:record`, и кадры собираются
-     заново. Форму владелец выбрал из двух после отвергнутых табличек. */
+  /* Табло рекорда — бегущая строка: узкая точечная матрица на стене над
+     промежутком между диваном и растением (до 5.34 — под планкой меню у
+     правого края). По окну в 25 столбцов едет «HI <ник> <счёт>» — вершина
+     общей таблицы из `data/records.js`; свой рекорд из браузера выходит на
+     табло, только когда выше вершины (так до утреннего снимка новый лидер
+     виден сразу). Без рекордов — «HI-SCORE ---», а не выдуманные цифры.
+     Кадр — на каждый столбец сдвига, точки 2x2 px внутри клетки (`dots`),
+     чтобы читалось как светодиоды, а не как кирпичи. Новый рекорд консоль
+     объявляет событием `office:record`, и кадры собираются заново. Форму
+     владелец выбрал из двух после отвергнутых табличек. */
   var TICKER_W = 27;
   var TICKER_H = 9;
   var TICK_MS = 120;
@@ -1184,6 +1181,16 @@
       var nick = window.localStorage.getItem(RECORD_KEYS.nick) || '';
       return best > 0 ? { nick: nick, best: best } : null;
     } catch (e) { return null; }
+  }
+
+  // Вершина общей таблицы или свой рекорд — что выше; ничья за таблицей.
+  function topRecord(own) {
+    var data = window.RECORDS;
+    var first = data && data.top && data.top[0];
+    var top = first && Number(first.best) > 0 ? { nick: String(first.nick || ''), best: Number(first.best) } : null;
+    var mine = own || readRecord();
+    if (mine && Number(mine.best) > 0 && (!top || Number(mine.best) > top.best)) return mine;
+    return top;
   }
 
   function tickerText(record) {
@@ -1224,7 +1231,8 @@
     }
     return frames;
   }
-  var TICKER = tickerFrames(tickerText(readRecord()));
+  var TICKER_TEXT = tickerText(topRecord());
+  var TICKER = tickerFrames(TICKER_TEXT);
 
   // Растение в кадке: четыре листа на стеблях. Кадр тоже один.
   var PLANT = [
@@ -1272,219 +1280,6 @@
         'rrrrrrrrrrrrrrrr',
         '.....rrrrrr.....',
       ];
-
-  // Настенные часы: шестнадцать кадров — по четыре положения
-  // часовой и минутной стрелки. Кадр выбирается по времени.
-  var CLOCK = [
-    [
-        '....fff....',
-        '..ffwmwff..',
-        '.ffwwhwwff.',
-        '.fwwwhwwwf.',
-        'fwwwwhwwwwf',
-        'fmwwwhwwwmf',
-        'fwwwwwwwwwf',
-        '.fwwwwwwwf.',
-        '.ffwwwwwff.',
-        '..ffwmwff..',
-        '....fff....',
-      ],
-    [
-        '....fff....',
-        '..ffwmwff..',
-        '.ffwwwwwff.',
-        '.fwwwhwwwf.',
-        'fwwwwhwwwwf',
-        'fmwwwhhhhmf',
-        'fwwwwwwwwwf',
-        '.fwwwwwwwf.',
-        '.ffwwwwwff.',
-        '..ffwmwff..',
-        '....fff....',
-      ],
-    [
-        '....fff....',
-        '..ffwmwff..',
-        '.ffwwwwwff.',
-        '.fwwwhwwwf.',
-        'fwwwwhwwwwf',
-        'fmwwwhwwwmf',
-        'fwwwwhwwwwf',
-        '.fwwwhwwwf.',
-        '.ffwwhwwff.',
-        '..ffwmwff..',
-        '....fff....',
-      ],
-    [
-        '....fff....',
-        '..ffwmwff..',
-        '.ffwwwwwff.',
-        '.fwwwhwwwf.',
-        'fwwwwhwwwwf',
-        'fmhhhhwwwmf',
-        'fwwwwwwwwwf',
-        '.fwwwwwwwf.',
-        '.ffwwwwwff.',
-        '..ffwmwff..',
-        '....fff....',
-      ],
-    [
-        '....fff....',
-        '..ffwmwff..',
-        '.ffwwhwwff.',
-        '.fwwwhwwwf.',
-        'fwwwwhwwwwf',
-        'fmwwwhhhwmf',
-        'fwwwwwwwwwf',
-        '.fwwwwwwwf.',
-        '.ffwwwwwff.',
-        '..ffwmwff..',
-        '....fff....',
-      ],
-    [
-        '....fff....',
-        '..ffwmwff..',
-        '.ffwwwwwff.',
-        '.fwwwwwwwf.',
-        'fwwwwwwwwwf',
-        'fmwwwhhhhmf',
-        'fwwwwwwwwwf',
-        '.fwwwwwwwf.',
-        '.ffwwwwwff.',
-        '..ffwmwff..',
-        '....fff....',
-      ],
-    [
-        '....fff....',
-        '..ffwmwff..',
-        '.ffwwwwwff.',
-        '.fwwwwwwwf.',
-        'fwwwwwwwwwf',
-        'fmwwwhhhwmf',
-        'fwwwwhwwwwf',
-        '.fwwwhwwwf.',
-        '.ffwwhwwff.',
-        '..ffwmwff..',
-        '....fff....',
-      ],
-    [
-        '....fff....',
-        '..ffwmwff..',
-        '.ffwwwwwff.',
-        '.fwwwwwwwf.',
-        'fwwwwwwwwwf',
-        'fmhhhhhhwmf',
-        'fwwwwwwwwwf',
-        '.fwwwwwwwf.',
-        '.ffwwwwwff.',
-        '..ffwmwff..',
-        '....fff....',
-      ],
-    [
-        '....fff....',
-        '..ffwmwff..',
-        '.ffwwhwwff.',
-        '.fwwwhwwwf.',
-        'fwwwwhwwwwf',
-        'fmwwwhwwwmf',
-        'fwwwwhwwwwf',
-        '.fwwwhwwwf.',
-        '.ffwwwwwff.',
-        '..ffwmwff..',
-        '....fff....',
-      ],
-    [
-        '....fff....',
-        '..ffwmwff..',
-        '.ffwwwwwff.',
-        '.fwwwwwwwf.',
-        'fwwwwwwwwwf',
-        'fmwwwhhhhmf',
-        'fwwwwhwwwwf',
-        '.fwwwhwwwf.',
-        '.ffwwwwwff.',
-        '..ffwmwff..',
-        '....fff....',
-      ],
-    [
-        '....fff....',
-        '..ffwmwff..',
-        '.ffwwwwwff.',
-        '.fwwwwwwwf.',
-        'fwwwwwwwwwf',
-        'fmwwwhwwwmf',
-        'fwwwwhwwwwf',
-        '.fwwwhwwwf.',
-        '.ffwwhwwff.',
-        '..ffwmwff..',
-        '....fff....',
-      ],
-    [
-        '....fff....',
-        '..ffwmwff..',
-        '.ffwwwwwff.',
-        '.fwwwwwwwf.',
-        'fwwwwwwwwwf',
-        'fmhhhhwwwmf',
-        'fwwwwhwwwwf',
-        '.fwwwhwwwf.',
-        '.ffwwwwwff.',
-        '..ffwmwff..',
-        '....fff....',
-      ],
-    [
-        '....fff....',
-        '..ffwmwff..',
-        '.ffwwhwwff.',
-        '.fwwwhwwwf.',
-        'fwwwwhwwwwf',
-        'fmwhhhwwwmf',
-        'fwwwwwwwwwf',
-        '.fwwwwwwwf.',
-        '.ffwwwwwff.',
-        '..ffwmwff..',
-        '....fff....',
-      ],
-    [
-        '....fff....',
-        '..ffwmwff..',
-        '.ffwwwwwff.',
-        '.fwwwwwwwf.',
-        'fwwwwwwwwwf',
-        'fmwhhhhhhmf',
-        'fwwwwwwwwwf',
-        '.fwwwwwwwf.',
-        '.ffwwwwwff.',
-        '..ffwmwff..',
-        '....fff....',
-      ],
-    [
-        '....fff....',
-        '..ffwmwff..',
-        '.ffwwwwwff.',
-        '.fwwwwwwwf.',
-        'fwwwwwwwwwf',
-        'fmwhhhwwwmf',
-        'fwwwwhwwwwf',
-        '.fwwwhwwwf.',
-        '.ffwwhwwff.',
-        '..ffwmwff..',
-        '....fff....',
-      ],
-    [
-        '....fff....',
-        '..ffwmwff..',
-        '.ffwwwwwff.',
-        '.fwwwwwwwf.',
-        'fwwwwwwwwwf',
-        'fmhhhhwwwmf',
-        'fwwwwwwwwwf',
-        '.fwwwwwwwf.',
-        '.ffwwwwwff.',
-        '..ffwmwff..',
-        '....fff....',
-      ],
-  ];
 
   // Фикус: деревце со стволом и густой кроной.
   var FICUS = [
@@ -2269,15 +2064,6 @@
     return me;
   }
 
-  /* Какой кадр часов показывать. Настоящее время, огрублённое до четверти:
-     стрелка в три пикселя читается только прямой, и положений у неё четыре.
-     Минутная переставляется четыре раза в час, часовая — четыре раза за
-     половину суток. */
-  function clockFace() {
-    var t = new Date();
-    return Math.floor((t.getHours() % 12) / 3) * 4 + Math.floor(t.getMinutes() / 15);
-  }
-
   /* Камера следит за курсором наклоном корпуса, диод мигает раз в секунду.
      Мера — доля горизонтали в векторе на курсор: около 1 — курсор далеко
      справа, камера горизонтальна; около 0 — курсор под ней, смотрит круто
@@ -2805,8 +2591,6 @@
     // обратно: на широком экране от этого она уезжала на треть окна вправо.
     { name: 'board', art: BOARD, skin: SKIN.board, title: 'Перевесить доску',
       at: 0.02, wall: 64, shift: -8 },
-    { name: 'clock', art: CLOCK, skin: SKIN.clock, title: 'Перевесить часы',
-      at: 0.97, wall: 58, between: ['sofa', 'plant'], shift: 14, face: clockFace },
     { name: 'shelf', art: SHELF, skin: SKIN.shelf, title: 'Подвинуть полку', at: 0 },
     { name: 'ficus', art: FICUS, skin: SKIN.ficus, title: 'Подвинуть фикус', at: 0.045 },
     // Принтер и торшер держатся за соседа (`after`/`before`), а не за долю
@@ -2838,11 +2622,14 @@
        день: владельцу не понравилась ни в тексте, ни с человечком. */
     { name: 'camera', art: CAMERA, skin: SKIN.camera, title: 'Перевесить камеру',
       at: 0, ceiling: true, face: cameraFace, every: 500, rest: 2, cable: true },
-    // Табло рекорда: бегущая строка под планкой у правого края. Неподвижно
-    // и без видимых креплений — так решил владелец: провод (5.25) и держатели
-    // (5.26) побывали и сняты, «верни как было, но передвижение не трогай».
+    // Табло рекорда: бегущая строка на стене, где висели часы (сняты в 5.34
+    // решением владельца), — над промежутком между диваном и растением, чуть
+    // выше и чуть левее прежних часов. Неподвижно и без видимых креплений —
+    // так решил владелец: провод (5.25) и держатели (5.26) побывали и сняты,
+    // «верни как было, но передвижение не трогай».
     { name: 'ticker', art: TICKER, skin: SKIN.ticker, dots: 'a', title: 'Табло рекорда',
-      at: 1, ceiling: true, face: tickerFace, every: TICK_MS, rest: 0, fixed: true },
+      at: 0.97, wall: 67, between: ['sofa', 'plant'], shift: -16, face: tickerFace,
+      every: TICK_MS, rest: 0, fixed: true },
   ].map(function (spec) {
     var thing = makeThing(spec);
     thing.name = spec.name;
@@ -3137,10 +2924,15 @@
     document.addEventListener('DOMContentLoaded', function () { arrange(true); });
   }
 
-  // Новый рекорд из консоли (`console.js`): табло собирает кадры заново.
+  // Новый рекорд из консоли (`console.js`): табло собирает кадры заново —
+  // но только если строка сменилась: перерисовка сбрасывает бег на начало,
+  // а рекорд ниже вершины общей таблицы строки не меняет.
   document.addEventListener('office:record', function (event) {
     var board = thingNamed('ticker');
-    if (board) board.repaint(tickerFrames(tickerText(event.detail)));
+    var text = tickerText(topRecord(event.detail));
+    if (!board || text === TICKER_TEXT) return;
+    TICKER_TEXT = text;
+    board.repaint(tickerFrames(text));
   });
 
   /* Существ ставим после мебели: Отто встаёт правее левой кадки. Раньше он
