@@ -1055,8 +1055,9 @@
   // Кадры 0–5 — на кронштейне (наклон × 2 + диод), 6–11 — те же без кронштейна.
   var CAMERA = cameraFrames(false).concat(cameraFrames(true));
   var CAMERA_BARE = 6;
-  // Кронштейн сам по себе: остаётся на потолке, когда камеру сорвали.
-  var BRACKET = ['mmmm', '.mm.', '.mm.'];
+  // Кронштейн сам по себе: остаётся на потолке, когда камеру сорвали. Нижняя
+  // клетка под левой половиной стойки — рядом с ней из стойки выходит провод.
+  var BRACKET = ['mmmm', '.mm.', '.mm.', '.m..'];
   // Где провод входит в камеру — клетка диода, там же корпус сидел на стойке.
   var CAMERA_PLUG = { x: 2 * PIXEL, y: 3 * PIXEL };
 
@@ -2374,13 +2375,21 @@
       var mx = (ax + bx) / 2;
       var my = (ay + by) / 2 + sag;
       var steps = Math.max(8, Math.ceil((len + sag) / 2));
+      var drawn = {};
       c.fillStyle = spec.skin.c;
       for (var i = 0; i <= steps; i += 1) {
         var t = i / steps;
         var u = 1 - t;
         var x = u * u * ax + 2 * u * t * mx + t * t * bx;
         var y = u * u * ay + 2 * u * t * my + t * t * by;
-        c.fillRect(Math.floor(x / PIXEL) * PIXEL, Math.floor(y / PIXEL) * PIXEL, PIXEL, PIXEL);
+        // Допуск в тысячную: у строго вертикального провода координата выходит
+        // 83,999… вместо 84, и без него клетки прыгали между двумя столбцами.
+        var cx = Math.floor((x + 0.001) / PIXEL) * PIXEL;
+        var cy = Math.floor((y + 0.001) / PIXEL) * PIXEL;
+        var key = cx + ',' + cy;
+        if (drawn[key]) continue;
+        drawn[key] = true;
+        c.fillRect(cx, cy, PIXEL, PIXEL);
       }
     }
 
