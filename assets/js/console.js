@@ -268,7 +268,66 @@
     return { rows: rows.slice(0, TOP_N), extra: extra };
   }
 
-  if (typeof module !== 'undefined' && module.exports) module.exports = { Tetris: Tetris, mergeScores: mergeScores };
+  /* --- ник ------------------------------------------------------------------
+     Ник выдаёт консоль сама: слово из списка и две цифры — `orbit-42`.
+     Посетитель своего ника не набирает, и чужого мата на общем табло не
+     бывает по построению (решение владельца вместо модерации). Слова
+     короткие, нейтральные, латиницей, без грязных созвучий по-русски и
+     по-английски — список сторожит проверка; цифры — чтобы два «orbit» не
+     слились в одну строку. Раз выданный ник закреплён за браузером; ники
+     прежнего свободного вида (до 5.30) заменяются, рекорд остаётся. */
+  var NICK_MAX = 8;         // знаков: слово до пяти, дефис и две цифры
+  var NICK_WORDS = [
+    'alpha', 'beta', 'gamma', 'delta', 'sigma', 'omega', 'theta', 'kappa', 'zeta',
+    'iota', 'nova', 'comet', 'orbit', 'lunar', 'solar', 'astro', 'star', 'moon',
+    'mars', 'venus', 'pluto', 'atom', 'ion', 'quark', 'boson', 'muon', 'laser',
+    'radar', 'sonar', 'probe', 'pixel', 'byte', 'chip', 'disk', 'code', 'data',
+    'node', 'link', 'loop', 'stack', 'queue', 'array', 'token', 'macro', 'micro',
+    'nano', 'giga', 'mega', 'kilo', 'tera', 'river', 'lake', 'ocean', 'coral',
+    'reef', 'wave', 'tide', 'cloud', 'storm', 'rain', 'snow', 'frost', 'fog',
+    'mist', 'wind', 'dawn', 'dusk', 'noon', 'spark', 'flame', 'ember', 'blaze',
+    'stone', 'rock', 'flint', 'sand', 'dune', 'mesa', 'cliff', 'ridge', 'peak',
+    'hill', 'vale', 'glen', 'grove', 'oak', 'pine', 'elm', 'birch', 'cedar',
+    'maple', 'fern', 'moss', 'ivy', 'lotus', 'iris', 'rose', 'lily', 'daisy',
+    'tulip', 'mint', 'sage', 'basil', 'thyme', 'cocoa', 'latte', 'mango', 'lemon',
+    'lime', 'melon', 'peach', 'plum', 'berry', 'apple', 'olive', 'honey', 'sugar',
+    'candy', 'bagel', 'toast', 'pasta', 'taco', 'sushi', 'ramen', 'fox', 'wolf',
+    'bear', 'lynx', 'otter', 'panda', 'koala', 'lemur', 'zebra', 'tiger', 'lion',
+    'puma', 'cobra', 'gecko', 'newt', 'frog', 'toad', 'crab', 'squid', 'whale',
+    'shark', 'seal', 'crane', 'raven', 'robin', 'finch', 'wren', 'owl', 'hawk',
+    'eagle', 'swift', 'dove', 'swan', 'goose', 'duck', 'moth', 'bee', 'wasp',
+    'ant', 'mouse', 'mole', 'hare', 'deer', 'elk', 'moose', 'bison', 'yak',
+    'llama', 'camel', 'horse', 'pony', 'mule', 'goat', 'sheep', 'lamb', 'gear',
+    'cog', 'bolt', 'anvil', 'forge', 'lamp', 'torch', 'lens', 'prism', 'brick',
+    'tile', 'plank', 'beam', 'mast', 'sail', 'oar', 'raft', 'canoe', 'kayak',
+    'barge', 'ferry', 'cargo', 'crate', 'chest', 'vault', 'key', 'lock', 'gate',
+    'door', 'tower', 'arch', 'dome', 'spire', 'plaza', 'alley', 'road', 'path',
+    'trail', 'track', 'rail', 'tram', 'metro', 'taxi', 'cab', 'van', 'jeep',
+    'bike', 'red', 'blue', 'cyan', 'teal', 'navy', 'lilac', 'mauve', 'amber',
+    'gold', 'ivory', 'pearl', 'jade', 'ruby', 'onyx', 'opal', 'topaz', 'beryl',
+    'agate', 'umber', 'ochre', 'sepia', 'khaki', 'echo', 'sonic', 'tempo', 'chord',
+    'tune', 'note', 'beat', 'alto', 'tenor', 'drum', 'harp', 'flute', 'lyre',
+    'viola', 'cello', 'banjo',
+  ];
+  var NICK_RE = /^([a-z]{3,5})-(\d{2})$/;
+
+  function makeNick(rng) {
+    var random = rng || Math.random;
+    var word = NICK_WORDS[Math.min(NICK_WORDS.length - 1, Math.floor(random() * NICK_WORDS.length))];
+    var digits = String(Math.min(99, Math.floor(random() * 100)));
+    return word + '-' + (digits.length < 2 ? '0' + digits : digits);
+  }
+
+  // Ник своего вида — как есть (строчными), всё прочее — пустая строка.
+  function validNick(value) {
+    if (typeof value !== 'string') return '';
+    var found = NICK_RE.exec(value.toLowerCase());
+    return found && NICK_WORDS.indexOf(found[1]) >= 0 ? found[0] : '';
+  }
+
+  if (typeof module !== 'undefined' && module.exports) {
+    module.exports = { Tetris: Tetris, mergeScores: mergeScores, makeNick: makeNick, validNick: validNick, NICK_WORDS: NICK_WORDS };
+  }
   if (!root || !root.document) return;
 
   /* --- окно ---------------------------------------------------------------- */
@@ -291,7 +350,6 @@
   var OVER_MS = 1500;       // от «игра окончена» до таблицы рекордов: стакан ещё виден
   var BEST_KEY = 'office-tetris-best';
   var NICK_KEY = 'office-tetris-nick';
-  var NICK_MAX = 8;         // знаков: столько влезает в табло на стене при шрифте 3x5
 
   var TEXT = {
     title: { ru: 'Компьютер', en: 'Computer' },
@@ -367,8 +425,9 @@
   var timers = [];
   var raf = 0;
   var lastFrame = 0;
-  var phase = 'closed'; // closed | boot | login | play | scores
-  var nick = '';        // ник текущей партии: с `login:` или из хранилища
+  var phase = 'closed'; // closed | boot | play | scores
+  var nick = '';        // ник партии: выдан консолью, закреплён в хранилище
+  var waiting = false;  // ник напечатан, игра начнётся по таймеру: клавиши ничего не значат
   var cell = CELL_MAX;
 
   function later(fn, ms) {
@@ -391,17 +450,11 @@
   }
 
   function readNick() {
-    try { return cleanNick(root.localStorage.getItem(NICK_KEY) || ''); } catch (e) { return ''; }
+    try { return validNick(root.localStorage.getItem(NICK_KEY)); } catch (e) { return ''; }
   }
 
   function writeNick(value) {
     try { root.localStorage.setItem(NICK_KEY, value); } catch (e) { /* не запомним */ }
-  }
-
-  // Ник — латиница, цифры, дефис и подчёркивание, до NICK_MAX; так он влезает
-  // в табло на стене и не требует кириллического шрифта 3x5.
-  function cleanNick(value) {
-    return String(value || '').toLowerCase().replace(/[^a-z0-9_-]/g, '').slice(0, NICK_MAX);
   }
 
   // Рекорд — пара «ник и счёт» того, кто его поставил.
@@ -498,9 +551,9 @@
 
   /* --- загрузка ------------------------------------------------------------ */
 
-  function typeLine(line, done) {
+  function typeLine(line, done, into) {
     var node = document.createTextNode('');
-    ui.log.appendChild(node);
+    (into || ui.log).appendChild(node);
     var i = 0;
     (function step() {
       if (phase !== 'boot') return;
@@ -517,13 +570,14 @@
     ui.log.hidden = false;
     ui.play.hidden = true;
     ui.scores.hidden = true;
+    waiting = false;
 
     if (LESS_MOTION) { finishBoot(); return; }
 
     var i = 0;
     (function next() {
       if (phase !== 'boot') return;
-      if (i === BOOT.length) { askLogin(); return; }
+      if (i === BOOT.length) { login(); return; }
       var line = BOOT[i];
       i += 1;
       typeLine(line, function (node) {
@@ -547,44 +601,35 @@
     })();
   }
 
-  // Домотать загрузку: все строки разом, полоса полная — и к вводу ника.
+  // Домотать загрузку: все строки разом, полоса полная, ник напечатан — и к игре.
   function finishBoot() {
     clearTimers();
-    ui.log.textContent = BOOT.slice(0, 3).join('\n') + '\n' + BOOT[3] + '██████████ 100%\n';
-    askLogin();
+    issueNick();
+    ui.log.textContent = BOOT.slice(0, 3).join('\n') + '\n' + BOOT[3] + '██████████ 100%\n' + TEXT.login;
+    ui.log.appendChild(el('span', { class: 'console__nick', text: nick }));
+    greet();
   }
 
-  /* Ввод ника — настоящее поле в строке `login:`: с клавиатуры набирается
-     как в терминале, на планшете поднимает экранную клавиатуру. Прежний ник
-     подставлен, пустой Enter — guest. */
-  function askLogin() {
-    phase = 'login';
-    var field = el('input', {
-      class: 'console__login', type: 'text', autocomplete: 'off', autocapitalize: 'off',
-      spellcheck: 'false', maxlength: String(NICK_MAX), enterkeyhint: 'go', 'aria-label': 'login',
-      value: readNick(),
-    });
-    field.addEventListener('input', function () {
-      var clean = cleanNick(field.value);
-      if (clean !== field.value) field.value = clean;
-    });
-    field.addEventListener('keydown', function (event) {
-      if (event.key === 'Enter') { event.preventDefault(); confirmLogin(field); }
-    });
-    ui.log.appendChild(document.createTextNode(TEXT.login));
-    ui.log.appendChild(field);
-    ui.login = field;
-    field.focus();
-    field.select();
-  }
-
-  function confirmLogin(field) {
-    if (phase !== 'login') return;
-    nick = cleanNick(field.value) || 'guest';
+  // Ник партии: прежний из хранилища или новый — и сразу в хранилище, чтобы
+  // домотка и следующий заход печатали тот же.
+  function issueNick() {
+    nick = readNick() || makeNick();
     writeNick(nick);
-    field.disabled = true;
+  }
+
+  /* Вход: строку `login:` консоль дописывает сама, по буквам, как загрузку.
+     Поля ввода нет — своего ника посетитель не выбирает. */
+  function login() {
+    issueNick();
+    ui.log.appendChild(document.createTextNode(TEXT.login));
+    var slot = el('span', { class: 'console__nick' });
+    ui.log.appendChild(slot);
+    typeLine(nick, greet, slot);
+  }
+
+  function greet() {
     ui.log.appendChild(document.createTextNode('\n' + t(TEXT.welcome) + nick + '\n' + t(TEXT.ready)));
-    phase = 'boot';
+    waiting = true;
     later(startGame, START_MS);
   }
 
@@ -648,6 +693,7 @@
     clearTimers();
     phase = 'play';
     game = create();
+    waiting = false;
     ui.log.hidden = true;
     ui.scores.hidden = true;
     ui.play.hidden = false;
@@ -802,7 +848,7 @@
     render();
     if (game.over) {
       if (game.score > readBest()) {
-        announceRecord({ nick: nick || readNick() || 'guest', best: game.score });
+        announceRecord({ nick: nick, best: game.score });
         ui.stats.best.textContent = bestLabel();
       }
       showOverlay(t(TEXT.over), t(TEXT.score) + ' ' + game.score + ' · ' + t(TEXT.again) + ' · ' + t(TEXT.hint));
@@ -852,11 +898,6 @@
     if (phase === 'closed') return;
     if (event.key === 'Escape') { event.preventDefault(); close(); return; }
     if (event.key === 'Tab') { trapTab(event); return; }
-    // Ввод ника: клавиши идут в поле, Enter подтверждает и там, и здесь.
-    if (phase === 'login') {
-      if (event.key === 'Enter') { event.preventDefault(); confirmLogin(ui.login); }
-      return;
-    }
     if (phase === 'scores') {
       if (event.key === 'Enter' || event.key === ' ' || KEYS[event.key] === 'restart') {
         event.preventDefault();
@@ -865,10 +906,10 @@
       return;
     }
     if (phase === 'boot') {
-      // Пока ждём начала игры после ввода ника — клавиши ничего не значат.
-      if (ui.login && ui.login.disabled) { event.preventDefault(); return; }
+      // Пока ждём начала игры с напечатанным ником — клавиши ничего не значат;
+      // раньше того любая доматывает загрузку.
       event.preventDefault();
-      act('skip');
+      if (!waiting) act('skip');
       return;
     }
     var name = KEYS[event.key];
@@ -926,7 +967,7 @@
   function close() {
     if (phase === 'closed') return;
     phase = 'closed';
-    ui.login = null;
+    waiting = false;
     clearTimers();
     root.cancelAnimationFrame(raf);
     document.removeEventListener('keydown', onKey, true);

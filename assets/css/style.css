@@ -1613,23 +1613,8 @@ a:not(.btn):hover { color: var(--text); }
 
 .console__log[hidden] { display: none; }
 
-/* Поле ника в строке `login:` — как текст терминала, без рамки; курсор
-   мигает браузерный. Ширина — под восемь знаков. */
-.console__login {
-  appearance: none;
-  width: 9ch;
-  background: none;
-  border: 0;
-  border-bottom: 1px solid var(--line);
-  padding: 0;
-  margin: 0;
-  font: inherit;
-  color: var(--accent);
-  caret-color: var(--accent);
-  outline: none;
-}
-
-.console__login:disabled { color: var(--text-dim); border-bottom-color: transparent; }
+/* Ник в строке `login:` — акцентом, как своя строка в таблице. */
+.console__nick { color: var(--accent); }
 
 /* Третий экран — таблица рекордов после игры: тот же терминальный текст,
    что на загрузке; своя строка — акцентом, чтобы найти себя взглядом. */

@@ -9,7 +9,7 @@
 'use strict';
 
 const path = require('path');
-const { Tetris, mergeScores } = require(path.join(__dirname, '..', 'assets', 'js', 'console.js'));
+const { Tetris, mergeScores, makeNick, validNick, NICK_WORDS } = require(path.join(__dirname, '..', 'assets', 'js', 'console.js'));
 
 const results = [];
 function check(name, fn) {
@@ -254,6 +254,66 @@ check('пустая таблица и мусор в данных', function () {
   const unsorted = mergeScores([{ nick: 'b', best: 10 }, { nick: 'a', best: 20 }], null);
   if (unsorted.rows[0].nick !== 'a') fail('таблица не отсортирована по счёту');
   return 'пусто — пусто, мусор отброшен, порядок по счёту';
+});
+
+/* --- ник от консоли: слово из списка и две цифры ------------------------- */
+
+check('ник — слово из списка и две цифры, не длиннее восьми', function () {
+  const seen = new Set();
+  for (let seed = 1; seed <= 300; seed += 1) {
+    const nick = makeNick(rng(seed));
+    const m = /^([a-z]{3,5})-(\d{2})$/.exec(nick);
+    if (!m) fail('не того вида: ' + nick);
+    if (NICK_WORDS.indexOf(m[1]) < 0) fail('слова нет в списке: ' + nick);
+    if (nick.length > 8) fail('длиннее восьми: ' + nick);
+    seen.add(nick);
+  }
+  if (seen.size < 250) fail('из 300 зёрен вышло всего ' + seen.size + ' разных ников');
+  const same = makeNick(rng(7)) === makeNick(rng(7));
+  if (!same) fail('одно зерно — разные ники');
+  return seen.size + ' разных из 300, зерно повторяемо';
+});
+
+check('цифры дополняются нулём, обе границы достижимы', function () {
+  const low = makeNick(function () { return 0; });
+  const high = makeNick(function () { return 0.999999; });
+  if (!/-00$/.test(low)) fail('ноль без дополнения: ' + low);
+  if (!/-99$/.test(high)) fail('верхняя граница не 99: ' + high);
+  if (low.split('-')[0] !== NICK_WORDS[0]) fail('нижняя граница — не первое слово: ' + low);
+  if (high.split('-')[0] !== NICK_WORDS[NICK_WORDS.length - 1]) fail('верхняя граница — не последнее слово: ' + high);
+  return low + ' … ' + high;
+});
+
+check('проверка ника: свой вид принимается, чужой отбрасывается', function () {
+  const word = NICK_WORDS[3];
+  if (validNick(word + '-42') !== word + '-42') fail('свой ник не принят');
+  if (validNick(word.toUpperCase() + '-42') !== word + '-42') fail('регистр должен приводиться');
+  [
+    'alexivan', 'guest', word + '-4', word + '-420', word + '42', 'xyzzy-42', 'zz-42',
+    'ab-cd', '', null, undefined, 42, word + '-42 ', ' ' + word + '-42',
+  ].forEach(function (bad) {
+    if (validNick(bad) !== '') fail('принято лишнее: ' + JSON.stringify(bad) + ' → ' + validNick(bad));
+  });
+  return 'принят ' + word + '-42, отброшено 14 чужих';
+});
+
+check('список слов: короткие, латиница, без повторов и без грязных созвучий', function () {
+  if (NICK_WORDS.length < 150) fail('слов всего ' + NICK_WORDS.length);
+  const seen = new Set();
+  const dirty = [
+    'ass', 'sex', 'cock', 'dick', 'tit', 'fuck', 'shit', 'cum', 'fag', 'nig', 'rape', 'hell',
+    'damn', 'crap', 'poo', 'pee', 'anal', 'cunt', 'slut', 'nazi', 'porn', 'hui', 'huy', 'xui',
+    'xuy', 'pizd', 'eba', 'ebl', 'bly', 'suka', 'mud', 'pid', 'zhop', 'jop', 'her', 'sra', 'ssa',
+    'loh', 'lox', 'gov', 'moch', 'kal', 'pop', 'sos', 'gad', 'chmo', 'gnid', 'urod', 'debil',
+    'dura', 'blin', 'pis', 'xer', 'gey', 'gay', 'homo', 'jew', 'negr', 'kill', 'die', 'drug',
+  ];
+  NICK_WORDS.forEach(function (word) {
+    if (!/^[a-z]{3,5}$/.test(word)) fail('не по правилу: ' + JSON.stringify(word));
+    if (seen.has(word)) fail('повтор: ' + word);
+    seen.add(word);
+    dirty.forEach(function (bad) { if (word.indexOf(bad) >= 0) fail('созвучие «' + bad + '» в слове ' + word); });
+  });
+  return NICK_WORDS.length + ' слов чистые';
 });
 
 const failed = results.filter(function (r) { return !r.ok; }).length;
