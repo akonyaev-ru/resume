@@ -281,7 +281,7 @@
     'alpha', 'beta', 'gamma', 'delta', 'sigma', 'omega', 'theta', 'kappa', 'zeta',
     'iota', 'nova', 'comet', 'orbit', 'lunar', 'solar', 'astro', 'star', 'moon',
     'mars', 'venus', 'pluto', 'atom', 'ion', 'quark', 'boson', 'muon', 'laser',
-    'radar', 'sonar', 'probe', 'pixel', 'byte', 'chip', 'disk', 'code', 'data',
+    'radar', 'sonar', 'pixel', 'byte', 'chip', 'disk', 'code', 'data',
     'node', 'link', 'loop', 'stack', 'queue', 'array', 'token', 'macro', 'micro',
     'nano', 'giga', 'mega', 'kilo', 'tera', 'river', 'lake', 'ocean', 'coral',
     'reef', 'wave', 'tide', 'cloud', 'storm', 'rain', 'snow', 'frost', 'fog',
