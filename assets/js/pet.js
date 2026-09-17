@@ -238,6 +238,8 @@
       f: '#39404f',          // рамка табло
       b: '#0b1018',          // тёмное стекло
       a: '#ffb454',          // точки — янтарь, как счёт в тетрисе
+      m: '#39404f',          // пластина крепления на планке
+      c: '#2a3038',          // провод — как у камеры
     },
     camera: {
       m: '#39404f',          // кронштейн: пластина под планкой и стойка
@@ -1065,6 +1067,12 @@
   var BRACKET = ['mmmm', '.mm.', '.mm.', '.m..'];
   // Где провод входит в камеру — клетка диода, там же корпус сидел на стойке.
   var CAMERA_PLUG = { x: 2 * PIXEL, y: 3 * PIXEL };
+  /* Табло тоже на проводе: вход — середина верхней кромки, крепление на
+     планке — пластина в три клетки над ним, провод вдвое толще камерного —
+     табло шире и тяжелее на вид. Сорванное табло бежать не перестаёт:
+     провод у него и есть питание (у камеры диод гаснет — так просил владелец). */
+  var TICKER_PLUG = { x: 13 * PIXEL, y: 0 };
+  var TICKER_MOUNT = ['mmm'];
 
   // Стол: столешница с передней гранью, две ножки, между ними системный блок
   // с диодом и щелью привода. Двадцать клеток на восемь — как диван, но выше.
@@ -2387,6 +2395,10 @@
        спрятан. Квадрат со стороной в две длины провода — вся досягаемость. */
     var cord = null;
     var bracket = null;
+    // Где провод входит в предмет, чем он крепится к планке и какой толщины —
+    // у каждого своё; по умолчанию как у камеры.
+    var plugAt = spec.plug || CAMERA_PLUG;
+    var gauge = (spec.cableWidth || 1) * PIXEL;
     if (spec.cable) {
       cord = document.createElement('canvas');
       cord.className = 'thing thing--wall thing--cord';
@@ -2394,7 +2406,7 @@
       cord.height = 2 * (CABLE + CABLE_PAD);
       cord.setAttribute('aria-hidden', 'true');
       cord.hidden = true;
-      bracket = render(BRACKET, false, spec.skin);
+      bracket = render(spec.mount || BRACKET, false, spec.skin);
       document.body.appendChild(cord);
     }
 
@@ -2423,18 +2435,18 @@
        планкой, а не за старым местом. Координаты экранные: y растёт вниз. */
     function anchor() {
       var mountX = clamp(spotFor(me), EDGE, limit());
-      return { x: mountX + CAMERA_PLUG.x, y: barHeight() + CAMERA_PLUG.y, mountX: mountX };
+      return { x: mountX + plugAt.x, y: barHeight() + plugAt.y, mountX: mountX };
     }
 
     // Куда провод входит в камеру, по её нынешнему месту.
     function plug() {
-      return { x: me.x + CAMERA_PLUG.x, y: window.innerHeight - me.y - canvas.height + CAMERA_PLUG.y };
+      return { x: me.x + plugAt.x, y: window.innerHeight - me.y - canvas.height + plugAt.y };
     }
 
     // Поставить камеру так, чтобы вход провода оказался в экранной точке.
     function moor(x, y) {
-      me.x = x - CAMERA_PLUG.x;
-      me.y = window.innerHeight - (y - CAMERA_PLUG.y) - canvas.height;
+      me.x = x - plugAt.x;
+      me.y = window.innerHeight - (y - plugAt.y) - canvas.height;
     }
 
     /* Провод не длиннее CABLE: если камеру увели дальше, она остаётся на его
@@ -2462,7 +2474,7 @@
 
       var c = cord.getContext('2d');
       c.clearRect(0, 0, cord.width, cord.height);
-      c.drawImage(bracket, Math.round(a.mountX - left), Math.round(barHeight() - top));
+      c.drawImage(bracket, Math.round(a.mountX + (spec.mountShift || 0) - left), Math.round(barHeight() - top));
 
       var ax = a.x - left;
       var ay = a.y - top;
@@ -2484,12 +2496,12 @@
         var y = u * u * ay + 2 * u * t * my + t * t * by;
         // Допуск в тысячную: у строго вертикального провода координата выходит
         // 83,999… вместо 84, и без него клетки прыгали между двумя столбцами.
-        var cx = Math.floor((x + 0.001) / PIXEL) * PIXEL;
-        var cy = Math.floor((y + 0.001) / PIXEL) * PIXEL;
+        var cx = Math.floor((x + 0.001) / gauge) * gauge;
+        var cy = Math.floor((y + 0.001) / gauge) * gauge;
         var key = cx + ',' + cy;
         if (drawn[key]) continue;
         drawn[key] = true;
-        c.fillRect(cx, cy, PIXEL, PIXEL);
+        c.fillRect(cx, cy, gauge, gauge);
       }
     }
 
@@ -2833,7 +2845,8 @@
       at: 0, ceiling: true, face: cameraFace, every: 500, rest: 2, cable: true },
     // Табло рекорда: бегущая строка под планкой у правого края.
     { name: 'ticker', art: TICKER, skin: SKIN.ticker, dots: 'a', title: 'Перевесить табло',
-      at: 1, ceiling: true, face: tickerFace, every: TICK_MS, rest: 0 },
+      at: 1, ceiling: true, face: tickerFace, every: TICK_MS, rest: 0,
+      cable: true, plug: TICKER_PLUG, mount: TICKER_MOUNT, mountShift: 12 * PIXEL, cableWidth: 2 },
   ].map(function (spec) {
     var thing = makeThing(spec);
     thing.name = spec.name;

@@ -116,7 +116,8 @@ function open(options) {
       // ноутбука, а не по безымянному номеру холста.
       /* Цвет запоминаем вместе с клеткой: у часов стрелки лежат поверх
          циферблата, и по одним координатам кадры неразличимы. */
-      fillRect: function (x, y) { paint.push({ x: x, y: y, c: this.fillStyle }); },
+      // Ширину тоже помним: по ней проверка отличает толстый провод от тонкого.
+      fillRect: function (x, y, w, h) { paint.push({ x: x, y: y, w: w, h: h, c: this.fillStyle }); },
       // Кадр начинается с очистки — значит в `layers` всегда текущий кадр.
       clearRect: function () { layers.length = 0; },
       drawImage: function (image, dx, dy) {
@@ -290,7 +291,8 @@ function open(options) {
     // Провод камеры — не предмет обстановки: без подписи, до срыва спрятан.
     return el.className.indexOf('thing') === 0 && el.className.indexOf('--cord') < 0;
   });
-  world.cord = appended.filter(function (el) { return el.className.indexOf('--cord') > 0; })[0] || null;
+  world.cords = appended.filter(function (el) { return el.className.indexOf('--cord') > 0; });
+  world.cord = world.cords[0] || null;      // первый провод — камеры, второй — табло
   world.otto = world.pets[0];
   world.olivia = world.pets[1];
   return world;
@@ -952,6 +954,55 @@ check('табло рекорда бежит справа под планкой �
   world.step(2000, function () { later[printOf(world, board.layers[0].id)] = true; });
   if (Object.keys(later).length < 8) fail('после нового рекорда строка перестала бежать');
   return 'кадров ' + frames + ', после рекорда новые и бегут';
+});
+
+/* Табло на проводе: сорвали — провод в две клетки держит, отпустили —
+   висит под пластиной по центру верхней кромки, а строка бежит дальше. */
+check('табло сорвали — висит на проводе по центру и бежит дальше', function () {
+  const world = open({ seed: 3 });
+  world.step(500);
+  const board = world.things.filter(function (t) { return t.title === 'Перевесить табло'; })[0];
+  if (!board) fail('табло в обстановке нет');
+  const cord = world.cords[1];
+  if (!cord) fail('у табло нет холста провода');
+  if (!cord.hidden) fail('провод виден до срыва');
+  const mount = board.spot();
+  const anchor = { x: mount.x + 13 * NUM.PIXEL, y: world.high() - mount.y - board.height };
+  const plug = function () { const b = board.getBoundingClientRect(); return { x: b.left + 13 * NUM.PIXEL, y: b.top }; };
+
+  const box = board.getBoundingClientRect();
+  board.fire('mousedown', event(box.left + 30, box.top + 10));
+  world.step(FRAME_MS);
+  const far = event(box.left + 30 - 250, box.top + 10 + 200);
+  world.win('mousemove', far);
+  world.step(FRAME_MS);
+  const at = plug();
+  const pulled = Math.hypot(at.x - anchor.x, at.y - anchor.y);
+  if (pulled > NUM.CABLE + 1) fail('утащили дальше провода: ' + pulled.toFixed(1));
+  if (pulled < NUM.CABLE - 1) fail('провод не натянулся: ' + pulled.toFixed(1));
+  if (cord.hidden) fail('после срыва провод не показан');
+  // Провод толще камерного: клетки по 2 PIXEL, их меньше, чем у тонкого.
+  const thick = cord.paint.filter(function (c) { return c.w === 2 * NUM.PIXEL; }).length;
+  if (thick < NUM.CABLE / (2 * NUM.PIXEL)) fail('провод не в две клетки: толстых клеток ' + thick);
+
+  world.win('mouseup', far);
+  let swings = 0;
+  let prev = board.spot().x;
+  const seen = new Set();
+  world.step(4000, function () {
+    const x = board.spot().x;
+    if (x !== prev) swings += 1;
+    prev = x;
+    if (board.layers[0]) seen.add(board.layers[0].id);
+  });
+  if (swings < 10) fail('после отпускания не качалось: сдвигов ' + swings);
+  const rest = plug();
+  if (Math.abs(rest.x - anchor.x) > 2 || Math.abs(rest.y - (anchor.y + NUM.CABLE)) > 2) {
+    fail('повисло не под креплением: вход провода ' + rest.x.toFixed(0) + ',' + rest.y.toFixed(0) +
+      ', ждали ' + anchor.x + ',' + (anchor.y + NUM.CABLE));
+  }
+  if (seen.size < 8) fail('на проводе строка перестала бежать: кадров ' + seen.size);
+  return 'провод ' + NUM.CABLE + ' держит, качалось ' + swings + ' сдвигов, повисло по центру, кадров ' + seen.size;
 });
 
 /* Экран компьютера живёт: за три секунды сменяется много кадров; в тихом
@@ -1933,6 +1984,14 @@ const BREAKS = [
     parts: [[
       '  var startAt = leftEdge ? leftEdge + 16 : 64;',
       '  var startAt = 64;',
+    ]],
+  },
+  {
+    name: 'табло без провода',
+    red: 'табло сорвали — висит на проводе по центру и бежит дальше',
+    parts: [[
+      '      cable: true, plug: TICKER_PLUG, mount: TICKER_MOUNT, mountShift: 12 * PIXEL, cableWidth: 2 },',
+      '      plug: TICKER_PLUG, mount: TICKER_MOUNT, mountShift: 12 * PIXEL, cableWidth: 2 },',
     ]],
   },
   {
