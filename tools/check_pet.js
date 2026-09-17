@@ -273,9 +273,15 @@ function open(options) {
     },
   };
 
+  /* Скрипт идёт функцией в основном контексте, а не в своём `vm`-контексте:
+     мёртвый контекст V8 отпускает лишь через сборку после той, что нашла
+     его мёртвым, и на самопроверке (33 поломки × десятки миров) они копились
+     до 2 ГБ и валили прогон по памяти. Свободные имена скрипта — те же шесть,
+     что раньше лежали в песочнице, — теперь его параметры. */
+  const NAMES = Object.keys(sandbox);
   try {
-    vm.createContext(sandbox);
-    vm.runInContext(ACTIVE, sandbox, { filename: 'assets/js/pet.js' });
+    const run = vm.compileFunction(ACTIVE, NAMES, { filename: 'assets/js/pet.js' });
+    run.apply(null, NAMES.map(function (key) { return sandbox[key]; }));
   } catch (err) {
     world.error = err;
     return world;

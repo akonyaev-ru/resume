@@ -9,7 +9,7 @@
 'use strict';
 
 const path = require('path');
-const { Tetris } = require(path.join(__dirname, '..', 'assets', 'js', 'console.js'));
+const { Tetris, mergeScores } = require(path.join(__dirname, '..', 'assets', 'js', 'console.js'));
 
 const results = [];
 function check(name, fn) {
@@ -198,6 +198,62 @@ check('пауза останавливает время и ходы', function (
   Tetris.tick(g, Tetris.speed(1));
   if (g.piece.y !== y0 + 1) fail('после паузы время не пошло');
   return 'стоит на паузе, идёт после';
+});
+
+/* --- таблица рекордов: общая десятка и свой рекорд сводятся на экране ------ */
+
+function top(n, from) {
+  const rows = [];
+  for (let i = 0; i < n; i += 1) rows.push({ nick: 'nick-' + String(i + 1).padStart(2, '0'), best: (from || 10000) - i * 1000 });
+  return rows;
+}
+
+check('своя запись встаёт по счёту, десятка не растёт', function () {
+  const table = mergeScores(top(10), { nick: 'mango-07', best: 6500 });
+  if (table.rows.length !== 10) fail('строк ' + table.rows.length + ', а не 10');
+  if (table.rows[4].nick !== 'mango-07' || !table.rows[4].mine) fail('своя не на пятом месте: ' + JSON.stringify(table.rows[4]));
+  if (table.rows[9].nick !== 'nick-09') fail('десятый должен быть nick-09, а не ' + table.rows[9].nick);
+  if (table.extra) fail('своя в десятке, отдельной строки быть не должно');
+  if (table.rows.filter(function (r) { return r.mine; }).length !== 1) fail('своих строк не одна');
+  return 'пятое место, nick-10 выпал';
+});
+
+check('свой ник уже в таблице — строка одна, счёт больший', function () {
+  const table = mergeScores(top(10), { nick: 'NICK-03', best: 8500 });
+  const mine = table.rows.filter(function (r) { return r.nick === 'nick-03'; });
+  if (mine.length !== 1) fail('строк с ником nick-03: ' + mine.length);
+  if (mine[0].best !== 8500 || !mine[0].mine) fail('свой счёт не подставился: ' + JSON.stringify(mine[0]));
+  if (table.rows[2].nick !== 'nick-03') fail('после нового счёта место не третье');
+  const stale = mergeScores(top(10), { nick: 'nick-03', best: 100 });
+  const kept = stale.rows.filter(function (r) { return r.nick === 'nick-03'; })[0];
+  if (!kept || kept.best !== 8000 || !kept.mine) fail('в таблице счёт выше своего — должен остаться он: ' + JSON.stringify(kept));
+  if (stale.extra) fail('при своём нике в десятке отдельной строки не бывает');
+  return 'ник сведён, регистр не мешает, больший счёт побеждает';
+});
+
+check('своя запись вне десятки — отдельной строкой без места', function () {
+  const table = mergeScores(top(10), { nick: 'guest', best: 640 });
+  if (table.rows.length !== 10 || table.rows.some(function (r) { return r.mine; })) fail('своя попала в десятку');
+  if (!table.extra || table.extra.nick !== 'guest' || table.extra.best !== 640 || !table.extra.mine) fail('отдельной строки нет: ' + JSON.stringify(table.extra));
+  return 'десятка целая, своя ниже';
+});
+
+check('равный счёт не обгоняет прежнего рекордсмена', function () {
+  const table = mergeScores(top(10), { nick: 'late', best: 7000 });
+  if (table.rows[3].nick !== 'nick-04' || table.rows[4].nick !== 'late') fail('при равном счёте новичок встал выше: ' + table.rows.map(function (r) { return r.nick; }).join(','));
+  return 'ничья — место за первым';
+});
+
+check('пустая таблица и мусор в данных', function () {
+  const empty = mergeScores([], null);
+  if (empty.rows.length || empty.extra) fail('из ничего что-то вышло');
+  const alone = mergeScores(undefined, { nick: 'solo', best: 300 });
+  if (alone.rows.length !== 1 || alone.rows[0].nick !== 'solo' || !alone.rows[0].mine) fail('свой рекорд без общей таблицы не показан');
+  const dirty = mergeScores([{ nick: '', best: 5 }, { nick: 'ok', best: 'x' }, { nick: 'fine', best: 42 }, null, { best: 7 }], null);
+  if (dirty.rows.length !== 1 || dirty.rows[0].nick !== 'fine') fail('мусор прошёл: ' + JSON.stringify(dirty.rows));
+  const unsorted = mergeScores([{ nick: 'b', best: 10 }, { nick: 'a', best: 20 }], null);
+  if (unsorted.rows[0].nick !== 'a') fail('таблица не отсортирована по счёту');
+  return 'пусто — пусто, мусор отброшен, порядок по счёту';
 });
 
 const failed = results.filter(function (r) { return !r.ok; }).length;

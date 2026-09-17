@@ -1631,6 +1631,20 @@ a:not(.btn):hover { color: var(--text); }
 
 .console__login:disabled { color: var(--text-dim); border-bottom-color: transparent; }
 
+/* Третий экран — таблица рекордов после игры: тот же терминальный текст,
+   что на загрузке; своя строка — акцентом, чтобы найти себя взглядом. */
+.console__scores {
+  margin: 0;
+  white-space: pre;
+  color: var(--text-dim);
+  line-height: 1.5;
+}
+
+.console__scores[hidden] { display: none; }
+.console__scores-title { color: var(--text); }
+.console__scores-row.is-mine { color: var(--accent); }
+.console__scores-foot { display: block; margin-block-start: 0.75em; }
+
 .console__play {
   display: grid;
   grid-template-columns: auto 1fr;
@@ -1730,6 +1744,15 @@ a:not(.btn):hover { color: var(--text); }
 }
 
 .console__key--wide { width: calc(var(--cap) * 2.2); }
+/* Кнопка словом в той же отделке — на третьем экране, «R — ещё раз».
+   Правило ниже колпачка: при равной специфичности ширину берёт последнее. */
+.console__key--text {
+  width: auto;
+  margin-block-start: 0.6em;
+  padding-inline: 0.9em;
+  font-size: inherit;
+  white-space: nowrap;
+}
 
 .console__key-legend {
   position: absolute;

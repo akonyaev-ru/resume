@@ -234,7 +234,41 @@
     rotateShape: rotateShape,
   };
 
-  if (typeof module !== 'undefined' && module.exports) module.exports = { Tetris: Tetris };
+  /* --- таблица рекордов ----------------------------------------------------
+     Общая десятка приходит снимком `data/records.js` (CI кладёт его в
+     репозиторий раз в сутки), свой рекорд — из хранилища браузера. На экране
+     они сводятся: своя запись встаёт на место по счёту, прежняя строка с тем
+     же ником уходит (если там счёт выше — остаётся он), лишнее за десяткой
+     отрезается; не попавшая в десятку своя запись идёт отдельной строкой без
+     места. При равном счёте место за прежним рекордсменом. Чистая функция —
+     проверяется в Node без окна. */
+  var TOP_N = 10;
+
+  function mergeScores(top, own) {
+    var rows = (top || []).map(function (row) {
+      return { nick: String(row && row.nick || '').toLowerCase(), best: Number(row && row.best) || 0, mine: false };
+    }).filter(function (row) { return row.nick && row.best > 0; });
+    rows.sort(function (a, b) { return b.best - a.best; });
+
+    var extra = null;
+    if (own && own.nick && Number(own.best) > 0) {
+      var mine = { nick: String(own.nick).toLowerCase(), best: Number(own.best), mine: true };
+      rows = rows.filter(function (row) {
+        if (row.nick !== mine.nick) return true;
+        mine.best = Math.max(mine.best, row.best);
+        return false;
+      });
+      var at = rows.length;
+      for (var i = 0; i < rows.length; i += 1) {
+        if (mine.best > rows[i].best) { at = i; break; }
+      }
+      rows.splice(at, 0, mine);
+      if (at >= TOP_N) extra = mine;
+    }
+    return { rows: rows.slice(0, TOP_N), extra: extra };
+  }
+
+  if (typeof module !== 'undefined' && module.exports) module.exports = { Tetris: Tetris, mergeScores: mergeScores };
   if (!root || !root.document) return;
 
   /* --- окно ---------------------------------------------------------------- */
@@ -254,6 +288,7 @@
   var LINE_MS = 160;        // пауза между строками
   var BAR_MS = 60;          // деление полосы
   var START_MS = 500;       // от «готово» до игры
+  var OVER_MS = 1500;       // от «игра окончена» до таблицы рекордов: стакан ещё виден
   var BEST_KEY = 'office-tetris-best';
   var NICK_KEY = 'office-tetris-nick';
   var NICK_MAX = 8;         // знаков: столько влезает в табло на стене при шрифте 3x5
@@ -273,6 +308,8 @@
     paused: { ru: 'Пауза', en: 'Paused' },
     over: { ru: 'Игра окончена', en: 'Game over' },
     again: { ru: 'R — ещё раз', en: 'R — again' },
+    scores: 'hi-scores',
+    nobody: { ru: 'пока никого — будешь первым', en: 'nobody yet — be the first' },
     close: { ru: 'Закрыть', en: 'Close' },
     keys: {
       left: { ru: 'Влево (←)', en: 'Left (←)' },
@@ -330,7 +367,7 @@
   var timers = [];
   var raf = 0;
   var lastFrame = 0;
-  var phase = 'closed'; // closed | boot | login | play
+  var phase = 'closed'; // closed | boot | login | play | scores
   var nick = '';        // ник текущей партии: с `login:` или из хранилища
   var cell = CELL_MAX;
 
@@ -434,6 +471,11 @@
       ]),
       keyRow,
     ]);
+    // Третий экран — таблица рекордов после игры: терминальный текст, как
+    // загрузка. Кнопка — для пальца и мыши, с клавиатуры то же делает R.
+    var scores = el('pre', { class: 'console__scores', hidden: true, 'aria-live': 'polite' });
+    var again = el('button', { class: 'console__key console__key--text', type: 'button', text: t(TEXT.again) });
+    again.addEventListener('click', function () { startGame(); });
     var closeBtn = el('button', { class: 'console__close', type: 'button', 'aria-label': t(TEXT.close), title: t(TEXT.close), text: '×' });
     closeBtn.addEventListener('click', close);
     var dialog = el('div', { class: 'console', role: 'dialog', 'aria-modal': 'true', 'aria-label': t(TEXT.title), tabindex: '-1' }, [
@@ -444,13 +486,13 @@
         el('span', { class: 'console__hint', text: t(TEXT.hint) }),
         closeBtn,
       ]),
-      el('div', { class: 'console__body' }, [log, play]),
+      el('div', { class: 'console__body' }, [log, play, scores]),
     ]);
     var veil = el('div', { class: 'console-veil', hidden: true }, [dialog]);
     veil.addEventListener('mousedown', function (event) { if (event.target === veil) close(); });
     document.body.appendChild(veil);
 
-    ui = { veil: veil, dialog: dialog, log: log, play: play, field: field, preview: preview, stats: stats, overlay: overlay, keys: keys, keyRow: keyRow, closeBtn: closeBtn };
+    ui = { veil: veil, dialog: dialog, log: log, play: play, scores: scores, again: again, field: field, preview: preview, stats: stats, overlay: overlay, keys: keys, keyRow: keyRow, closeBtn: closeBtn };
     return ui;
   }
 
@@ -474,6 +516,7 @@
     ui.log.textContent = '';
     ui.log.hidden = false;
     ui.play.hidden = true;
+    ui.scores.hidden = true;
 
     if (LESS_MOTION) { finishBoot(); return; }
 
@@ -606,6 +649,7 @@
     phase = 'play';
     game = create();
     ui.log.hidden = true;
+    ui.scores.hidden = true;
     ui.play.hidden = false;
     ui.overlay.hidden = true;
     fitWindow();
@@ -683,6 +727,55 @@
     }
   }
 
+  /* Третий экран: общая десятка со своей записью на своём месте, счёт
+     партии и подсказка. Данные — `window.RECORDS` из `data/records.js`;
+     без файла или с пустым — только своя запись, либо честное «пока никого». */
+  function readTop() {
+    var data = root.RECORDS;
+    return data && data.top && data.top.length ? data.top : [];
+  }
+
+  function padLeft(value, width) {
+    var text = String(value);
+    while (text.length < width) text = ' ' + text;
+    return text;
+  }
+
+  function padRight(value, width) {
+    var text = String(value);
+    while (text.length < width) text += ' ';
+    return text;
+  }
+
+  // Строка таблицы: место (пусто у своей записи вне десятки), ник, счёт.
+  function scoreLine(rank, row) {
+    var text = padLeft(rank === null ? '' : rank, 2) + '  ' + padRight(row.nick, NICK_MAX) + '  ' + padLeft(row.best, 6) + '\n';
+    return el('span', { class: 'console__scores-row' + (row.mine ? ' is-mine' : ''), text: text });
+  }
+
+  function showScores() {
+    if (phase !== 'play') return;
+    phase = 'scores';
+    root.cancelAnimationFrame(raf);
+    ui.play.hidden = true;
+    ui.overlay.hidden = true;
+
+    var pane = ui.scores;
+    pane.textContent = '';
+    pane.appendChild(el('span', { class: 'console__scores-title', text: TEXT.scores + '\n' }));
+    var table = mergeScores(readTop(), readRecord());
+    if (!table.rows.length) pane.appendChild(document.createTextNode(t(TEXT.nobody) + '\n'));
+    table.rows.forEach(function (row, i) { pane.appendChild(scoreLine(i + 1, row)); });
+    if (table.extra) {
+      pane.appendChild(document.createTextNode('\n'));
+      pane.appendChild(scoreLine(null, table.extra));
+    }
+    pane.appendChild(el('span', { class: 'console__scores-foot', text: t(TEXT.score) + ' ' + game.score + ' · ' + t(TEXT.again) + ' · ' + t(TEXT.hint) + '\n' }));
+    pane.appendChild(ui.again);
+    pane.hidden = false;
+    ui.dialog.focus();
+  }
+
   function showOverlay(title, text) {
     ui.overlay.hidden = false;
     ui.overlay.firstChild.textContent = title;
@@ -704,7 +797,8 @@
         ui.stats.best.textContent = bestLabel();
       }
       showOverlay(t(TEXT.over), t(TEXT.score) + ' ' + game.score + ' · ' + t(TEXT.again) + ' · ' + t(TEXT.hint));
-      return;   // без кадров, пока не нажмут R или Esc
+      later(showScores, OVER_MS);
+      return;   // без кадров: дальше таблица, R или Esc
     }
     raf = root.requestAnimationFrame(loop);
   }
@@ -752,6 +846,13 @@
     // Ввод ника: клавиши идут в поле, Enter подтверждает и там, и здесь.
     if (phase === 'login') {
       if (event.key === 'Enter') { event.preventDefault(); confirmLogin(ui.login); }
+      return;
+    }
+    if (phase === 'scores') {
+      if (event.key === 'Enter' || event.key === ' ' || KEYS[event.key] === 'restart') {
+        event.preventDefault();
+        startGame();
+      }
       return;
     }
     if (phase === 'boot') {
