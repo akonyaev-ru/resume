@@ -325,8 +325,30 @@
     return found && NICK_WORDS.indexOf(found[1]) >= 0 ? found[0] : '';
   }
 
+  /* Стоит ли слать рекорд в общую таблицу: только когда у него есть шанс
+     в ней оказаться — десятка неполная, счёт выше её нижней строки или
+     улучшена своя строка. Так в таблицу ответов не сыплется всё подряд, а
+     заведомо не проходящее остаётся в браузере. */
+  function worthSending(top, own) {
+    if (!own || !own.nick || !(Number(own.best) > 0)) return false;
+    var mine = String(own.nick).toLowerCase();
+    var best = Number(own.best);
+    var rows = (top || []).filter(function (row) {
+      return row && row.nick && Number(row.best) > 0;
+    });
+    for (var i = 0; i < rows.length; i += 1) {
+      if (String(rows[i].nick).toLowerCase() === mine) return best > Number(rows[i].best);
+    }
+    if (rows.length < TOP_N) return true;
+    var floor = rows.reduce(function (low, row) { return Math.min(low, Number(row.best)); }, Infinity);
+    return best > floor;
+  }
+
   if (typeof module !== 'undefined' && module.exports) {
-    module.exports = { Tetris: Tetris, mergeScores: mergeScores, makeNick: makeNick, validNick: validNick, NICK_WORDS: NICK_WORDS };
+    module.exports = {
+      Tetris: Tetris, mergeScores: mergeScores, worthSending: worthSending,
+      makeNick: makeNick, validNick: validNick, NICK_WORDS: NICK_WORDS,
+    };
   }
   if (!root || !root.document) return;
 
@@ -348,6 +370,16 @@
   var BAR_MS = 60;          // деление полосы
   var START_MS = 500;       // от «готово» до игры
   var OVER_MS = 1500;       // от «игра окончена» до таблицы рекордов: стакан ещё виден
+  /* Приёмник общей таблицы — Google-форма владельца: страница шлёт в неё
+     POST с ником и счётом. Ответ формы не читается (`no-cors`), успеха
+     страница не знает и не ждёт: свой рекорд у неё в браузере, общая
+     десятка приедет снимком `data/records.js` после ежедневного прогона.
+     Адрес и номера полей — из предзаполненной ссылки формы. */
+  var RECORDS_FORM = {
+    url: 'https://docs.google.com/forms/d/e/1FAIpQLSdCP_iHRmjFXiLs_9vf4y1aiSYLppR0MM-oLz6gSUC4y5UpJQ/formResponse',
+    nick: 'entry.928209438',
+    score: 'entry.1739214668',
+  };
   var BEST_KEY = 'office-tetris-best';
   var NICK_KEY = 'office-tetris-nick';
 
@@ -476,6 +508,18 @@
     try {
       document.dispatchEvent(new root.CustomEvent('office:record', { detail: record }));
     } catch (e) { /* без CustomEvent табло обновится при следующей загрузке */ }
+  }
+
+  function submitRecord(record) {
+    if (!root.fetch || !root.URLSearchParams) return;
+    var body = new root.URLSearchParams();
+    body.set(RECORDS_FORM.nick, record.nick);
+    body.set(RECORDS_FORM.score, String(record.best));
+    try {
+      // keepalive: запрос доживёт, даже если вкладку закрыли сразу после партии.
+      root.fetch(RECORDS_FORM.url, { method: 'POST', mode: 'no-cors', body: body, keepalive: true })
+        .catch(function () { /* сеть или блокировщик — рекорд остаётся своим */ });
+    } catch (e) { /* то же */ }
   }
 
   function build() {
@@ -848,7 +892,9 @@
     render();
     if (game.over) {
       if (game.score > readBest()) {
-        announceRecord({ nick: nick, best: game.score });
+        var record = { nick: nick, best: game.score };
+        announceRecord(record);
+        if (worthSending(readTop(), record)) submitRecord(record);
         ui.stats.best.textContent = bestLabel();
       }
       showOverlay(t(TEXT.over), t(TEXT.score) + ' ' + game.score + ' · ' + t(TEXT.again) + ' · ' + t(TEXT.hint));

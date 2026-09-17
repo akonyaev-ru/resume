@@ -9,7 +9,7 @@
 'use strict';
 
 const path = require('path');
-const { Tetris, mergeScores, makeNick, validNick, NICK_WORDS } = require(path.join(__dirname, '..', 'assets', 'js', 'console.js'));
+const { Tetris, mergeScores, makeNick, validNick, worthSending, NICK_WORDS } = require(path.join(__dirname, '..', 'assets', 'js', 'console.js'));
 
 const results = [];
 function check(name, fn) {
@@ -314,6 +314,40 @@ check('список слов: короткие, латиница, без пов�
     dirty.forEach(function (bad) { if (word.indexOf(bad) >= 0) fail('созвучие «' + bad + '» в слове ' + word); });
   });
   return NICK_WORDS.length + ' слов чистые';
+});
+
+/* --- отправка рекорда в общую таблицу: только когда есть шанс попасть в десятку */
+
+check('порог отправки: десятка неполная — шлём любой рекорд', function () {
+  if (!worthSending(top(3), { nick: 'lynx-07', best: 1 })) fail('при трёх строках рекорд 1 не отправлен');
+  if (!worthSending([], { nick: 'lynx-07', best: 5 })) fail('при пустой таблице рекорд не отправлен');
+  if (worthSending([], { nick: 'lynx-07', best: 0 })) fail('нулевой счёт отправлен');
+  if (worthSending([], null)) fail('без рекорда что-то отправлено');
+  return 'неполная десятка принимает всё, ноль и пустота — нет';
+});
+
+check('порог отправки: десятка полная — только выше нижней строки', function () {
+  const full = top(10);   // 10000 … 1000
+  if (worthSending(full, { nick: 'lynx-07', best: 900 })) fail('900 ниже 1000, а отправлено');
+  if (worthSending(full, { nick: 'lynx-07', best: 1000 })) fail('1000 равно нижней строке, а отправлено');
+  if (!worthSending(full, { nick: 'lynx-07', best: 1001 })) fail('1001 выше нижней, а не отправлено');
+  return 'ниже и вровень — нет, выше — да';
+});
+
+check('порог отправки: свой ник уже в десятке — шлём улучшение, не шлём то же', function () {
+  const full = top(10).map(function (r, i) { return i === 6 ? { nick: 'lynx-07', best: 4000 } : r; });
+  if (!worthSending(full, { nick: 'LYNX-07', best: 4001 })) fail('улучшение своей строки не отправлено');
+  if (worthSending(full, { nick: 'lynx-07', best: 4000 })) fail('тот же счёт отправлен повторно');
+  if (worthSending(full, { nick: 'lynx-07', best: 3999 })) fail('счёт ниже своей строки отправлен');
+  const mine = top(10).map(function (r, i) { return i === 9 ? { nick: 'lynx-07', best: 1000 } : r; });
+  if (!worthSending(mine, { nick: 'lynx-07', best: 1001 })) fail('улучшение своей нижней строки не отправлено');
+  return 'улучшение — да, повтор и хуже — нет';
+});
+
+check('порог отправки: мусор в таблице не считается строками', function () {
+  const dirty = top(9).concat([{ nick: '', best: 5 }, { nick: 'bad', best: 'x' }, null]);
+  if (!worthSending(dirty, { nick: 'lynx-07', best: 1 })) fail('девять годных строк и мусор — десятка неполная, рекорд должен уйти');
+  return 'мусор отброшен, десятка неполная';
 });
 
 const failed = results.filter(function (r) { return !r.ok; }).length;

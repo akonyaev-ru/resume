@@ -11,7 +11,7 @@ name: Deploy
   workflow_dispatch: {}
 
 permissions:
-  contents: read
+  contents: write   # снимок таблицы рекордов коммитится этим же прогоном
   pages: write
   id-token: write
 
@@ -42,6 +42,27 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+
+      # Общая десятка рекордов тетриса — снимок опубликованной таблицы ответов
+      # Google-формы. В отличие от звёзд, снимок коммитится: меняется он редко,
+      # а при недоступной таблице на сайте остаётся вчерашняя десятка, не
+      # пустая. Пуш токеном прогона нового прогона не запускает — и не нужно:
+      # этот же прогон выложит страницу со свежим файлом. Не прошёл пуш
+      # (кто-то запушил раньше) — файл всё равно уедет на сайт, коммит
+      # повторится следующим прогоном.
+      - name: Обновить таблицу рекордов
+        run: |
+          python tools/check_records.py
+          python scripts/fetch_records.py
+          if git diff --quiet -- data/records.js; then
+            echo "Таблица рекордов не изменилась"
+          else
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add data/records.js
+            git commit -m "Таблица рекордов: снимок $(date -u +%F)"
+            git push origin HEAD:main || echo "Пуш не прошёл — снимок уедет на сайт и так"
+          fi
 
       # Счётчики звёзд подставляются на лету — в репозитории они не хранятся,
       # поэтому история не засоряется коммитами бота.
