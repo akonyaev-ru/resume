@@ -1194,6 +1194,62 @@ function cameraOf(world) {
   };
 }
 
+/* Камера смотрит на курсор: объектив (клетки цвета `l`) идёт за ним — курсор
+   далеко справа — объектив справа, корпус горизонтален; курсор под камерой —
+   объектив внизу, корпус вертикален; между — по диагонали. Поворот
+   спрашивается не реже, чем раз в 200 мс. Где в кадре объектив, считаем по
+   закрашенным клеткам, а не по номеру кадра: номер — внутреннее дело. */
+function lensOf(world, cam) {
+  const el = world.made[cam.layers[0].id];
+  if (!el || !el.paint.length) fail('кадр камеры пуст');
+  const lens = el.paint.filter(function (c) { return c.c === '#6fb7d6' || c.c === '#e7eaf2'; });
+  if (!lens.length) fail('в кадре камеры нет объектива');
+  const cell = NUM.PIXEL;
+  return {
+    x: lens.reduce(function (s, c) { return s + c.x; }, 0) / lens.length / cell,
+    y: lens.reduce(function (s, c) { return s + c.y; }, 0) / lens.length / cell,
+  };
+}
+
+check('камера смотрит на курсор: справа — горизонтально, под ней — вниз', function () {
+  const world = open({ seed: 3 });
+  world.step(300);
+  const cam = world.things.filter(function (t) { return t.title === 'Перевесить камеру'; })[0];
+  if (!cam) fail('камеры в обстановке нет');
+  const box = cam.getBoundingClientRect();
+  const cx = (box.left + box.right) / 2;
+  const cy = (box.top + box.bottom) / 2;
+
+  world.win('mousemove', { clientX: cx + 900, clientY: cy });
+  world.step(220);
+  const right = lensOf(world, cam);
+  if (right.x < 7 || right.y > 6.5) fail('курсор далеко справа, а объектив не справа: ' + JSON.stringify(right));
+
+  world.win('mousemove', { clientX: cx, clientY: cy + 500 });
+  world.step(220);
+  const down = lensOf(world, cam);
+  if (down.y < 6.5 || down.x > 4) fail('курсор под камерой, а объектив не внизу: ' + JSON.stringify(down));
+
+  world.win('mousemove', { clientX: cx + 300, clientY: cy + 300 });
+  world.step(220);
+  const diag = lensOf(world, cam);
+  if (!(diag.x <= right.x && diag.x > down.x && diag.y > right.y && diag.y < down.y)) {
+    fail('курсор по диагонали, а объектив не между крайними: ' + JSON.stringify({ right: right, diag: diag, down: down }));
+  }
+
+  // Между «вниз» и «по диагонали» есть ещё хотя бы одно положение: поворот не рывком.
+  world.win('mousemove', { clientX: cx + 120, clientY: cy + 300 });
+  world.step(220);
+  const steep = lensOf(world, cam);
+  if (!(steep.y > diag.y && steep.y < down.y + 0.01 && steep.x < diag.x)) {
+    fail('крутая диагональ не отличается от соседей: ' + JSON.stringify({ diag: diag, steep: steep, down: down }));
+  }
+  if (Math.abs(steep.y - down.y) < 0.01 && Math.abs(steep.x - down.x) < 0.01) fail('крутая диагональ совпала с «вниз»');
+
+  return 'справа x≈' + right.x.toFixed(1) + ', по диагонали ' + diag.x.toFixed(1) + '/' + diag.y.toFixed(1) +
+    ', круто ' + steep.x.toFixed(1) + '/' + steep.y.toFixed(1) + ', вниз y≈' + down.y.toFixed(1);
+});
+
 check('камеру сорвали — висит на проводе и не работает', function () {
   const world = open({ seed: 3 });
   world.step(500);
@@ -1858,8 +1914,8 @@ const BREAKS = [
     name: 'сорванная камера продолжает работать',
     red: 'камеру сорвали — висит на проводе и не работает',
     parts: [[
-      '    if (me.torn) return CAMERA_BARE + (me.grab ? 1 : 2) * 2;',
-      '    if (false) return CAMERA_BARE + (me.grab ? 1 : 2) * 2;',
+      '    if (me.torn) return CAMERA_BARE + (me.grab ? 1 : CAMERA_TILTS.length - 1) * 2;',
+      '    if (false) return CAMERA_BARE + (me.grab ? 1 : CAMERA_TILTS.length - 1) * 2;',
     ]],
   },
   {
