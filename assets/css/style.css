@@ -247,6 +247,9 @@ a:not(.btn):hover { color: var(--text); }
 /* Предмет, который нажимают (компьютер): курсор-указатель, а не «хваталка»;
    перетащить его всё равно можно — щелчок отличается от захвата сдвигом. */
 .thing--button { cursor: pointer; }
+
+/* Неподвижное (табло на держателях): щелчки и курсор — как у стены. */
+.thing--fixed { cursor: default; pointer-events: none !important; }
 .thing--button:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
 
 /* На телефоне существо только мешало: `position: fixed` считается от

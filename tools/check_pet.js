@@ -934,7 +934,7 @@ check('щелчок по компьютеру открывает консоль,
 check('табло рекорда бежит справа под планкой и слышит новый рекорд', function () {
   const world = open({ seed: 5 });
   world.step(300);
-  const board = world.things.filter(function (one) { return one.title === 'Перевесить табло'; })[0];
+  const board = world.things.filter(function (one) { return one.title === 'Табло рекорда'; })[0];
   if (!board || !board.layers.length) fail('табло не нарисовано');
   const at = board.spot();
   if (at.x !== world.wide() - board.width - NUM.EDGE) fail('табло не у правого края: x ' + at.x);
@@ -956,53 +956,35 @@ check('табло рекорда бежит справа под планкой �
   return 'кадров ' + frames + ', после рекорда новые и бегут';
 });
 
-/* Табло на проводе: сорвали — провод в две клетки держит, отпустили —
-   висит под пластиной по центру верхней кромки, а строка бежит дальше. */
-check('табло сорвали — висит на проводе по центру и бежит дальше', function () {
+/* Табло на двух держателях: неподвижно — захват его не сдвигает, провода у
+   него нет (провод в обстановке один, камерин), под курсором не поднимается. */
+check('табло на держателях: не сдвинуть, провода нет, не приподнимается', function () {
   const world = open({ seed: 3 });
   world.step(500);
-  const board = world.things.filter(function (t) { return t.title === 'Перевесить табло'; })[0];
+  const board = world.things.filter(function (t) { return t.title === 'Табло рекорда'; })[0];
   if (!board) fail('табло в обстановке нет');
-  const cord = world.cords[1];
-  if (!cord) fail('у табло нет холста провода');
-  if (!cord.hidden) fail('провод виден до срыва');
-  const mount = board.spot();
-  const anchor = { x: mount.x + 13 * NUM.PIXEL, y: world.high() - mount.y - board.height };
-  const plug = function () { const b = board.getBoundingClientRect(); return { x: b.left + 13 * NUM.PIXEL, y: b.top }; };
+  if (world.cords.length !== 1) fail('проводов в обстановке ' + world.cords.length + ', а не один (камерин)');
+  if (board.className.indexOf('--fixed') < 0) fail('табло не помечено неподвижным');
+  const before = board.spot();
 
   const box = board.getBoundingClientRect();
   board.fire('mousedown', event(box.left + 30, box.top + 10));
   world.step(FRAME_MS);
-  const far = event(box.left + 30 - 250, box.top + 10 + 200);
-  world.win('mousemove', far);
+  world.win('mousemove', event(box.left + 30 - 250, box.top + 10 + 200));
   world.step(FRAME_MS);
-  const at = plug();
-  const pulled = Math.hypot(at.x - anchor.x, at.y - anchor.y);
-  if (pulled > NUM.CABLE + 1) fail('утащили дальше провода: ' + pulled.toFixed(1));
-  if (pulled < NUM.CABLE - 1) fail('провод не натянулся: ' + pulled.toFixed(1));
-  if (cord.hidden) fail('после срыва провод не показан');
-  // Провод толще камерного: клетки по 2 PIXEL, их меньше, чем у тонкого.
-  const thick = cord.paint.filter(function (c) { return c.w === 2 * NUM.PIXEL; }).length;
-  if (thick < NUM.CABLE / (2 * NUM.PIXEL)) fail('провод не в две клетки: толстых клеток ' + thick);
-
-  world.win('mouseup', far);
-  let swings = 0;
-  let prev = board.spot().x;
-  const seen = new Set();
-  world.step(4000, function () {
-    const x = board.spot().x;
-    if (x !== prev) swings += 1;
-    prev = x;
-    if (board.layers[0]) seen.add(board.layers[0].id);
-  });
-  if (swings < 10) fail('после отпускания не качалось: сдвигов ' + swings);
-  const rest = plug();
-  if (Math.abs(rest.x - anchor.x) > 2 || Math.abs(rest.y - (anchor.y + NUM.CABLE)) > 2) {
-    fail('повисло не под креплением: вход провода ' + rest.x.toFixed(0) + ',' + rest.y.toFixed(0) +
-      ', ждали ' + anchor.x + ',' + (anchor.y + NUM.CABLE));
+  world.win('mouseup', event(box.left + 30 - 250, box.top + 10 + 200));
+  world.step(1000);
+  const after = board.spot();
+  if (after.x !== before.x || after.y !== before.y) {
+    fail('табло сдвинули: ' + before.x + ',' + before.y + ' → ' + after.x + ',' + after.y);
   }
-  if (seen.size < 8) fail('на проводе строка перестала бежать: кадров ' + seen.size);
-  return 'провод ' + NUM.CABLE + ' держит, качалось ' + swings + ' сдвигов, повисло по центру, кадров ' + seen.size;
+
+  // Курсор над табло: ни подъёма, ни приёма щелчков.
+  world.win('mousemove', event(box.left + 30, box.top + 10));
+  world.step(FRAME_MS);
+  if (board.spot().y !== before.y) fail('под курсором табло приподнялось');
+  if (board.style.pointerEvents === 'auto') fail('табло ловит щелчки');
+  return 'на месте после захвата, провода нет, под курсором не поднимается';
 });
 
 /* Экран компьютера живёт: за три секунды сменяется много кадров; в тихом
@@ -1987,11 +1969,11 @@ const BREAKS = [
     ]],
   },
   {
-    name: 'табло без провода',
-    red: 'табло сорвали — висит на проводе по центру и бежит дальше',
+    name: 'табло можно утащить',
+    red: 'табло на держателях: не сдвинуть, провода нет, не приподнимается',
     parts: [[
-      '      cable: true, plug: TICKER_PLUG, mount: TICKER_MOUNT, mountShift: 12 * PIXEL, cableWidth: 2 },',
-      '      plug: TICKER_PLUG, mount: TICKER_MOUNT, mountShift: 12 * PIXEL, cableWidth: 2 },',
+      '      if (LESS_MOTION || me.hidden || spec.fixed) return;',
+      '      if (LESS_MOTION || me.hidden) return;',
     ]],
   },
   {

@@ -238,8 +238,7 @@
       f: '#39404f',          // рамка табло
       b: '#0b1018',          // тёмное стекло
       a: '#ffb454',          // точки — янтарь, как счёт в тетрисе
-      m: '#39404f',          // пластина крепления на планке
-      c: '#2a3038',          // провод — как у камеры
+      h: '#39404f',          // держатели по бокам — от планки к верхним углам
     },
     camera: {
       m: '#39404f',          // кронштейн: пластина под планкой и стойка
@@ -1067,12 +1066,7 @@
   var BRACKET = ['mmmm', '.mm.', '.mm.', '.m..'];
   // Где провод входит в камеру — клетка диода, там же корпус сидел на стойке.
   var CAMERA_PLUG = { x: 2 * PIXEL, y: 3 * PIXEL };
-  /* Табло тоже на проводе: вход — середина верхней кромки, крепление на
-     планке — пластина в три клетки над ним, провод вдвое толще камерного —
-     табло шире и тяжелее на вид. Сорванное табло бежать не перестаёт:
-     провод у него и есть питание (у камеры диод гаснет — так просил владелец). */
-  var TICKER_PLUG = { x: 13 * PIXEL, y: 0 };
-  var TICKER_MOUNT = ['mmm'];
+
 
   // Стол: столешница с передней гранью, две ножки, между ними системный блок
   // с диодом и щелью привода. Двадцать клеток на восемь — как диван, но выше.
@@ -1182,6 +1176,10 @@
      заново. Форму владелец выбрал из двух после отвергнутых табличек. */
   var TICKER_W = 27;
   var TICKER_H = 9;
+  // Держатели: два столбика по две клетки у краёв, от планки к верхним углам
+  // табло. Табло на них неподвижно — снять его нельзя (решение владельца
+  // после провода: «просто два держателя по бокам, и двигать нельзя»).
+  var TICKER_HOLDERS = ['.hh.....................hh.', '.hh.....................hh.'];
   var TICK_MS = 120;
   var RECORD_KEYS = { nick: 'office-tetris-nick', best: 'office-tetris-best' };
 
@@ -1217,7 +1215,7 @@
     }
     var frames = [];
     for (var offset = 0; offset < cols; offset += 1) {
-      var art = [];
+      var art = TICKER_HOLDERS.slice();
       for (var ry = 0; ry < TICKER_H; ry += 1) {
         var line = '';
         for (var rx = 0; rx < TICKER_W; rx += 1) {
@@ -2341,6 +2339,8 @@
     // и на узком окне, где боковых полей нет, оно спрятано.
     canvas.className = spec.wall || spec.ceiling ? 'thing thing--wall' : 'thing';
     if (spec.click) canvas.className += ' thing--button';
+    // Неподвижное (табло на держателях): щелчки насквозь, курсор обычный.
+    if (spec.fixed) canvas.className += ' thing--fixed';
     canvas.width = art.width;
     canvas.height = art.height;
     canvas.setAttribute('aria-hidden', 'true');
@@ -2544,7 +2544,7 @@
     // Холст прозрачен для щелчков, пока курсор не на самой полке: иначе она
     // съедала бы нажатия по странице под собой.
     function hover(x, y) {
-      if (me.grab) return;
+      if (me.grab || spec.fixed) return;   // неподвижное не берётся и не приподнимается
 
       var box = canvas.getBoundingClientRect();
       var on = x > box.left && x < box.right && y > box.top && y < box.bottom;
@@ -2559,7 +2559,7 @@
     }
 
     function take(event) {
-      if (LESS_MOTION || me.hidden) return;
+      if (LESS_MOTION || me.hidden || spec.fixed) return;
       event.preventDefault();
 
       var box = canvas.getBoundingClientRect();
@@ -2844,9 +2844,8 @@
     { name: 'camera', art: CAMERA, skin: SKIN.camera, title: 'Перевесить камеру',
       at: 0, ceiling: true, face: cameraFace, every: 500, rest: 2, cable: true },
     // Табло рекорда: бегущая строка под планкой у правого края.
-    { name: 'ticker', art: TICKER, skin: SKIN.ticker, dots: 'a', title: 'Перевесить табло',
-      at: 1, ceiling: true, face: tickerFace, every: TICK_MS, rest: 0,
-      cable: true, plug: TICKER_PLUG, mount: TICKER_MOUNT, mountShift: 12 * PIXEL, cableWidth: 2 },
+    { name: 'ticker', art: TICKER, skin: SKIN.ticker, dots: 'a', title: 'Табло рекорда',
+      at: 1, ceiling: true, face: tickerFace, every: TICK_MS, rest: 0, fixed: true },
   ].map(function (spec) {
     var thing = makeThing(spec);
     thing.name = spec.name;
