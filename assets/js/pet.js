@@ -234,6 +234,11 @@
       K: '#9aa2b2',          // и светлые
       m: '#9aa2b2',          // мышь
     },
+    ticker: {
+      f: '#39404f',          // рамка табло
+      b: '#0b1018',          // тёмное стекло
+      a: '#ffb454',          // точки — янтарь, как счёт в тетрисе
+    },
     camera: {
       m: '#39404f',          // кронштейн: пластина под планкой и стойка
       f: '#5e6778',          // корпус, верх — графит, выбор владельца из светлого и тёмного
@@ -1135,6 +1140,91 @@
   }
   var COMPUTER = computerFrames();
 
+  /* Шрифт 3x5 для табло: латиница, цифры, дефис. Тот же, что был в табличке
+     EXIT; ник в консоли ограничен этими знаками, так что кириллица не нужна. */
+  var FONT = {
+    '0': ['###', '#.#', '#.#', '#.#', '###'], '1': ['.#.', '##.', '.#.', '.#.', '###'],
+    '2': ['###', '..#', '###', '#..', '###'], '3': ['###', '..#', '###', '..#', '###'],
+    '4': ['#.#', '#.#', '###', '..#', '..#'], '5': ['###', '#..', '###', '..#', '###'],
+    '6': ['###', '#..', '###', '#.#', '###'], '7': ['###', '..#', '..#', '..#', '..#'],
+    '8': ['###', '#.#', '###', '#.#', '###'], '9': ['###', '#.#', '###', '..#', '###'],
+    A: ['###', '#.#', '###', '#.#', '#.#'], B: ['##.', '#.#', '##.', '#.#', '##.'],
+    C: ['###', '#..', '#..', '#..', '###'], D: ['##.', '#.#', '#.#', '#.#', '##.'],
+    E: ['###', '#..', '###', '#..', '###'], F: ['###', '#..', '###', '#..', '#..'],
+    G: ['###', '#..', '#.#', '#.#', '###'], H: ['#.#', '#.#', '###', '#.#', '#.#'],
+    I: ['###', '.#.', '.#.', '.#.', '###'], J: ['..#', '..#', '..#', '#.#', '###'],
+    K: ['#.#', '#.#', '##.', '#.#', '#.#'], L: ['#..', '#..', '#..', '#..', '###'],
+    M: ['#.#', '###', '###', '#.#', '#.#'], N: ['##.', '#.#', '#.#', '#.#', '#.#'],
+    O: ['###', '#.#', '#.#', '#.#', '###'], P: ['###', '#.#', '###', '#..', '#..'],
+    Q: ['###', '#.#', '#.#', '###', '..#'], R: ['###', '#.#', '##.', '#.#', '#.#'],
+    S: ['###', '#..', '###', '..#', '###'], T: ['###', '.#.', '.#.', '.#.', '.#.'],
+    U: ['#.#', '#.#', '#.#', '#.#', '###'], V: ['#.#', '#.#', '#.#', '#.#', '.#.'],
+    W: ['#.#', '#.#', '###', '###', '#.#'], X: ['#.#', '#.#', '.#.', '#.#', '#.#'],
+    Y: ['#.#', '#.#', '###', '.#.', '.#.'], Z: ['###', '..#', '.#.', '#..', '###'],
+    '-': ['...', '...', '###', '...', '...'], '_': ['...', '...', '...', '...', '###'],
+    ' ': ['...', '...', '...', '...', '...'],
+  };
+
+  /* Табло рекорда — бегущая строка: узкая точечная матрица под планкой меню
+     у правого края, зеркально камере слева. По окну в 25 столбцов едет
+     «HI <ник> <счёт>» из хранилища браузера; без рекорда — «HI-SCORE ---», а не
+     выдуманные цифры. Кадр — на каждый столбец сдвига, точки 2x2 px внутри
+     клетки (`dots`), чтобы читалось как светодиоды, а не как кирпичи. Новый
+     рекорд консоль объявляет событием `office:record`, и кадры собираются
+     заново. Форму владелец выбрал из двух после отвергнутых табличек. */
+  var TICKER_W = 27;
+  var TICKER_H = 9;
+  var TICK_MS = 120;
+  var RECORD_KEYS = { nick: 'office-tetris-nick', best: 'office-tetris-best' };
+
+  function readRecord() {
+    try {
+      var best = Number(window.localStorage.getItem(RECORD_KEYS.best)) || 0;
+      var nick = window.localStorage.getItem(RECORD_KEYS.nick) || '';
+      return best > 0 ? { nick: nick, best: best } : null;
+    } catch (e) { return null; }
+  }
+
+  function tickerText(record) {
+    if (!record) return 'HI-SCORE ---';
+    return 'HI ' + (record.nick || 'GUEST').toUpperCase() + ' ' + record.best;
+  }
+
+  function tickerFrames(text) {
+    // Лента текста: каждый знак 3 клетки плюс просвет, в конце — пауза в 8.
+    var cols = text.length * 4 + 8;
+    var strip = [];
+    for (var y = 0; y < 5; y += 1) {
+      var row = [];
+      for (var x = 0; x < cols; x += 1) row.push(false);
+      strip.push(row);
+    }
+    for (var i = 0; i < text.length; i += 1) {
+      var glyph = FONT[text.charAt(i).toUpperCase()] || FONT[' '];
+      for (var gy = 0; gy < 5; gy += 1) {
+        for (var gx = 0; gx < 3; gx += 1) {
+          if (glyph[gy].charAt(gx) === '#') strip[gy][i * 4 + gx] = true;
+        }
+      }
+    }
+    var frames = [];
+    for (var offset = 0; offset < cols; offset += 1) {
+      var art = [];
+      for (var ry = 0; ry < TICKER_H; ry += 1) {
+        var line = '';
+        for (var rx = 0; rx < TICKER_W; rx += 1) {
+          var edge = ry === 0 || ry === TICKER_H - 1 || rx === 0 || rx === TICKER_W - 1;
+          var lit = !edge && ry >= 2 && ry <= 6 && strip[ry - 2][(rx - 1 + offset) % cols];
+          line += edge ? 'f' : lit ? 'a' : 'b';
+        }
+        art.push(line);
+      }
+      frames.push(art);
+    }
+    return frames;
+  }
+  var TICKER = tickerFrames(tickerText(readRecord()));
+
   // Растение в кадке: четыре листа на стеблях. Кадр тоже один.
   var PLANT = [
         '....hll......',
@@ -1435,7 +1525,7 @@
     return Math.min(high, Math.max(low, value));
   }
 
-  function render(art, flip, skin) {
+  function render(art, flip, skin, dots) {
     var width = art[0].length;
     var canvas = document.createElement('canvas');
     canvas.width = width * PIXEL;
@@ -1444,11 +1534,14 @@
     var ctx = canvas.getContext('2d');
     for (var y = 0; y < art.length; y += 1) {
       for (var x = 0; x < art[y].length; x += 1) {
-        var color = skin[art[y].charAt(x)];
+        var ch = art[y].charAt(x);
+        var color = skin[ch];
         if (!color) continue;
 
+        // Знаки из `dots` — точки 2x2 в клетке: светодиоды табло.
+        var size = dots && dots.indexOf(ch) >= 0 ? PIXEL - 1 : PIXEL;
         ctx.fillStyle = color;
-        ctx.fillRect((flip ? width - 1 - x : x) * PIXEL, y * PIXEL, PIXEL, PIXEL);
+        ctx.fillRect((flip ? width - 1 - x : x) * PIXEL, y * PIXEL, size, size);
       }
     }
 
@@ -2213,6 +2306,12 @@
     return Math.floor(now / COMPUTER_MS) % COMPUTER.length;
   }
 
+  // Табло: столбец сдвига по времени, по кругу; число кадров — у предмета,
+  // после нового рекорда оно другое.
+  function tickerFace(me, now) {
+    return Math.floor(now / TICK_MS) % me.count;
+  }
+
   /* --- обстановка --------------------------------------------------------- */
 
   /* Мебель — не существо: она никуда не идёт, кадров не тратит, пока стоит, и
@@ -2225,7 +2324,7 @@
        `spec.face` — по настоящему времени, а не по счётчику кадров. */
     var many = typeof spec.art[0] !== 'string';
     var sheet = (many ? spec.art : [spec.art]).map(function (one) {
-      return render(one, false, spec.skin);
+      return render(one, false, spec.skin, spec.dots);
     });
     var art = sheet[0];
 
@@ -2270,6 +2369,7 @@
       grab: null,
       hidden: false,
       frame: spec.rest || 0, // какой кадр показан; `rest` — кадр покоя, у камеры объектив прямо
+      count: sheet.length,   // сколько кадров: табло меняет их по событию рекорда
       askedAt: -1000,        // когда в последний раз спрашивали время
       torn: false,           // камера: сорвана с кронштейна, держится на проводе
       swing: null,           // и качается на нём: угол от вертикали и скорость
@@ -2419,6 +2519,14 @@
 
     function checkHidden() {
       me.hidden = window.getComputedStyle(canvas).display === 'none';
+    }
+
+    // Новый набор кадров того же размера: табло после нового рекорда.
+    function repaint(frames) {
+      sheet = frames.map(function (one) { return render(one, false, spec.skin, spec.dots); });
+      me.count = sheet.length;
+      me.frame = 0;
+      draw();
     }
 
     // Холст прозрачен для щелчков, пока курсор не на самой полке: иначе она
@@ -2652,6 +2760,7 @@
 
     me.limit = limit;
     me.place = place;
+    me.repaint = repaint;
     me.tick = tick;
     me.hover = hover;
     me.haul = haul;
@@ -2722,6 +2831,9 @@
        день: владельцу не понравилась ни в тексте, ни с человечком. */
     { name: 'camera', art: CAMERA, skin: SKIN.camera, title: 'Перевесить камеру',
       at: 0, ceiling: true, face: cameraFace, every: 500, rest: 2, cable: true },
+    // Табло рекорда: бегущая строка под планкой у правого края.
+    { name: 'ticker', art: TICKER, skin: SKIN.ticker, dots: 'a', title: 'Перевесить табло',
+      at: 1, ceiling: true, face: tickerFace, every: TICK_MS, rest: 0 },
   ].map(function (spec) {
     var thing = makeThing(spec);
     thing.name = spec.name;
@@ -3015,6 +3127,12 @@
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', function () { arrange(true); });
   }
+
+  // Новый рекорд из консоли (`console.js`): табло собирает кадры заново.
+  document.addEventListener('office:record', function (event) {
+    var board = thingNamed('ticker');
+    if (board) board.repaint(tickerFrames(tickerText(event.detail)));
+  });
 
   /* Существ ставим после мебели: Отто встаёт правее левой кадки. Раньше он
      появлялся на 64-м пикселе и при обновлении страницы оказывался прямо в

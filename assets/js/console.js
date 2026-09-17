@@ -255,12 +255,16 @@
   var BAR_MS = 60;          // деление полосы
   var START_MS = 500;       // от «готово» до игры
   var BEST_KEY = 'office-tetris-best';
+  var NICK_KEY = 'office-tetris-nick';
+  var NICK_MAX = 8;         // знаков: столько влезает в табло на стене при шрифте 3x5
 
   var TEXT = {
     title: { ru: 'Компьютер', en: 'Computer' },
     path: '~/games',
     hint: { ru: 'Esc — закрыть', en: 'Esc — close' },
     ready: { ru: 'готово — любая клавиша', en: 'ready — press any key' },
+    login: 'login: ',
+    welcome: { ru: 'добро пожаловать, ', en: 'welcome, ' },
     score: { ru: 'Счёт', en: 'Score' },
     level: { ru: 'Уровень', en: 'Level' },
     lines: { ru: 'Линии', en: 'Lines' },
@@ -326,7 +330,8 @@
   var timers = [];
   var raf = 0;
   var lastFrame = 0;
-  var phase = 'closed'; // closed | boot | play
+  var phase = 'closed'; // closed | boot | login | play
+  var nick = '';        // ник текущей партии: с `login:` или из хранилища
   var cell = CELL_MAX;
 
   function later(fn, ms) {
@@ -348,6 +353,41 @@
     try { root.localStorage.setItem(BEST_KEY, String(value)); } catch (e) { /* без памяти браузера — просто не запомним */ }
   }
 
+  function readNick() {
+    try { return cleanNick(root.localStorage.getItem(NICK_KEY) || ''); } catch (e) { return ''; }
+  }
+
+  function writeNick(value) {
+    try { root.localStorage.setItem(NICK_KEY, value); } catch (e) { /* не запомним */ }
+  }
+
+  // Ник — латиница, цифры, дефис и подчёркивание, до NICK_MAX; так он влезает
+  // в табло на стене и не требует кириллического шрифта 3x5.
+  function cleanNick(value) {
+    return String(value || '').toLowerCase().replace(/[^a-z0-9_-]/g, '').slice(0, NICK_MAX);
+  }
+
+  // Рекорд — пара «ник и счёт» того, кто его поставил.
+  function readRecord() {
+    var best = readBest();
+    return best > 0 ? { nick: readNick(), best: best } : null;
+  }
+
+  function bestLabel() {
+    var record = readRecord();
+    return record ? String(record.best) + ' · ' + record.nick.toUpperCase() : '0';
+  }
+
+  /* Новый рекорд: в хранилище — и всем, кто слушает: табло на стене офиса
+     перерисовывается по этому событию без перезагрузки. */
+  function announceRecord(record) {
+    writeBest(record.best);
+    writeNick(record.nick);
+    try {
+      document.dispatchEvent(new root.CustomEvent('office:record', { detail: record }));
+    } catch (e) { /* без CustomEvent табло обновится при следующей загрузке */ }
+  }
+
   function build() {
     if (ui) return ui;
     var field = el('canvas', { class: 'console__field', 'aria-label': 'Tetris' });
@@ -356,7 +396,7 @@
       score: el('b', { text: '0' }),
       level: el('b', { text: '1' }),
       lines: el('b', { text: '0' }),
-      best: el('b', { text: String(readBest()) }),
+      best: el('b', { text: bestLabel() }),
     };
     function stat(key) {
       return el('div', { class: 'console__stat' }, [el('span', { text: t(TEXT[key]) }), stats[key]]);
@@ -435,19 +475,12 @@
     ui.log.hidden = false;
     ui.play.hidden = true;
 
-    if (LESS_MOTION) {
-      ui.log.textContent = BOOT.slice(0, 3).join('\n') + '\n' + BOOT[3] + '██████████ 100%\n' + t(TEXT.ready);
-      later(startGame, START_MS);
-      return;
-    }
+    if (LESS_MOTION) { finishBoot(); return; }
 
     var i = 0;
     (function next() {
       if (phase !== 'boot') return;
-      if (i === BOOT.length) {
-        typeLine(t(TEXT.ready), function () { later(startGame, START_MS); });
-        return;
-      }
+      if (i === BOOT.length) { askLogin(); return; }
       var line = BOOT[i];
       i += 1;
       typeLine(line, function (node) {
@@ -469,6 +502,47 @@
         })();
       });
     })();
+  }
+
+  // Домотать загрузку: все строки разом, полоса полная — и к вводу ника.
+  function finishBoot() {
+    clearTimers();
+    ui.log.textContent = BOOT.slice(0, 3).join('\n') + '\n' + BOOT[3] + '██████████ 100%\n';
+    askLogin();
+  }
+
+  /* Ввод ника — настоящее поле в строке `login:`: с клавиатуры набирается
+     как в терминале, на планшете поднимает экранную клавиатуру. Прежний ник
+     подставлен, пустой Enter — guest. */
+  function askLogin() {
+    phase = 'login';
+    var field = el('input', {
+      class: 'console__login', type: 'text', autocomplete: 'off', autocapitalize: 'off',
+      spellcheck: 'false', maxlength: String(NICK_MAX), enterkeyhint: 'go', 'aria-label': 'login',
+      value: readNick(),
+    });
+    field.addEventListener('input', function () {
+      var clean = cleanNick(field.value);
+      if (clean !== field.value) field.value = clean;
+    });
+    field.addEventListener('keydown', function (event) {
+      if (event.key === 'Enter') { event.preventDefault(); confirmLogin(field); }
+    });
+    ui.log.appendChild(document.createTextNode(TEXT.login));
+    ui.log.appendChild(field);
+    ui.login = field;
+    field.focus();
+    field.select();
+  }
+
+  function confirmLogin(field) {
+    if (phase !== 'login') return;
+    nick = cleanNick(field.value) || 'guest';
+    writeNick(nick);
+    field.disabled = true;
+    ui.log.appendChild(document.createTextNode('\n' + t(TEXT.welcome) + nick + '\n' + t(TEXT.ready)));
+    phase = 'boot';
+    later(startGame, START_MS);
   }
 
   /* --- игра ---------------------------------------------------------------- */
@@ -535,7 +609,7 @@
     ui.play.hidden = false;
     ui.overlay.hidden = true;
     fitWindow();
-    ui.stats.best.textContent = String(readBest());
+    ui.stats.best.textContent = bestLabel();
     updateStats();
     lastFrame = 0;
     loop(0);
@@ -625,8 +699,10 @@
     }
     render();
     if (game.over) {
-      var best = readBest();
-      if (game.score > best) { writeBest(game.score); ui.stats.best.textContent = String(game.score); }
+      if (game.score > readBest()) {
+        announceRecord({ nick: nick || readNick() || 'guest', best: game.score });
+        ui.stats.best.textContent = bestLabel();
+      }
       showOverlay(t(TEXT.over), t(TEXT.score) + ' ' + game.score + ' · ' + t(TEXT.again) + ' · ' + t(TEXT.hint));
       return;   // без кадров, пока не нажмут R или Esc
     }
@@ -641,7 +717,7 @@
   }
 
   function act(name) {
-    if (phase === 'boot') { clearTimers(); startGame(); return; }
+    if (phase === 'boot') { finishBoot(); return; }
     if (phase !== 'play') return;
     if (name === 'pause') {
       if (game.over) return;
@@ -673,7 +749,18 @@
     if (phase === 'closed') return;
     if (event.key === 'Escape') { event.preventDefault(); close(); return; }
     if (event.key === 'Tab') { trapTab(event); return; }
-    if (phase === 'boot') { event.preventDefault(); act('skip'); return; }
+    // Ввод ника: клавиши идут в поле, Enter подтверждает и там, и здесь.
+    if (phase === 'login') {
+      if (event.key === 'Enter') { event.preventDefault(); confirmLogin(ui.login); }
+      return;
+    }
+    if (phase === 'boot') {
+      // Пока ждём начала игры после ввода ника — клавиши ничего не значат.
+      if (ui.login && ui.login.disabled) { event.preventDefault(); return; }
+      event.preventDefault();
+      act('skip');
+      return;
+    }
     var name = KEYS[event.key];
     if (!name) return;
     event.preventDefault();
@@ -729,6 +816,7 @@
   function close() {
     if (phase === 'closed') return;
     phase = 'closed';
+    ui.login = null;
     clearTimers();
     root.cancelAnimationFrame(raf);
     document.removeEventListener('keydown', onKey, true);
@@ -747,6 +835,8 @@
     isOpen: function () { return phase !== 'closed'; },
     phase: function () { return phase; },
     game: function () { return game; },
+    record: readRecord,
+    nick: function () { return nick; },
     act: act,
     Tetris: Tetris,
   };

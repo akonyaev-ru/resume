@@ -244,6 +244,10 @@ function open(options) {
     win: function (type, ev) {
       (winHandlers[type] || []).forEach(function (fn) { fn(ev); });
     },
+    // Событие в документ: так консоль объявляет новый рекорд.
+    doc: function (type, ev) {
+      (docHandlers[type] || []).forEach(function (fn) { fn(ev); });
+    },
     resize: function (width) {
       opt.width = width;
       win.innerWidth = width;
@@ -921,6 +925,33 @@ check('щелчок по компьютеру открывает консоль,
   if (world.opens() !== 1) fail('перетаскивание открыло консоль');
   if (pc.spot().x === x0) fail('перетаскивание не сдвинуло компьютер');
   return 'щелчок открыл, компьютер на месте; перетаскивание сдвинуло на ' + (pc.spot().x - x0) + ' px и не открыло';
+});
+
+/* Табло рекорда: висит под планкой у правого края, строка бежит, а новый
+   рекорд из консоли (событие `office:record`) меняет её текст на месте. */
+check('табло рекорда бежит справа под планкой и слышит новый рекорд', function () {
+  const world = open({ seed: 5 });
+  world.step(300);
+  const board = world.things.filter(function (one) { return one.title === 'Перевесить табло'; })[0];
+  if (!board || !board.layers.length) fail('табло не нарисовано');
+  const at = board.spot();
+  if (at.x !== world.wide() - board.width - NUM.EDGE) fail('табло не у правого края: x ' + at.x);
+  if (at.y !== world.high() - board.height) fail('табло не под потолком: y ' + at.y);
+  if (!wall(board)) fail('табло не висящее — на него можно поставить мебель');
+
+  const seen = {};
+  world.step(2000, function () { seen[printOf(world, board.layers[0].id)] = true; });
+  const frames = Object.keys(seen).length;
+  if (frames < 8) fail('за две секунды строка показала ' + frames + ' кадр(а) — не бежит');
+
+  world.doc('office:record', { detail: { nick: 'otto', best: 777 } });
+  world.step(FRAME_MS);
+  const after = printOf(world, board.layers[0].id);
+  if (seen[after]) fail('после нового рекорда табло показывает старые кадры');
+  const later = {};
+  world.step(2000, function () { later[printOf(world, board.layers[0].id)] = true; });
+  if (Object.keys(later).length < 8) fail('после нового рекорда строка перестала бежать');
+  return 'кадров ' + frames + ', после рекорда новые и бегут';
 });
 
 /* Экран компьютера живёт: за три секунды сменяется много кадров; в тихом
@@ -1902,6 +1933,14 @@ const BREAKS = [
     parts: [[
       '  var startAt = leftEdge ? leftEdge + 16 : 64;',
       '  var startAt = 64;',
+    ]],
+  },
+  {
+    name: 'табло не слышит новый рекорд',
+    red: 'табло рекорда бежит справа под планкой и слышит новый рекорд',
+    parts: [[
+      '    if (board) board.repaint(tickerFrames(tickerText(event.detail)));',
+      '    if (board) return;',
     ]],
   },
   {
