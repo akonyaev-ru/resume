@@ -381,6 +381,7 @@
   };
   var BEST_KEY = 'office-tetris-best';
   var NICK_KEY = 'office-tetris-nick';
+  var SENT_KEY = 'office-tetris-sent';   // какой счёт уже ушёл в форму
 
   var TEXT = {
     title: { ru: 'Компьютер', en: 'Computer' },
@@ -480,6 +481,14 @@
     try { root.localStorage.setItem(BEST_KEY, String(value)); } catch (e) { /* без памяти браузера — просто не запомним */ }
   }
 
+  function readSent() {
+    try { return Number(root.localStorage.getItem(SENT_KEY)) || 0; } catch (e) { return 0; }
+  }
+
+  function writeSent(value) {
+    try { root.localStorage.setItem(SENT_KEY, String(value)); } catch (e) { /* не запомним — уйдёт ещё раз */ }
+  }
+
   function readNick() {
     try { return validNick(root.localStorage.getItem(NICK_KEY)); } catch (e) { return ''; }
   }
@@ -516,9 +525,22 @@
     body.set(RECORDS_FORM.score, String(record.best));
     try {
       // keepalive: запрос доживёт, даже если вкладку закрыли сразу после партии.
+      // Ушёл — запоминаем счёт, чтобы не слать его после каждой партии; не
+      // ушёл (сеть, блокировщик) — уйдёт после следующей.
       root.fetch(RECORDS_FORM.url, { method: 'POST', mode: 'no-cors', body: body, keepalive: true })
-        .catch(function () { /* сеть или блокировщик — рекорд остаётся своим */ });
+        .then(function () { writeSent(record.best); })
+        .catch(function () { /* рекорд остаётся своим */ });
     } catch (e) { /* то же */ }
+  }
+
+  /* После партии в форму идёт личный рекорд — не обязательно этой партии:
+     рекорд, поставленный до общей таблицы или не дошедший до неё, тоже
+     должен попасть в снимок. Условия: этот счёт ещё не уходил и у него есть
+     шанс в десятке (`worthSending`). */
+  function shareRecord() {
+    var record = readRecord();
+    if (!record || record.best <= readSent()) return;
+    if (worthSending(readTop(), record)) submitRecord(record);
   }
 
   function build() {
@@ -894,11 +916,10 @@
     render();
     if (game.over) {
       if (game.score > readBest()) {
-        var record = { nick: nick, best: game.score };
-        announceRecord(record);
-        if (worthSending(readTop(), record)) submitRecord(record);
+        announceRecord({ nick: nick, best: game.score });
         ui.stats.best.textContent = bestLabel();
       }
+      shareRecord();
       showScores();   // сразу, без плашки над стаканом — решение владельца
       return;         // без кадров: дальше таблица, R или Esc
     }
