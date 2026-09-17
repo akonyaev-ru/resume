@@ -747,10 +747,19 @@
     return text;
   }
 
-  // Строка таблицы: место (пусто у своей записи вне десятки), ник, счёт.
+  /* Строка таблицы: место (пусто у своей записи вне десятки), ник, счёт.
+     Пьедестал — золото, серебро, бронза чуть жирнее (решение владельца);
+     своя строка — акцентом, а на пьедестале цвет медали главнее, и свою
+     узнают по пометке `you`. */
+  var MEDALS = ['is-gold', 'is-silver', 'is-bronze'];
+
   function scoreLine(rank, row) {
-    var text = padLeft(rank === null ? '' : rank, 2) + '  ' + padRight(row.nick, NICK_MAX) + '  ' + padLeft(row.best, 6) + '\n';
-    return el('span', { class: 'console__scores-row' + (row.mine ? ' is-mine' : ''), text: text });
+    var text = padLeft(rank === null ? '' : rank, 2) + '  ' + padRight(row.nick, NICK_MAX) + '  ' + padLeft(row.best, 6);
+    var medal = rank !== null && rank <= MEDALS.length ? MEDALS[rank - 1] : '';
+    var line = el('span', { class: 'console__scores-row' + (row.mine ? ' is-mine' : '') + (medal ? ' ' + medal : '') }, [text]);
+    if (row.mine && medal) line.appendChild(el('span', { class: 'console__scores-you', text: '  you' }));
+    line.appendChild(document.createTextNode('\n'));
+    return line;
   }
 
   function showScores() {
