@@ -32,6 +32,25 @@
   // Сдвиги от стенки при повороте: на месте, влево, вправо, дальше.
   var KICKS = [0, -1, 1, -2, 2];
 
+  /* --- спецклетки (5.38) ------------------------------------------------------
+     Одна из четырёх клеток фигуры бывает особой: значение клетки формы — не 1,
+     а ключ спецклетки, и поворот переносит его вместе с формой. При приземлении
+     линии чистятся как обычно, а уцелевшая спецклетка запускает эффект:
+     `game.effect` держит следующую фигуру, пока не доиграет, и ведётся временем
+     через `tick`. Что выше сожжённой клетки, опускается на число сожжённых под
+     ним, старые дыры остаются — «оседание». За сожжённую клетку стопки —
+     SPECIAL_SCORE × уровень (ставка линии: 100 за десять); свои клетки фигуры и
+     сама спецклетка не в счёт; `lines` и уровень растут только от настоящих
+     линий. Розыгрыш — по весам, с первого уровня: посетитель играет одну
+     партию, и спецклетка должна успеть ему встретиться. */
+  var SPECIALS = { mine: 5, acid: 3, hole: 2 };   // ключ → вес при розыгрыше
+  var SPECIAL_CHANCE = 0.1;    // доля фигур со спецклеткой
+  var SPECIAL_SCORE = 10;      // за сожжённую клетку стопки, × уровень
+  var MINE_MS = 320;           // мина: взрыв 3×3 вокруг себя
+  var HOLE_MS = 400;           // чёрная дыра: втягивает свой ряд целиком
+  var ACID_STEP = 180;         // кислота: мс на клетку вниз
+  var ACID_DEPTH = 4;          // кислота: клеток вниз, потом растворяется сама
+
   function rotateShape(shape) {
     var h = shape.length;
     var w = shape[0].length;
@@ -56,10 +75,44 @@
     return bag;
   }
 
+  function isSpecial(value) {
+    return typeof value === 'string' && Object.prototype.hasOwnProperty.call(SPECIALS, value);
+  }
+
+  // Спецклетка — по шансу игры (`specialChance`, по умолчанию SPECIAL_CHANCE),
+  // тип — по весам, место — любая из клеток формы.
+  function plantSpecial(game, piece) {
+    var chance = typeof game.specialChance === 'number' ? game.specialChance : SPECIAL_CHANCE;
+    if (!(game.rng() < chance)) return;
+    var keys = Object.keys(SPECIALS);
+    var total = 0;
+    keys.forEach(function (key) { total += SPECIALS[key]; });
+    var roll = game.rng() * total;
+    var type = keys[keys.length - 1];
+    for (var i = 0; i < keys.length; i += 1) {
+      roll -= SPECIALS[keys[i]];
+      if (roll < 0) { type = keys[i]; break; }
+    }
+    var cells = [];
+    piece.shape.forEach(function (row, y) {
+      row.forEach(function (v, x) { if (v) cells.push([y, x]); });
+    });
+    var at = cells[Math.min(cells.length - 1, Math.floor(game.rng() * cells.length))];
+    piece.shape[at[0]][at[1]] = type;
+  }
+
   function drawPiece(game) {
     if (!game.bag.length) game.bag = shuffledBag(game.rng);
     var kind = game.bag.pop();
-    return { kind: kind, shape: SHAPES[kind].map(function (r) { return r.slice(); }), x: 0, y: 0 };
+    var piece = { kind: kind, shape: SHAPES[kind].map(function (r) { return r.slice(); }), x: 0, y: 0 };
+    plantSpecial(game, piece);
+    return piece;
+  }
+
+  function emptyRow() {
+    var row = [];
+    for (var i = 0; i < COLS; i += 1) row.push(0);
+    return row;
   }
 
   function collides(game, shape, px, py) {
@@ -85,7 +138,7 @@
     if (collides(game, piece.shape, piece.x, piece.y)) game.over = true;
   }
 
-  function create(rng) {
+  function create(rng, options) {
     var game = {
       board: [],
       bag: [],
@@ -98,12 +151,11 @@
       over: false,
       paused: false,
       fall: 0,          // накопленное время до следующего шага вниз, мс
+      specialChance: options && typeof options.specialChance === 'number' ? options.specialChance : SPECIAL_CHANCE,
+      effect: null,     // идущий эффект спецклетки: держит следующую фигуру
+      cleared: [],      // номера строк, снятых последней чисткой
     };
-    for (var y = 0; y < ROWS; y += 1) {
-      var row = [];
-      for (var x = 0; x < COLS; x += 1) row.push(0);
-      game.board.push(row);
-    }
+    for (var y = 0; y < ROWS; y += 1) game.board.push(emptyRow());
     game.next = drawPiece(game);
     spawn(game);
     return game;
@@ -138,38 +190,157 @@
 
   function clearLines(game) {
     var kept = [];
-    var cleared = 0;
+    var cleared = [];
     for (var y = 0; y < ROWS; y += 1) {
       var full = true;
       for (var x = 0; x < COLS; x += 1) if (!game.board[y][x]) { full = false; break; }
-      if (full) cleared += 1;
+      if (full) cleared.push(y);
       else kept.push(game.board[y]);
     }
-    while (kept.length < ROWS) {
-      var empty = [];
-      for (var i = 0; i < COLS; i += 1) empty.push(0);
-      kept.unshift(empty);
-    }
+    while (kept.length < ROWS) kept.unshift(emptyRow());
     game.board = kept;
-    return cleared;
+    game.cleared = cleared;
+    return cleared.length;
+  }
+
+  function scoreLines(game, cleared) {
+    game.score += LINE_SCORE[cleared] * game.level;
+    game.lines += cleared;
+    game.level = 1 + Math.floor(game.lines / 10);
   }
 
   function lock(game) {
     var p = game.piece;
+    var own = [];          // клетки фигуры в стакане: за них очков не дают
+    var special = null;
     for (var y = 0; y < p.shape.length; y += 1) {
       for (var x = 0; x < p.shape[y].length; x += 1) {
-        if (!p.shape[y][x]) continue;
+        var v = p.shape[y][x];
+        if (!v) continue;
         var ny = p.y + y;
+        var nx = p.x + x;
         if (ny < 0) { game.over = true; continue; }
-        game.board[ny][p.x + x] = p.kind;
+        game.board[ny][nx] = isSpecial(v) ? v : p.kind;
+        own.push({ x: nx, y: ny });
+        if (isSpecial(v)) special = { type: v, x: nx, y: ny };
       }
     }
-    var cleared = clearLines(game);
-    game.score += LINE_SCORE[cleared] * game.level;
-    game.lines += cleared;
-    game.level = 1 + Math.floor(game.lines / 10);
+    scoreLines(game, clearLines(game));
     game.fall = 0;
-    if (!game.over) spawn(game);
+    if (game.over) return;
+    // Спецклетка, ушедшая вместе с линией, ничего не делает; уцелевшая
+    // съезжает вниз на число снятых под ней строк и запускает эффект.
+    if (special && game.cleared.indexOf(special.y) < 0) {
+      var sunk = function (c) {
+        return c.y + game.cleared.filter(function (row) { return row > c.y; }).length;
+      };
+      special.y = sunk(special);
+      own = own.filter(function (c) { return game.cleared.indexOf(c.y) < 0; })
+        .map(function (c) { return { x: c.x, y: sunk(c) }; });
+      game.effect = startEffect(special, own);
+      game.piece = null;
+      return;
+    }
+    spawn(game);
+  }
+
+  function startEffect(special, own) {
+    var effect = { type: special.type, x: special.x, y: special.y, t: 0, own: own, burnt: 0 };
+    if (effect.type === 'mine') {
+      effect.dur = MINE_MS;
+      effect.cells = [];
+      for (var dy = -1; dy <= 1; dy += 1) {
+        for (var dx = -1; dx <= 1; dx += 1) {
+          var cy = special.y + dy;
+          var cx = special.x + dx;
+          if (cy >= 0 && cy < ROWS && cx >= 0 && cx < COLS) effect.cells.push({ x: cx, y: cy });
+        }
+      }
+    } else if (effect.type === 'hole') {
+      effect.dur = HOLE_MS;
+    } else {
+      effect.dur = ACID_STEP * (ACID_DEPTH + 1);   // прикидка для окна; шаги считает acidStep
+    }
+    return effect;
+  }
+
+  function isOwn(effect, x, y) {
+    return effect.own.some(function (c) { return c.x === x && c.y === y; });
+  }
+
+  // Всё, что выше клетки (x, y), опускается на одну: сама клетка уже пуста.
+  // Свои клетки фигуры едут вместе со столбцом, чтобы и дальше не считаться.
+  function dropAbove(game, effect, x, y) {
+    for (var yy = y; yy > 0; yy -= 1) game.board[yy][x] = game.board[yy - 1][x];
+    game.board[0][x] = 0;
+    effect.own.forEach(function (c) { if (c.x === x && c.y < y) c.y += 1; });
+  }
+
+  // Сжечь клетку: очки за чужую, пусто на её месте, столбец над ней оседает.
+  function burnCell(game, effect, x, y) {
+    if (!game.board[y][x]) return;
+    if (!isOwn(effect, x, y)) game.score += SPECIAL_SCORE * game.level;
+    game.board[y][x] = 0;
+    effect.own = effect.own.filter(function (c) { return !(c.x === x && c.y === y); });
+    dropAbove(game, effect, x, y);
+  }
+
+  // Кислота: клетка строго под ней сгорает, столбец оседает — кислота съезжает
+  // на её место; под ней пусто, дно или предел глубины — растворяется сама.
+  function acidStep(game, effect) {
+    var below = effect.y + 1;
+    if (effect.burnt < ACID_DEPTH && below < ROWS && game.board[below][effect.x]) {
+      burnCell(game, effect, effect.x, below);
+      effect.y = below;
+      effect.burnt += 1;
+      return;
+    }
+    game.board[effect.y][effect.x] = 0;
+    dropAbove(game, effect, effect.x, effect.y);
+    finishEffect(game);
+  }
+
+  function advanceEffect(game, dt) {
+    var effect = game.effect;
+    effect.t += dt;
+    if (effect.type === 'acid') {
+      while (game.effect === effect && effect.t >= ACID_STEP) {
+        effect.t -= ACID_STEP;
+        acidStep(game, effect);
+      }
+      return;
+    }
+    if (effect.t >= effect.dur) finishEffect(game);
+  }
+
+  // Эффект доиграл: мина выбивает 3×3 и столбцы оседают, дыра забирает ряд как
+  // линию; потом обычная чистка линий — и только теперь следующая фигура.
+  function finishEffect(game) {
+    var effect = game.effect;
+    if (effect.type === 'mine') {
+      var holes = {};
+      effect.cells.forEach(function (c) {
+        if (!game.board[c.y][c.x]) return;
+        if (!isOwn(effect, c.x, c.y)) game.score += SPECIAL_SCORE * game.level;
+        game.board[c.y][c.x] = 0;
+        (holes[c.x] = holes[c.x] || []).push(c.y);
+      });
+      Object.keys(holes).forEach(function (x) {
+        holes[x].sort(function (a, b) { return a - b; });   // верхняя дыра первой: нижние не сдвигаются
+        holes[x].forEach(function (y) { dropAbove(game, effect, Number(x), y); });
+      });
+    } else if (effect.type === 'hole') {
+      for (var x = 0; x < COLS; x += 1) {
+        if (x !== effect.x && game.board[effect.y][x] && !isOwn(effect, x, effect.y)) {
+          game.score += SPECIAL_SCORE * game.level;
+        }
+      }
+      game.board.splice(effect.y, 1);
+      game.board.unshift(emptyRow());
+    }
+    game.effect = null;
+    scoreLines(game, clearLines(game));
+    spawn(game);
   }
 
   // Шаг вниз; упёрлась — ложится. Возвращает, сдвинулась ли.
@@ -206,6 +377,7 @@
 
   // Время идёт: накопили интервал — шаг вниз. Несколько шагов, если кадр был долгим.
   function tick(game, dt) {
+    if (game.effect && !game.over && !game.paused) { advanceEffect(game, dt); return; }
     if (!active(game)) return;
     game.fall += dt;
     var interval = speed(game.level);
@@ -232,6 +404,14 @@
     collides: collides,
     shuffledBag: shuffledBag,
     rotateShape: rotateShape,
+    SPECIALS: SPECIALS,
+    SPECIAL_CHANCE: SPECIAL_CHANCE,
+    SPECIAL_SCORE: SPECIAL_SCORE,
+    MINE_MS: MINE_MS,
+    HOLE_MS: HOLE_MS,
+    ACID_STEP: ACID_STEP,
+    ACID_DEPTH: ACID_DEPTH,
+    isSpecial: isSpecial,
   };
 
   /* --- таблица рекордов ----------------------------------------------------
@@ -457,6 +637,7 @@
   var timers = [];
   var raf = 0;
   var lastFrame = 0;
+  var clock = 0;        // мс от начала партии — часы анимаций спецклеток
   var phase = 'closed'; // closed | boot | play | scores
   var nick = '';        // ник партии: выдан консолью, закреплён в хранилище
   var waiting = false;  // ник напечатан, игра начнётся по таймеру: клавиши ничего не значат
@@ -792,12 +973,180 @@
     // Клетка с тёмным швом и светлым бликом сверху-слева — пиксельный объём.
     ctx.fillStyle = color;
     ctx.fillRect(x * size + seam, y * size + seam, inner, inner);
+    bevel(ctx, x, y, size);
+  }
+
+  function bevel(ctx, x, y, size) {
+    var seam = Math.max(1, Math.round(size / 16));
+    var edge = Math.max(2, Math.round(size / 8));
+    var inner = size - 2 * seam;
     ctx.fillStyle = 'rgba(255,255,255,0.22)';
     ctx.fillRect(x * size + seam, y * size + seam, inner, edge);
     ctx.fillRect(x * size + seam, y * size + seam, edge, inner);
     ctx.fillStyle = 'rgba(0,0,0,0.28)';
     ctx.fillRect(x * size + seam, y * size + size - seam - edge, inner, edge);
     ctx.fillRect(x * size + size - seam - edge, y * size + seam, edge, inner);
+  }
+
+  // Плоская заливка внутри шва, без фаски: дыра — не блок.
+  function flat(ctx, x, y, size, color) {
+    var seam = Math.max(1, Math.round(size / 16));
+    ctx.fillStyle = color;
+    ctx.fillRect(x * size + seam, y * size + seam, size - 2 * seam, size - 2 * seam);
+  }
+
+  /* --- спецклетки: вид ---------------------------------------------------------
+     Значки рисуются пикселем в одну восьмую клетки — 5 px при 40, то же зерно,
+     что фаска обычных блоков (требование владельца после TNT субпикселем 2 px).
+     Движение — по часам кадра `clock`, без таймеров; при reduced-motion часы
+     стоят на нуле — первый кадр. Мина — тёмный металл с пластиной и красным
+     диодом, мигает двойным вспыхом; дыра — плоская чернота с туманностью
+     вокруг ядра, ободок дышит, звёзды мерцают; яд — череп на лайме, плывёт по
+     синусу вверх на 0,7 и вниз на 0,2 доли, рядом всплывают пузырьки. Всё
+     строго внутри клетки. Выбрано владельцем из девяти показов на настоящем
+     стакане (5.38). */
+  var INK = {
+    acid: '#d4ff2e', acidDark: '#5f8a00',
+    gun: '#3a4152', plateLight: '#7c8699', plate: '#5c6478', plateDark: '#454c5e', socket: '#22262f',
+    screw: '#8a93a3', ledOn: '#ff2e2e', ledOff: '#5a1010', ledCore: '#ffb0b0',
+    black: '#05030d', star: '#e7eaf2', starDim: '#9aa3b5',
+    fireWhite: '#fff3b0', fireYellow: '#ffd23f', fireOrange: '#ff7a1a', fireDark: '#7a2416',
+  };
+  var NEBULA = { n: '#2a3f8f', p: '#5a3aa8', m: '#9b5de5', l: '#d8c8ff', k: '#000000' };
+  var NEBULA_DIM = { n: '#2a3f8f', p: '#5a3aa8', m: '#9b5de5', l: '#b48cff', k: '#000000' };
+  var NEBULA_ROWS = ['..n.n..', '.npmpn.', 'npmlmpn', 'pmlklmp', 'npmlmpn', '.npmpn.', '..n.n..'];
+  var PLATE_ROWS = ['.llll.', 'lmmmmd', 'lmmmmd', 'lmmmmd', 'lmmmmd', '.dddd.'];
+  var PLATE_INK = { l: INK.plateLight, m: INK.plate, d: INK.plateDark };
+  var SOCKET_ROWS = ['.xx.', 'xxxx', 'xxxx', '.xx.'];
+  var SKULL_ROWS = ['.xxx.', 'xxxxx', 'x.x.x', 'xxxxx', '.x.x.'];
+  var FRAME_MS = 120;       // шаг дискретных движений: мигание, мерцание, пузырьки
+  var BLINK_MS = 2400;      // период двойного мигания диода мины
+  var FLOAT_MS = 1800;      // период плавания черепа
+
+  // Пиксель значка: координаты и размер в восьмых долях клетки.
+  function pix(ctx, x, y, size, color, ux, uy, uw, uh) {
+    var u = size / 8;
+    ctx.fillStyle = color;
+    ctx.fillRect(Math.round(x * size + ux * u), Math.round(y * size + uy * u), Math.round((uw || 1) * u), Math.round((uh || 1) * u));
+  }
+
+  // Растровый значок: строки из точек и букв, каждая буква — свой цвет.
+  function sprite(ctx, x, y, size, rows, colors, ox, oy) {
+    for (var r = 0; r < rows.length; r += 1) {
+      for (var c = 0; c < rows[r].length; c += 1) {
+        if (rows[r][c] !== '.') pix(ctx, x, y, size, colors[rows[r][c]], ox + c, oy + r, 1, 1);
+      }
+    }
+  }
+
+  function twinkle(ctx, x, y, size, cx, cy, u, core, ray) {
+    pix(ctx, x, y, size, ray, cx - u, cy, u, u);
+    pix(ctx, x, y, size, ray, cx + u, cy, u, u);
+    pix(ctx, x, y, size, ray, cx, cy - u, u, u);
+    pix(ctx, x, y, size, ray, cx, cy + u, u, u);
+    pix(ctx, x, y, size, core, cx, cy, u, u);
+  }
+
+  function screw(ctx, x, y, size, sx, sy) {
+    pix(ctx, x, y, size, INK.screw, sx, sy, 0.8, 0.8);
+    pix(ctx, x, y, size, INK.socket, sx + 0.1, sy + 0.3, 0.6, 0.2);
+  }
+
+  function drawSpecial(ctx, x, y, size, type, ms) {
+    var f = Math.floor(ms / FRAME_MS);
+    if (type === 'mine') {
+      block(ctx, x, y, size, INK.gun);
+      screw(ctx, x, y, size, 0.8, 0.8);
+      screw(ctx, x, y, size, 6.4, 0.8);
+      screw(ctx, x, y, size, 0.8, 6.4);
+      screw(ctx, x, y, size, 6.4, 6.4);
+      sprite(ctx, x, y, size, PLATE_ROWS, PLATE_INK, 1, 1);
+      sprite(ctx, x, y, size, SOCKET_ROWS, { x: INK.socket }, 2, 2);
+      var beat = ms % BLINK_MS;
+      var on = beat < 240 || (beat >= 360 && beat < 600);
+      pix(ctx, x, y, size, on ? INK.ledOn : INK.ledOff, 3, 3, 2, 2);
+      if (on) {
+        pix(ctx, x, y, size, INK.ledCore, 3.2, 3.2, 0.8, 0.8);
+        ctx.globalAlpha = 0.35;
+        sprite(ctx, x, y, size, SOCKET_ROWS, { x: INK.ledOn }, 2, 2);
+        ctx.globalAlpha = 1;
+      }
+      bevel(ctx, x, y, size);
+    } else if (type === 'hole') {
+      flat(ctx, x, y, size, INK.black);
+      sprite(ctx, x, y, size, NEBULA_ROWS, f % 8 < 4 ? NEBULA : NEBULA_DIM, 0.5, 0.5);
+      pix(ctx, x, y, size, INK.star, 0.7, 0.7, 0.6, 0.6);
+      if (f % 4 < 2) pix(ctx, x, y, size, INK.starDim, 7, 6, 0.5, 0.5);
+      if ((f + 1) % 4 < 2) pix(ctx, x, y, size, INK.starDim, 1, 6.8, 0.5, 0.5);
+      if (f % 6 < 3) twinkle(ctx, x, y, size, 6.5, 1.5, 0.5, INK.star, INK.starDim);
+      else pix(ctx, x, y, size, INK.star, 6.5, 1.5, 0.5, 0.5);
+    } else if (type === 'acid') {
+      block(ctx, x, y, size, INK.acid);
+      var ph = (ms % FLOAT_MS) / FLOAT_MS * Math.PI * 2;
+      var dy = -0.25 - 0.45 * Math.cos(ph);
+      var dx = 0.2 * Math.sin(ph * 0.5);
+      sprite(ctx, x, y, size, SKULL_ROWS, { x: INK.acidDark }, 1.5 + dx, 1.5 + dy);
+      var b1 = (f % 30) * 0.19;
+      var b2 = ((f + 15) % 30) * 0.19;
+      if (b1 < 5) pix(ctx, x, y, size, INK.acidDark, 0.9, 6.4 - b1, 0.5, 0.5);
+      if (b2 < 5) pix(ctx, x, y, size, INK.acidDark, 6.6, 6.4 - b2, 0.5, 0.5);
+    }
+  }
+
+  // Клетка, уменьшенная вокруг своего центра, в дробных координатах клеток.
+  function scaled(ctx, cx, cy, size, scale, draw) {
+    ctx.save();
+    ctx.translate((cx + 0.5) * size, (cy + 0.5) * size);
+    ctx.scale(scale, scale);
+    ctx.translate(-0.5 * size, -0.5 * size);
+    draw();
+    ctx.restore();
+  }
+
+  /* Эффект поверх стакана, пока идёт: мина — вспышка на всех 3×3 от белого к
+     оранжевому и гаснущему тёмно-красному, искры разлетаются; дыра — клетки
+     ряда съезжаются к ней и тают, сама она на миг растёт; кислота — клетка под
+     ней наливается лаймом по ходу шага. Сам стакан меняется в ядре по концу
+     эффекта, здесь только картинка. */
+  function drawEffect(ctx, e, size, ms) {
+    var p = Math.min(1, e.t / e.dur);
+    if (e.type === 'mine') {
+      e.cells.forEach(function (c) {
+        if (p < 0.3) flat(ctx, c.x, c.y, size, p < 0.15 ? INK.fireWhite : INK.fireYellow);
+        else if (p < 0.65) {
+          flat(ctx, c.x, c.y, size, INK.fireOrange);
+          pix(ctx, c.x, c.y, size, INK.fireYellow, 2, 2, 4, 4);
+        } else {
+          ctx.globalAlpha = (1 - p) / 0.35;
+          flat(ctx, c.x, c.y, size, INK.fireDark);
+          ctx.globalAlpha = 1;
+        }
+      });
+      var u = size / 8;
+      ctx.globalAlpha = p < 0.6 ? 1 : (1 - p) / 0.4;
+      for (var k = 0; k < 8; k += 1) {
+        var ang = k * Math.PI / 4;
+        var r = (0.4 + 1.3 * p) * size;
+        ctx.fillStyle = k % 2 ? INK.fireYellow : INK.fireOrange;
+        ctx.fillRect(Math.round((e.x + 0.5) * size + Math.cos(ang) * r - u * 0.25), Math.round((e.y + 0.5) * size + Math.sin(ang) * r - u * 0.25), Math.round(u * 0.5), Math.round(u * 0.5));
+      }
+      ctx.globalAlpha = 1;
+    } else if (e.type === 'hole') {
+      for (var x = 0; x < COLS; x += 1) {
+        var v = game.board[e.y][x];
+        if (!v || x === e.x) continue;
+        var color = COLORS[v];
+        scaled(ctx, x + (e.x - x) * p, e.y, size, 1 - 0.85 * p, function () { block(ctx, 0, 0, size, color); });
+      }
+      scaled(ctx, e.x, e.y, size, 1 + 0.35 * Math.sin(p * Math.PI), function () { drawSpecial(ctx, 0, 0, size, 'hole', ms); });
+    } else if (e.type === 'acid') {
+      var below = e.y + 1;
+      if (below < ROWS && game.board[below][e.x]) {
+        ctx.globalAlpha = 0.15 + 0.6 * Math.min(1, e.t / ACID_STEP);
+        flat(ctx, e.x, below, size, INK.acid);
+        ctx.globalAlpha = 1;
+      }
+    }
   }
 
   function render() {
@@ -809,9 +1158,15 @@
     for (var gx = 1; gx < COLS; gx += 1) ctx.fillRect(gx * cell, 0, 1, ROWS * cell);
     for (var gy = 1; gy < ROWS; gy += 1) ctx.fillRect(0, gy * cell, COLS * cell, 1);
 
+    var ms = LESS_MOTION ? 0 : clock;
+    var holeRow = game.effect && game.effect.type === 'hole' ? game.effect.y : -1;
     for (var y = 0; y < ROWS; y += 1) {
+      if (y === holeRow) continue;   // ряд дыры рисует эффект: клетки съезжаются к ней
       for (var x = 0; x < COLS; x += 1) {
-        if (game.board[y][x]) block(ctx, x, y, cell, COLORS[game.board[y][x]]);
+        var v = game.board[y][x];
+        if (!v) continue;
+        if (isSpecial(v)) drawSpecial(ctx, x, y, cell, v, ms);
+        else block(ctx, x, y, cell, COLORS[v]);
       }
     }
     if (game.piece && !game.over) {
@@ -819,12 +1174,15 @@
       var gy2 = ghostY(game);
       for (var py = 0; py < p.shape.length; py += 1) {
         for (var px = 0; px < p.shape[py].length; px += 1) {
-          if (!p.shape[py][px]) continue;
+          var pv = p.shape[py][px];
+          if (!pv) continue;
           if (gy2 !== p.y) block(ctx, p.x + px, gy2 + py, cell, COLORS[p.kind], true);
-          block(ctx, p.x + px, p.y + py, cell, COLORS[p.kind]);
+          if (isSpecial(pv)) drawSpecial(ctx, p.x + px, p.y + py, cell, pv, ms);
+          else block(ctx, p.x + px, p.y + py, cell, COLORS[p.kind]);
         }
       }
     }
+    if (game.effect) drawEffect(ctx, game.effect, cell, ms);
 
     var nctx = ui.preview.getContext('2d');
     nctx.clearRect(0, 0, 4 * cell, 2 * cell);
@@ -833,7 +1191,10 @@
     var oy = n.shape.length === 1 ? 0.5 : 0;
     for (var ny = 0; ny < n.shape.length; ny += 1) {
       for (var nx = 0; nx < n.shape[ny].length; nx += 1) {
-        if (n.shape[ny][nx]) block(nctx, ox + nx, oy + ny, cell, COLORS[n.kind]);
+        var nv = n.shape[ny][nx];
+        if (!nv) continue;
+        if (isSpecial(nv)) drawSpecial(nctx, ox + nx, oy + ny, cell, nv, ms);
+        else block(nctx, ox + nx, oy + ny, cell, COLORS[n.kind]);
       }
     }
   }
@@ -909,6 +1270,7 @@
     if (phase !== 'play') return;
     var dt = lastFrame ? Math.min(now - lastFrame, 100) : 0;
     lastFrame = now;
+    clock = now;
     if (!game.over && !game.paused) {
       tick(game, dt);
       updateStats();
