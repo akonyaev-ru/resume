@@ -1246,46 +1246,92 @@
     ctx.restore();
   }
 
+  var scratch = null;   // служебный холст в одну клетку: с него клетка переносится по пикселям
+
+  function cellCanvas(size) {
+    var dpr = root.devicePixelRatio || 1;
+    if (!scratch) scratch = document.createElement('canvas');
+    var w = Math.round(size * dpr);
+    if (scratch.width !== w || scratch.height !== w) { scratch.width = w; scratch.height = w; }
+    var c2 = scratch.getContext('2d');
+    c2.setTransform(dpr, 0, 0, dpr, 0, 0);
+    c2.clearRect(0, 0, size, size);
+    return c2;
+  }
+
+  // Пиксель клетки (i, j из 8×8) со служебного холста на поле со сдвигом по y.
+  function chunk(ctx, size, x, y, i, j, dy) {
+    var dpr = root.devicePixelRatio || 1;
+    var u = size / 8;
+    var x0 = Math.round(i * u);
+    var x1 = Math.round((i + 1) * u);
+    var y0 = Math.round(j * u);
+    var y1 = Math.round((j + 1) * u);
+    ctx.drawImage(scratch, x0 * dpr, y0 * dpr, (x1 - x0) * dpr, (y1 - y0) * dpr, x * size + x0, Math.round(y * size + y0 + dy), x1 - x0, y1 - y0);
+  }
+
+  function coverCell(ctx, size, x, y) {
+    ctx.fillStyle = '#0b1018';
+    ctx.fillRect(x * size, y * size, size, size);
+    ctx.fillStyle = 'rgba(255,255,255,0.035)';
+    ctx.fillRect(x * size, y * size, 1, size);
+    ctx.fillRect(x * size, y * size, size, 1);
+  }
+
+  /* Кислота (5.45, владелец: «с ядом тоже что-нибудь придумаем»). Пока горит:
+     клетка под ней разъедается по пикселям — верх первым, но неровно; пиксель
+     сперва зеленеет, потом отваливается каплей вниз и гаснет; над разъеденным
+     всплывают пузырьки. На последнем шаге сама кислота испаряется: пиксели
+     черепа снизу вверх отрываются, уходят вверх и тают. */
   function drawAcid(ctx, e, size, ms) {
     var u = size / 8;
-    var seam = Math.max(1, Math.round(size / 16));
-    var inner = size - 2 * seam;
     var q = Math.min(1, e.t / ACID_STEP);
-    var frame = Math.floor(ms / 60);
     var below = e.y + 1;
     var burning = e.burnt < ACID_DEPTH && below < ROWS && game.board[below][e.x];
-    var left = e.x * size + seam;
+    var i, j, n, k;
     if (burning) {
-      // Фронт плавления идёт сверху вниз рваной кромкой, по лайму всплывают пузырьки.
-      var top = below * size + seam;
-      var melt = q * inner;
-      ctx.fillStyle = INK.acid;
-      ctx.fillRect(left, top, inner, Math.round(melt));
-      for (var i = 0; i < 8; i += 1) {
-        var extra = noise(i, e.burnt, frame) * u * 0.6;
-        ctx.fillRect(Math.round(left + i * inner / 8), Math.round(top + melt), Math.ceil(inner / 8), Math.min(Math.round(extra), Math.round(inner - melt)));
+      var v = game.board[below][e.x];
+      var c2 = cellCanvas(size);
+      block(c2, 0, 0, size, isSpecial(v) ? INK.plate : COLORS[v]);
+      coverCell(ctx, size, e.x, below);
+      for (j = 0; j < 8; j += 1) {
+        for (i = 0; i < 8; i += 1) {
+          n = 0.1 + 0.5 * noise(i, j, e.burnt) + 0.35 * j / 8;   // порог: когда пиксель разъедается
+          if (q < n) { chunk(ctx, size, e.x, below, i, j, 0); continue; }
+          k = (q - n) / (1 - n);
+          if (k < 0.3) {
+            chunk(ctx, size, e.x, below, i, j, 0);
+            ctx.globalAlpha = 0.9 * k / 0.3;
+            pix(ctx, e.x, below, size, INK.acid, i, j, 1, 1);
+            ctx.globalAlpha = 1;
+          } else {
+            var d = (k - 0.3) / 0.7;
+            ctx.globalAlpha = 1 - d;
+            pix(ctx, e.x, below, size, mix(INK.acid, INK.acidDark, d), i, j + d * d * 12, 1, 1);
+            ctx.globalAlpha = 1;
+          }
+        }
       }
       ctx.fillStyle = INK.acidDark;
-      for (var b = 0; b < 2; b += 1) {
-        if (melt < u) break;
-        var by = top + melt - ((ms / 50 + b * 23) % Math.max(1, melt));
-        var bx = left + (0.8 + noise(b, e.burnt) * 5.6) * u;
-        ctx.fillRect(Math.round(bx), Math.round(by), Math.ceil(u * 0.5), Math.ceil(u * 0.5));
+      for (k = 0; k < 3; k += 1) {
+        var by = (below + 0.9) * size - ((ms / 45 + k * 29) % (size * 0.9));
+        if (by < below * size + u * (1 - q) * 6) continue;   // пузырьки только в разъеденной части
+        ctx.fillRect(Math.round(e.x * size + (0.8 + noise(k, e.burnt) * 5.6) * u), Math.round(by), Math.ceil(u * 0.5), Math.ceil(u * 0.5));
       }
     } else {
-      // Последний шаг: кислота тает снизу вверх, пузырьки уходят вверх.
-      var gone = q * size;
-      ctx.fillStyle = '#0b1018';
-      ctx.fillRect(e.x * size, Math.round((e.y + 1) * size - gone), size, Math.ceil(gone));
-      ctx.fillStyle = INK.acid;
-      for (var k = 0; k < 6; k += 1) {
-        var rise = (q * 1.6 + noise(k, 31) * 0.5) * size;
-        var py = (e.y + 1) * size - gone - rise;
-        if (py < 0) continue;
-        ctx.globalAlpha = Math.max(0, 1 - q * 1.1);
-        ctx.fillRect(Math.round(left + noise(k, 32) * inner), Math.round(py), Math.ceil(u * 0.5), Math.ceil(u * 0.5));
+      var c3 = cellCanvas(size);
+      drawSpecial(c3, 0, 0, size, 'acid', ms);
+      coverCell(ctx, size, e.x, e.y);
+      for (j = 0; j < 8; j += 1) {
+        for (i = 0; i < 8; i += 1) {
+          n = 0.05 + 0.55 * noise(i, j, 99) + 0.35 * (7 - j) / 8;   // низ испаряется первым
+          if (q < n) { chunk(ctx, size, e.x, e.y, i, j, 0); continue; }
+          k = (q - n) / (1 - n);
+          ctx.globalAlpha = Math.max(0, 1 - k * 1.2);
+          chunk(ctx, size, e.x, e.y, i, j, -k * k * size * 1.3);
+          ctx.globalAlpha = 1;
+        }
       }
-      ctx.globalAlpha = 1;
     }
   }
 
