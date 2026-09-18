@@ -1186,22 +1186,42 @@
     ctx.restore();
   }
 
+  // Цвет между двумя шестнадцатеричными: t = 0 — первый, 1 — второй.
+  function mix(a, b, t) {
+    var ar = parseInt(a.slice(1, 3), 16), ag = parseInt(a.slice(3, 5), 16), ab = parseInt(a.slice(5, 7), 16);
+    var br = parseInt(b.slice(1, 3), 16), bg = parseInt(b.slice(3, 5), 16), bb = parseInt(b.slice(5, 7), 16);
+    return 'rgb(' + Math.round(ar + (br - ar) * t) + ',' + Math.round(ag + (bg - ag) * t) + ',' + Math.round(ab + (bb - ab) * t) + ')';
+  }
+
+  var SHARDS = 3;   // клетка трескается на 3×3 осколка
+
   function drawHole(ctx, e, size, p, ms) {
     var u = size / 8;
-    var q = p * p;   // с ускорением
+    var seam = Math.max(1, Math.round(size / 16));
+    var cx = (e.x + 0.5) * size;
+    var cy = (e.y + 0.5) * size;
+    // Клетки квадрата с началом эффекта трескаются на осколки; каждый осколок
+    // срывается к центру со своей задержкой, по дороге чернеет и сжимается
+    // (владелец, 5.44: «чтобы блоки расщеплялись, в чёрный красились»).
     e.cells.forEach(function (c) {
       var v = game.board[c.y][c.x];
       if (!v || (c.x === e.x && c.y === e.y)) return;
       var color = isSpecial(v) ? INK.plate : COLORS[v];
-      var nx = c.x + (e.x - c.x) * q;
-      var ny = c.y + (e.y - c.y) * q;
-      var scale = Math.max(0.05, 1 - 0.95 * q);
-      ctx.save();
-      ctx.translate((nx + 0.5) * size, (ny + 0.5) * size);
-      ctx.scale(scale, scale);
-      ctx.translate(-0.5 * size, -0.5 * size);
-      block(ctx, 0, 0, size, color);
-      ctx.restore();
+      var part = (size - 2 * seam) / SHARDS;
+      for (var sy = 0; sy < SHARDS; sy += 1) {
+        for (var sx = 0; sx < SHARDS; sx += 1) {
+          var delay = noise(c.x * 7 + sx, c.y * 5 + sy, 3) * 0.4;
+          var qk = Math.max(0, (p - delay) / (1 - delay));
+          qk *= qk;
+          var x0 = c.x * size + seam + sx * part;
+          var y0 = c.y * size + seam + sy * part;
+          var fx = x0 + part / 2 + (cx - x0 - part / 2) * qk;
+          var fy = y0 + part / 2 + (cy - y0 - part / 2) * qk;
+          var fs = Math.max(1, part * (1 - 0.7 * qk) - 1);
+          ctx.fillStyle = mix(color, '#000000', Math.min(1, qk * 1.6));
+          ctx.fillRect(Math.round(fx - fs / 2), Math.round(fy - fs / 2), Math.round(fs), Math.round(fs));
+        }
+      }
     });
     // Звёздная пыль стекается со всех сторон.
     ctx.fillStyle = INK.star;
