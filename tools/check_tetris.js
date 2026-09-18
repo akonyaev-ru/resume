@@ -503,14 +503,19 @@ check('кислота останавливается, когда под ней �
   return 'две сгорели, воздух — стоп, растворилась, остаток сел на дно';
 });
 
-check('спецклетка, ушедшая с линией, ничего не делает; выше линии — съезжает и срабатывает там', function () {
+check('спецклетка в снятой линии всё равно срабатывает — на месте, куда съехал ряд (5.52)', function () {
   const g = withSpecial('T', 'hole', 1, 1, 3);
   for (let x = 0; x < 10; x += 1) if (x < 3 || x > 5) g.board[17][x] = 'J';   // ряд 17 ждёт трёх клеток
   fillRow(g, 18, 9); fillRow(g, 19, 9);
-  const fell = Tetris.hardDrop(g);
-  if (g.effect || g.piece === null) fail('дыра в снятой линии сработала');
-  if (g.lines !== 1 || g.score !== fell * 2 + Tetris.LINE_SCORE[1]) fail('линия не засчитана: ' + g.score);
-  // Теперь дыра в верхней клетке T: линия снимается, дыра съезжает на ряд ниже и глотает там.
+  const fell = Tetris.hardDrop(g);                                             // низ T закрывает ряд 17
+  if (g.lines !== 1) fail('линия не снята: ' + g.lines);
+  if (!g.effect || g.effect.type !== 'hole' || g.effect.y !== 17) fail('дыра из снятой линии не сработала: ' + JSON.stringify(g.effect));
+  if (g.piece !== null) fail('фигура вышла до эффекта');
+  Tetris.tick(g, Tetris.HOLE_MS);
+  // Верхушка T съехала в (4,17) — своя, без очков; ряд 18 в столбцах 3–5 — три чужие.
+  if (g.board[18][3] || g.board[18][4] || g.board[18][5]) fail('дыра на новом месте не выбила ряд 18: ' + cellsOf(g).join(' '));
+  if (g.score !== fell * 2 + Tetris.LINE_SCORE[1] + 30) fail('очки ' + g.score + ', ожидалось ' + (fell * 2 + Tetris.LINE_SCORE[1] + 30));
+  // Дыра в верхней клетке T, линия снизу: съезжает на ряд ниже и глотает там — как раньше.
   const h = withSpecial('T', 'hole', 0, 1, 3);
   for (let x = 0; x < 10; x += 1) if (x < 3 || x > 5) h.board[17][x] = 'J';
   fillRow(h, 18, 9); fillRow(h, 19, 9);
@@ -519,7 +524,39 @@ check('спецклетка, ушедшая с линией, ничего не �
   Tetris.tick(h, Tetris.HOLE_MS);
   if (h.board[18][3] || h.board[18][4] || h.board[18][5]) fail('дыра на новом месте не выбила ряд 18');
   if (h.lines !== 1) fail('линий ' + h.lines);
-  return 'в линии — молчит; над линией — съезжает и глотает';
+  return 'в линии — бьёт с её места; над линией — съезжает и бьёт';
+});
+
+check('кислота в снятой линии получает тело в первой пустой клетке над местом ряда и жжёт вниз', function () {
+  const g = withSpecial('I', 'acid', 0, 3, 0);
+  Tetris.rotate(g);                                            // палка вертикально, кислота внизу
+  fillRow(g, 19, 0);                                           // ряд 19 ждёт клетки в столбце 0
+  const fell = Tetris.hardDrop(g);                             // кислота закрывает ряд 19 — линия
+  if (g.lines !== 1) fail('линия не снята: ' + g.lines);
+  if (!g.effect || g.effect.type !== 'acid') fail('кислота из снятой линии не сработала: ' + JSON.stringify(g.effect));
+  // Остаток палки съехал в (0,17..19); тело кислоты — в первой пустой клетке над ним, (0,16).
+  if (g.effect.y !== 16 || g.board[16][0] !== 'acid') fail('тело кислоты не там: ' + JSON.stringify(g.effect) + ' ' + cellsOf(g).join(' '));
+  Tetris.tick(g, Tetris.ACID_STEP * 5);
+  if (g.effect) fail('кислота не доиграла');
+  for (let y = 0; y < 20; y += 1) if (g.board[y][0]) fail('столбец 0 не выжжен: ' + cellsOf(g).join(' '));
+  if (g.score !== fell * 2 + Tetris.LINE_SCORE[1]) fail('за свои клетки начислено: ' + g.score);
+  return 'линия снята, кислота встала над остатком и съела его без очков';
+});
+
+check('лазер в снятой линии бьёт крестом с места, куда съехал ряд', function () {
+  const g = withSpecial('T', 'laser', 1, 1, 3);
+  for (let x = 0; x < 10; x += 1) if (x < 3 || x > 5) g.board[17][x] = 'J';
+  fillRow(g, 18, 9); fillRow(g, 19, 9);
+  const fell = Tetris.hardDrop(g);
+  if (g.lines !== 1) fail('линия не снята: ' + g.lines);
+  if (!g.effect || g.effect.type !== 'laser' || g.effect.x !== 4 || g.effect.y !== 17) fail('лазер из снятой линии не сработал: ' + JSON.stringify(g.effect));
+  Tetris.tick(g, Tetris.LASER_MS);
+  if (g.effect || g.piece === null) fail('лазер не кончился');
+  if (g.board[18][4] || g.board[19][4]) fail('столбец 4 не выжжен: ' + cellsOf(g).join(' '));
+  if (g.board[18][3] !== 'J' || g.board[19][5] !== 'J') fail('соседние столбцы задеты: ' + cellsOf(g).join(' '));
+  // Ряд 17 после съезда — только верхушка T (своя), столбец 4 — две чужие клетки.
+  if (g.score !== fell * 2 + Tetris.LINE_SCORE[1] + 20) fail('очки ' + g.score + ', ожидалось ' + (fell * 2 + Tetris.LINE_SCORE[1] + 20));
+  return 'линия снята, лазер выжег столбец под собой: +20';
 });
 
 check('во время эффекта ходов нет: сброс, сдвиг и поворот ничего не делают', function () {

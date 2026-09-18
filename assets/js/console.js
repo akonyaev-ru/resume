@@ -260,15 +260,27 @@
     scoreLines(game, clearLines(game));
     game.fall = 0;
     if (game.over) return;
-    // Спецклетка, ушедшая вместе с линией, ничего не делает; уцелевшая
-    // съезжает вниз на число снятых под ней строк и запускает эффект.
-    if (special && game.cleared.indexOf(special.y) < 0) {
+    // Спецклетка срабатывает всегда (5.52; до того ушедшая с линией молчала —
+    // владелец видел это как «анимация пропущена»): уцелевшая съезжает вниз на
+    // число снятых под ней строк; ушедшая с линией бьёт с места, куда съехал
+    // бы её ряд. Кислоте нужно тело — оно встаёт в первую пустую клетку над
+    // этим местом; столбец до самого верха занят — кислота растворяется молча.
+    if (special) {
+      var vanished = game.cleared.indexOf(special.y) >= 0;
       var sunk = function (c) {
         return c.y + game.cleared.filter(function (row) { return row > c.y; }).length;
       };
       special.y = sunk(special);
       own = own.filter(function (c) { return game.cleared.indexOf(c.y) < 0; })
         .map(function (c) { return { x: c.x, y: sunk(c) }; });
+      if (vanished && special.type === 'acid') {
+        var by = special.y;
+        while (by >= 0 && game.board[by][special.x]) by -= 1;
+        if (by < 0) { spawn(game); return; }
+        game.board[by][special.x] = 'acid';
+        special.y = by;
+        own.push({ x: special.x, y: by });
+      }
       game.effect = startEffect(special, own);
       game.piece = null;
       return;
