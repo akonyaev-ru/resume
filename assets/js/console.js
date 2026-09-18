@@ -47,7 +47,7 @@
   var SPECIAL_CHANCE = 0.15;   // доля фигур со спецклеткой (5.39: была 0,1 — владелец после партии)
   var SPECIAL_SCORE = 10;      // за сожжённую клетку стопки, × уровень
   var HOLE_MS = 500;           // чёрная дыра: втягивает 3×3 вокруг себя (5.47; 5.41–5.46 было 5×5)
-  var LASER_MS = 500;          // лазер: выжигает весь ряд и весь столбец (5.47, вместо мины 3×3)
+  var LASER_MS = 560;          // лазер: выжигает весь ряд и весь столбец (5.47; 5.49: было 500 — «чуть медленнее»)
   var BLAST = { hole: 1 };     // радиус в клетках: 3×3
   var ACID_STEP = 220;         // кислота: мс на клетку вниз (5.39: было 180)
   var ACID_DEPTH = 4;          // кислота: клеток вниз, потом растворяется сама
@@ -299,6 +299,52 @@
     });
   }
 
+  // Острова не летают (5.49): всё, что не связано с дном цепочкой соседних
+  // клеток (по четырём сторонам), падает единым куском, пока не упрётся.
+  // Эффект может выбить опору под чужой конструкцией — столб под шляпкой, —
+  // и в классике такого не бывает: линии снимаются рядами целиком. Свои
+  // клетки эффекта и кислота едут вместе с куском.
+  function grounded(board) {
+    var seen = [];
+    var stack = [];
+    for (var y = 0; y < ROWS; y += 1) seen.push(emptyRow());
+    for (var x = 0; x < COLS; x += 1) {
+      if (board[ROWS - 1][x]) { seen[ROWS - 1][x] = 1; stack.push([x, ROWS - 1]); }
+    }
+    while (stack.length) {
+      var c = stack.pop();
+      [[1, 0], [-1, 0], [0, 1], [0, -1]].forEach(function (d) {
+        var nx = c[0] + d[0];
+        var ny = c[1] + d[1];
+        if (nx < 0 || nx >= COLS || ny < 0 || ny >= ROWS) return;
+        if (!board[ny][nx] || seen[ny][nx]) return;
+        seen[ny][nx] = 1;
+        stack.push([nx, ny]);
+      });
+    }
+    return seen;
+  }
+
+  function settleAll(game, effect) {
+    for (var guard = 0; guard < ROWS; guard += 1) {
+      var seen = grounded(game.board);
+      var moved = false;
+      for (var y = ROWS - 2; y >= 0; y -= 1) {
+        for (var x = 0; x < COLS; x += 1) {
+          if (!game.board[y][x] || seen[y][x]) continue;
+          game.board[y + 1][x] = game.board[y][x];
+          game.board[y][x] = 0;
+          if (effect) {
+            effect.own.forEach(function (c) { if (c.x === x && c.y === y) c.y += 1; });
+            if (effect.type === 'acid' && effect.y === y && effect.x === x) effect.y += 1;
+          }
+          moved = true;
+        }
+      }
+      if (!moved) return;
+    }
+  }
+
   // Сжечь клетку: очки за чужую, пусто на её месте, столбец над ней оседает.
   function burnCell(game, effect, x, y) {
     if (!game.board[y][x]) return;
@@ -317,6 +363,7 @@
       effect.y = below;
       effect.burnt += 1;
       settleOwn(game, effect);
+      settleAll(game, effect);
       return;
     }
     game.board[effect.y][effect.x] = 0;
@@ -355,6 +402,7 @@
       });
     }
     settleOwn(game, effect);
+    settleAll(game, effect);
     game.effect = null;
     scoreLines(game, clearLines(game));
     spawn(game);

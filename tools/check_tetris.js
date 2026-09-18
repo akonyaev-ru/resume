@@ -492,7 +492,8 @@ check('кислота: прожигает четыре клетки под со�
 check('кислота останавливается, когда под ней пусто', function () {
   const g = withSpecial('I', 'acid', 0, 3, 0);
   Tetris.rotate(g);
-  g.board[17][0] = 'J'; g.board[18][0] = 'J';                  // две клетки, под ними воздух
+  g.board[17][0] = 'J'; g.board[18][0] = 'J';                  // две клетки, под ними дыра
+  g.board[17][1] = 'J'; g.board[18][1] = 'J'; g.board[19][1] = 'J';   // опора рядом: остров не образуется (5.49)
   Tetris.hardDrop(g);
   Tetris.tick(g, Tetris.ACID_STEP * 2);
   if (g.effect.burnt !== 2 || g.board[18][0] !== 'acid') fail('две клетки не сгорели: ' + cellsOf(g).join(' '));
@@ -582,14 +583,79 @@ check('остаток фигуры после дыры не висит: палк
   return 'две клетки палки упали на дно, пик ниже кратера цел';
 });
 
-check('чужие навесы стопки после эффекта не падают — как в классике', function () {
-  const g = withSpecial('T', 'laser', 1, 1, 3);
+check('чужой навес, связанный с дном, после эффекта не падает — как в классике', function () {
+  const g = withSpecial('T', 'hole', 1, 1, 3);
   fillRow(g, 19, 9);
-  g.board[15][0] = 'S'; g.board[15][1] = 'S';                          // чужой навес в стороне от взрыва
+  g.board[15][0] = 'S'; g.board[15][1] = 'S';                          // чужой навес в стороне от дыры
+  g.board[16][0] = 'S'; g.board[17][0] = 'S'; g.board[18][0] = 'S';    // держится столбиком до дна (5.49)
   Tetris.hardDrop(g);
-  Tetris.tick(g, Tetris.LASER_MS);
+  Tetris.tick(g, Tetris.HOLE_MS);
   if (g.board[15][0] !== 'S' || g.board[15][1] !== 'S') fail('чужой навес сдвинулся: ' + cellsOf(g).join(' '));
   return 'навес S на месте';
+});
+
+// Острова: клетки, не связанные с дном цепочкой соседей по четырём сторонам.
+function islands(g) {
+  const seen = [];
+  for (let y = 0; y < Tetris.ROWS; y += 1) seen.push(new Array(Tetris.COLS).fill(0));
+  const stack = [];
+  for (let x = 0; x < Tetris.COLS; x += 1) if (g.board[Tetris.ROWS - 1][x]) { seen[Tetris.ROWS - 1][x] = 1; stack.push([x, Tetris.ROWS - 1]); }
+  while (stack.length) {
+    const [x, y] = stack.pop();
+    for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+      const nx = x + dx, ny = y + dy;
+      if (nx < 0 || nx >= Tetris.COLS || ny < 0 || ny >= Tetris.ROWS || !g.board[ny][nx] || seen[ny][nx]) continue;
+      seen[ny][nx] = 1; stack.push([nx, ny]);
+    }
+  }
+  const out = [];
+  for (let y = 0; y < Tetris.ROWS; y += 1) for (let x = 0; x < Tetris.COLS; x += 1) if (g.board[y][x] && !seen[y][x]) out.push(y + ',' + x);
+  return out;
+}
+
+check('острова после лазера падают: шляпка гриба без столба садится на дно единым куском', function () {
+  const g = withSpecial('T', 'laser', 1, 1, 3);
+  for (let y = 15; y < 20; y += 1) g.board[y][4] = 'J';          // столб
+  [2, 3, 4, 5, 6].forEach(function (x) { g.board[14][x] = 'S'; }); // шляпка на нём
+  Tetris.hardDrop(g);                                              // T на шляпке: низ 13, лазер (4,13)
+  if (!g.effect || g.effect.type !== 'laser' || g.effect.y !== 13) fail('лазер не лёг: ' + JSON.stringify(g.effect));
+  Tetris.tick(g, Tetris.LASER_MS);
+  if (g.effect || g.piece === null) fail('лазер не кончился');
+  if (islands(g).length) fail('висят острова: ' + islands(g).join(' '));
+  if (g.board[19][2] !== 'S' || g.board[19][3] !== 'S' || g.board[19][5] !== 'S' || g.board[19][6] !== 'S') fail('шляпка не села на дно: ' + cellsOf(g).join(' '));
+  if (g.board[19][4]) fail('столбец лазера не пуст: ' + cellsOf(g).join(' '));   // верхушка T тоже в столбце — сгорела
+  return 'столб сгорел, шляпка из четырёх клеток села на дно куском';
+});
+
+check('острова после дыры падают, а связанный с дном навес остаётся', function () {
+  const g = withSpecial('T', 'hole', 1, 1, 3);
+  fillRow(g, 19, 9);
+  g.board[18][4] = 'J'; g.board[17][4] = 'J';                     // столбик на дне
+  g.board[16][4] = 'L'; g.board[16][5] = 'L'; g.board[16][6] = 'L'; g.board[16][7] = 'L';   // полка на столбике
+  g.board[18][0] = 'S'; g.board[17][0] = 'S'; g.board[16][0] = 'S'; g.board[16][1] = 'S';   // навес, связанный с дном через столбец 0
+  Tetris.hardDrop(g);                                              // T на полку: низ 15, дыра (4,15)
+  Tetris.tick(g, Tetris.HOLE_MS);
+  if (g.effect) fail('дыра не кончилась');
+  if (islands(g).length) fail('висят острова: ' + islands(g).join(' '));
+  // Дыра 3×3 выбила (4,16), полка L из (6,16),(7,16) осталась без столбика — упала на дно.
+  if (g.board[18][6] !== 'L' || g.board[18][7] !== 'L') fail('полка не упала: ' + cellsOf(g).join(' '));
+  if (g.board[16][1] !== 'S' || g.board[16][0] !== 'S' || g.board[17][0] !== 'S') fail('навес, связанный с дном, сдвинулся: ' + cellsOf(g).join(' '));
+  return 'полка упала, навес на месте';
+});
+
+check('во всех прежних сценах после эффекта островов нет', function () {
+  const scenes = [
+    function () { const g = withSpecial('T', 'hole', 1, 1, 3); fillRow(g, 17, 9); fillRow(g, 18, 9); fillRow(g, 19, 9); return g; },
+    function () { const g = withSpecial('I', 'acid', 0, 3, 0); Tetris.rotate(g); for (let y = 13; y < 20; y += 1) g.board[y][0] = 'J'; return g; },
+    function () { const g = withSpecial('T', 'laser', 1, 1, 4); fillRow(g, 17, 9); fillRow(g, 18, 9); fillRow(g, 19, 9); g.board[3][5] = 'S'; return g; },
+  ];
+  scenes.forEach(function (make, i) {
+    const g = make();
+    Tetris.hardDrop(g);
+    Tetris.tick(g, 3000);
+    if (islands(g).length) fail('сцена ' + i + ': ' + islands(g).join(' '));
+  });
+  return 'три сцены чисты';
 });
 
 const failed = results.filter(function (r) { return !r.ok; }).length;
