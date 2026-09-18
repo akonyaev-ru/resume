@@ -43,8 +43,9 @@
      сама спецклетка не в счёт; `lines` и уровень растут только от настоящих
      линий. Розыгрыш — по весам, с первого уровня: посетитель играет одну
      партию, и спецклетка должна успеть ему встретиться. */
-  var SPECIALS = { hole: 6, acid: 3, laser: 1 };   // ключ → вес при розыгрыше (5.47: дыра 3×3 частая, лазер-крест редкий)
-  var SPECIAL_CHANCE = 0.15;   // доля фигур со спецклеткой (5.39: была 0,1 — владелец после партии)
+  var SPECIALS = { hole: 6, acid: 3, laser: 1, stone: 3 };   // ключ → вес при розыгрыше (5.50: камень — негативная)
+  var SPECIAL_CHANCE = 0.18;   // доля фигур со спецклеткой (5.39: 0,1; 5.50: 0,18 — полезные на прежней частоте, камень сверху)
+  var STONE_LIFE = 5;          // камень крошится сам через столько приземлений других фигур
   var SPECIAL_SCORE = 10;      // за сожжённую клетку стопки, × уровень
   var HOLE_MS = 500;           // чёрная дыра: втягивает 3×3 вокруг себя (5.47; 5.41–5.46 было 5×5)
   var LASER_MS = 560;          // лазер: выжигает весь ряд и весь столбец (5.47; 5.49: было 500 — «чуть медленнее»)
@@ -78,6 +79,35 @@
 
   function isSpecial(value) {
     return typeof value === 'string' && Object.prototype.hasOwnProperty.call(SPECIALS, value);
+  }
+
+  /* Камень (5.50) — негативная спецклетка: при приземлении не даёт эффекта,
+     а остаётся в стопке камнем `stone:<фигура>:<жизней>`. Ряд с камнем не
+     считается полным. С каждым приземлением другой фигуры жизней на одну
+     меньше; на нуле камень становится обычной клеткой цвета своей фигуры, и
+     полный ряд снимается тут же. Любая спецклетка ломает камень как обычную
+     клетку стопки. */
+  function isStone(value) {
+    return typeof value === 'string' && value.indexOf('stone:') === 0;
+  }
+
+  function stoneKind(value) { return value.split(':')[1]; }
+  function stoneLife(value) { return parseInt(value.split(':')[2], 10); }
+
+  // Камни стареют на одно приземление; своих клеток только что легшей фигуры не касается.
+  function ageStones(game, own) {
+    game.crumbled = [];
+    for (var y = 0; y < ROWS; y += 1) {
+      for (var x = 0; x < COLS; x += 1) {
+        var v = game.board[y][x];
+        if (!isStone(v)) continue;
+        var mine = own.some(function (c) { return c.x === x && c.y === y; });
+        if (mine) continue;
+        var life = stoneLife(v) - 1;
+        if (life > 0) game.board[y][x] = 'stone:' + stoneKind(v) + ':' + life;
+        else { game.board[y][x] = stoneKind(v); game.crumbled.push({ x: x, y: y }); }
+      }
+    }
   }
 
   // Спецклетка — по шансу игры (`specialChance`, по умолчанию SPECIAL_CHANCE),
@@ -194,7 +224,7 @@
     var cleared = [];
     for (var y = 0; y < ROWS; y += 1) {
       var full = true;
-      for (var x = 0; x < COLS; x += 1) if (!game.board[y][x]) { full = false; break; }
+      for (var x = 0; x < COLS; x += 1) if (!game.board[y][x] || isStone(game.board[y][x])) { full = false; break; }
       if (full) cleared.push(y);
       else kept.push(game.board[y]);
     }
@@ -221,11 +251,12 @@
         var ny = p.y + y;
         var nx = p.x + x;
         if (ny < 0) { game.over = true; continue; }
-        game.board[ny][nx] = isSpecial(v) ? v : p.kind;
+        game.board[ny][nx] = v === 'stone' ? 'stone:' + p.kind + ':' + STONE_LIFE : (isSpecial(v) ? v : p.kind);
         own.push({ x: nx, y: ny });
-        if (isSpecial(v)) special = { type: v, x: nx, y: ny };
+        if (isSpecial(v) && v !== 'stone') special = { type: v, x: nx, y: ny };
       }
     }
+    ageStones(game, own);
     scoreLines(game, clearLines(game));
     game.fall = 0;
     if (game.over) return;
@@ -478,6 +509,9 @@
     ACID_STEP: ACID_STEP,
     ACID_DEPTH: ACID_DEPTH,
     isSpecial: isSpecial,
+    isStone: isStone,
+    stoneLife: stoneLife,
+    STONE_LIFE: STONE_LIFE,
   };
 
   /* --- таблица рекордов ----------------------------------------------------
@@ -1085,6 +1119,7 @@
   var PLATE_INK = { l: INK.plateLight, m: INK.plate, d: INK.plateDark };
   var SOCKET_ROWS = ['.xx.', 'xxxx', 'xxxx', '.xx.'];
   var SKULL_ROWS = ['.xxx.', 'xxxxx', 'x.x.x', 'xxxxx', '.x.x.'];
+  var STONE = { body: '#7c8699', dark: '#5c6478', crack: '#2c313d', light: '#9aa3b5' };
   var FRAME_MS = 120;       // шаг дискретных движений: мигание, мерцание, пузырьки
   var BLINK_MS = 2400;      // период двойного мигания диода мины
   var FLOAT_MS = 1800;      // период плавания черепа
@@ -1125,9 +1160,29 @@
     pix(ctx, x, y, size, INK.socket, sx + 0.1, sy + 0.3, 0.6, 0.2);
   }
 
+  // Камень: серая глыба с крапом; трещин тем больше, чем меньше жизней —
+  // обратный отсчёт виден. В полёте и в «далее» — целый.
+  function drawStone(ctx, x, y, size, life, ms) {
+    block(ctx, x, y, size, STONE.body);
+    sprite(ctx, x, y, size, ['.d....l.', '...d....', 'l.....d.', '....l...', '.d....d.', '...l....', 'l....d..'], { d: STONE.dark, l: STONE.light }, 0.6, 0.6);
+    var cracks = [
+      ['..c.....', '..c.....', '.c......', '.c......'],
+      ['......c.', '.....c..', '.....c..', '......c.', '......c.'],
+      ['........', '........', '........', 'cc......', '..cc....', '....c...'],
+      ['........', '........', '.....ccc', '....c...', '........', '........', '....cc..'],
+    ];
+    var n = Math.max(0, Math.min(cracks.length, STONE_LIFE - life));
+    for (var k = 0; k < n; k += 1) sprite(ctx, x, y, size, cracks[k], { c: STONE.crack }, 0.6, 0.6);
+    if (life <= 1 && (Math.floor(ms / 200) % 2 === 0)) {   // вот-вот раскрошится — дрожит крапом
+      pix(ctx, x, y, size, STONE.crack, 3.2, 3.4, 0.6, 0.6);
+    }
+  }
+
   function drawSpecial(ctx, x, y, size, type, ms) {
     var f = Math.floor(ms / FRAME_MS);
-    if (type === 'laser') {
+    if (type === 'stone') {
+      drawStone(ctx, x, y, size, STONE_LIFE, ms);
+    } else if (type === 'laser') {
       drawLaserCell(ctx, x, y, size, ms);
     } else if (type === 'hole') {
       flat(ctx, x, y, size, INK.black);
@@ -1309,7 +1364,7 @@
   }
 
   // Цвет клетки стакана для эффектов: у спецклетки — тон её пластины.
-  function cellColor(v) { return isSpecial(v) ? INK.plate : COLORS[v]; }
+  function cellColor(v) { return isStone(v) ? STONE.body : isSpecial(v) ? INK.plate : COLORS[v]; }
 
   // Цвет между двумя шестнадцатеричными: t = 0 — первый, 1 — второй.
   function mix(a, b, t) {
@@ -1460,6 +1515,28 @@
     }
   }
 
+  // Крошка: камень рассыпался — шесть серых пылинок разлетаются и гаснут за 350 мс.
+  var dust = [];
+  function drawDust(ctx, size, ms) {
+    if (game.crumbled && game.crumbled.length) {
+      game.crumbled.forEach(function (c) { dust.push({ x: c.x, y: c.y, t0: ms }); });
+      game.crumbled = [];
+    }
+    var u = size / 8;
+    dust = dust.filter(function (d) { return ms - d.t0 < 350; });
+    dust.forEach(function (d) {
+      var q = (ms - d.t0) / 350;
+      ctx.globalAlpha = 1 - q;
+      for (var k = 0; k < 6; k += 1) {
+        var ang = k * Math.PI / 3 + noise(k, 7);
+        var r = (0.2 + q * 0.7) * size;
+        ctx.fillStyle = k % 2 ? STONE.light : STONE.dark;
+        ctx.fillRect(Math.round((d.x + 0.5) * size + Math.cos(ang) * r), Math.round((d.y + 0.5) * size + Math.sin(ang) * r - q * u * 2), Math.ceil(u * 0.5), Math.ceil(u * 0.5));
+      }
+      ctx.globalAlpha = 1;
+    });
+  }
+
   function drawEffect(ctx, e, size, ms) {
     var p = Math.min(1, e.t / e.dur);
     if (e.type === 'laser') fxLaser(ctx, e, size, p, ms);
@@ -1486,6 +1563,7 @@
         var v = game.board[y][x];
         if (!v || pulled[y * COLS + x]) continue;
         if (isSpecial(v)) drawSpecial(ctx, x, y, cell, v, ms);
+        else if (isStone(v)) drawStone(ctx, x, y, cell, stoneLife(v), ms);
         else block(ctx, x, y, cell, COLORS[v]);
       }
     }
@@ -1503,6 +1581,7 @@
       }
     }
     if (game.effect) drawEffect(ctx, game.effect, cell, ms);
+    drawDust(ctx, cell, ms);
 
     var nctx = ui.preview.getContext('2d');
     nctx.clearRect(0, 0, 4 * cell, 2 * cell);

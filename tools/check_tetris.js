@@ -658,6 +658,64 @@ check('во всех прежних сценах после эффекта ос�
   return 'три сцены чисты';
 });
 
+/* --- камень (5.50) ------------------------------------------------------------ */
+
+check('камень: ряд с ним не снимается, через пять приземлений крошится — и ряд снимается', function () {
+  const g = withSpecial('T', 'stone', 1, 1, 3);
+  for (let x = 0; x < 10; x += 1) if (x < 3 || x > 5) g.board[19][x] = 'J';   // ряд 19 ждёт трёх клеток
+  Tetris.hardDrop(g);                                                          // T: низ 19, камень в (4,19)
+  if (g.effect) fail('камень запустил эффект');
+  if (g.piece === null) fail('следующая фигура не вышла');
+  if (g.lines !== 0) fail('ряд с камнем снялся: линий ' + g.lines);
+  const cell = g.board[19][4];
+  if (!Tetris.isStone(cell) || Tetris.stoneLife(cell) !== Tetris.STONE_LIFE) fail('камня нет в (4,19): ' + cell);
+  for (let x = 0; x < 10; x += 1) if (!g.board[19][x]) fail('ряд 19 не полон в ' + x);
+  // Пять приземлений палок в разных столбцах — камень стареет, ряд 19 ждёт.
+  [0, 1, 2, 6, 7].forEach(function (col, i) {
+    const k = i + 1;
+    g.piece = { kind: 'I', shape: [[1], [1], [1], [1]], x: col, y: 0 };
+    Tetris.hardDrop(g);
+    if (k < 5) {
+      if (Tetris.stoneLife(g.board[19][4]) !== Tetris.STONE_LIFE - k) fail('после ' + k + ' приземлений: ' + g.board[19][4]);
+      if (g.lines !== 0) fail('ряд с камнем снялся раньше срока');
+    }
+  });
+  if (g.board[19][4] && Tetris.isStone(g.board[19][4])) fail('камень не раскрошился: ' + g.board[19][4]);
+  if (g.lines !== 1) fail('после крошения ряд не снялся: линий ' + g.lines);
+  return 'ряд ждал пять фигур, камень стал клеткой, ряд снят';
+});
+
+check('камень ломается спецклеткой, как обычная клетка стопки, с очками', function () {
+  const g = withSpecial('T', 'stone', 1, 1, 3);
+  fillRow(g, 19, 9);
+  Tetris.hardDrop(g);                                                          // T: низ 18, камень в (4,18), верх (4,17)
+  if (!Tetris.isStone(g.board[18][4])) fail('камня нет: ' + cellsOf(g).join(' '));
+  const before = g.score;
+  g.piece = { kind: 'T', shape: [[0, 1, 0], [1, 'laser', 1]], x: 3, y: 0 };
+  const fell = Tetris.hardDrop(g);                                             // лазер в (4,16), столбец 4 сгорает
+  Tetris.tick(g, Tetris.LASER_MS);
+  if (Tetris.isStone(g.board[18][4]) || g.board[18][4]) fail('камень уцелел: ' + cellsOf(g).join(' '));
+  // Столбец 4: верхушка прежней T (17), камень (18) и J (19) — три чужие по 10; ряд 16 — свои.
+  if (g.score - before !== fell * 2 + 30) fail('очки за камень: ' + (g.score - before));
+  return 'лазер сжёг камень, +10 за него как за клетку стопки';
+});
+
+check('розыгрыш: камень выпадает, а полезные — чаще него', function () {
+  const g = Tetris.create(rng(21), { specialChance: 1 });
+  const seen = {};
+  for (let i = 0; i < 130; i += 1) {
+    const found = specialsIn(g.piece.shape);
+    if (found.length !== 1) fail('в фигуре ' + found.length + ' спецклеток');
+    seen[found[0]] = (seen[found[0]] || 0) + 1;
+    Tetris.hardDrop(g);
+    Tetris.tick(g, 3000);
+    g.board.forEach(function (row) { row.fill(0); });
+  }
+  if (!seen.stone) fail('камень не выпал: ' + JSON.stringify(seen));
+  if (!(seen.hole + seen.acid + seen.laser > seen.stone * 2)) fail('камень слишком част: ' + JSON.stringify(seen));
+  return 'сто тридцать фигур: ' + JSON.stringify(seen);
+});
+
 const failed = results.filter(function (r) { return !r.ok; }).length;
 console.log('\nИтог: ' + results.length + ' проверок, ' + (failed ? failed + ' упало' : 'все зелёные'));
 process.exit(failed ? 1 : 0);
