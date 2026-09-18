@@ -1113,7 +1113,7 @@
     return n - Math.floor(n);
   }
 
-  var LZ = { body: '#1a0a12', slate: '#8a93a3', beam: '#ff2e4a', core: '#ffffff', halo: 'rgba(255,46,74,0.35)', halo2: 'rgba(255,46,74,0.16)' };
+  var LZ = { body: '#1a0a12', slate: '#2c313d', beam: '#ff2e4a', core: '#ffffff', halo: 'rgba(255,46,74,0.35)', halo2: 'rgba(255,46,74,0.16)' };
 
   // Четверть блока: мини-блок со своей фаской в отведённом прямоугольнике (в единицах).
   function quarter(ctx, x, y, size, ux, uy, uw, uh, color) {
