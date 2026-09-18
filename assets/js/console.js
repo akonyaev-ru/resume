@@ -1116,74 +1116,82 @@
   /* --- эффекты поверх стакана (5.39) --------------------------------------------
      Сам стакан меняется в ядре по концу эффекта, здесь только картинка. Шум —
      детерминированный, по координатам и номеру кадра: кадры не мигают, а
-     прогон с подменёнными часами повторяем. Мина: стакан вздрагивает, из
-     центра растёт рваный огненный шар — белое ядро, жёлтое, оранжевое, тёмный
-     край, — потом остывает в рвущийся дым, осколки цветов сгоревших клеток
-     разлетаются и падают. Дыра: клетки ряда летят к ней с ускорением, кувыркаясь
-     и уменьшаясь, дальние — быстрее; сама она крутится, набухает и схлопывается,
-     звёздная пыль с обеих сторон стекается к ней, в конце по ряду расходится
-     фиолетовая волна. Кислота: клетка под ней плавится сверху вниз рваным
-     фронтом, по лайму всплывают пузырьки, по бокам стекают капли; на последнем
-     шаге сама кислота тает снизу вверх, пузырьки уходят вверх. */
+     прогон с подменёнными часами повторяем. Мина — разряд по соседям, дыра —
+     осколки, чернеющие по пути к центру, кислота — разъедание по пикселям и
+     испарение; подробности у каждой функции. */
   function noise(a, b, c) {
     var n = Math.sin(a * 12.9898 + b * 78.233 + (c || 0) * 37.719) * 43758.5453;
     return n - Math.floor(n);
   }
 
-  function easeOut(t) { return 1 - (1 - t) * (1 - t); }
+  var ARC = '#9fe8ff';
+  function cellColor(v) { return isSpecial(v) ? INK.plate : COLORS[v]; }
 
-  // Сколько сдвинуть стакан в этот кадр: только пока взрыв мины в разгаре.
-  function shake(e, ms) {
-    if (!e || e.type !== 'mine') return null;
-    var p = e.t / e.dur;
-    if (p > 0.25) return null;
-    var k = Math.floor(ms / 30);
-    var amp = 1.5 * (1 - p / 0.25);
-    return { x: (noise(k, 1) - 0.5) * 2 * amp, y: (noise(k, 2) - 0.5) * 2 * amp };
-  }
-
+  /* Мина — разряд (5.46, владелец: «взрыв не нравится»): первую половину от
+     диода к восьми соседям бьют ломаные дуги, соседи мигают белым; вторую
+     половину соседи рассыпаются искрами наружу, белея и гаснув; устройство
+     гаснет последним. Стакан не трясётся. */
   function drawMine(ctx, e, size, p, ms) {
     var u = size / 8;
+    var frame = Math.floor(ms / 40);
     var cx = (e.x + 0.5) * size;
     var cy = (e.y + 0.5) * size;
-    var frame = Math.floor(ms / 40);
-    ctx.save();
-    ctx.beginPath();
-    ctx.rect((e.x - 1) * size, (e.y - 1) * size, 3 * size, 3 * size);
-    ctx.clip();
-    // Огненный шар: за первую половину вырастает до полутора клеток, потом остывает и тает.
-    var grow = Math.min(1, p / 0.45);
-    var radius = (0.3 + 0.95 * easeOut(grow)) * size;
-    if (p > 0.55) ctx.globalAlpha = Math.max(0, (1 - p) / 0.45);
-    for (var gy = -12; gy < 12; gy += 1) {
-      for (var gx = -12; gx < 12; gx += 1) {
-        var dx = (gx + 0.5) * u;
-        var dy = (gy + 0.5) * u;
-        var d = Math.sqrt(dx * dx + dy * dy) + (noise(gx, gy, frame) - 0.5) * u * 1.2;
-        if (d > radius) continue;
-        var band = d / radius;
-        var color = band < 0.3 ? INK.fireWhite : band < 0.6 ? INK.fireYellow : band < 0.85 ? INK.fireOrange : INK.fireDark;
-        ctx.fillStyle = color;
-        ctx.fillRect(Math.round(cx + gx * u), Math.round(cy + gy * u), Math.ceil(u), Math.ceil(u));
+    var seam = Math.max(1, Math.round(size / 16));
+    e.cells.forEach(function (c, idx) {
+      var v = game.board[c.y][c.x];
+      if (!v || (c.x === e.x && c.y === e.y)) return;
+      var color = cellColor(v);
+      if (p < 0.5) {
+        // Сосед под током: мигает белым через кадр.
+        if ((frame + idx) % 2 === 0) {
+          ctx.globalAlpha = 0.75;
+          flat(ctx, c.x, c.y, size, '#ffffff');
+          ctx.globalAlpha = 1;
+        }
+        // Дуга: ломаная из четырёх звеньев с шумом по кадру.
+        var tx = (c.x + 0.5) * size;
+        var ty = (c.y + 0.5) * size;
+        ctx.lineWidth = Math.max(1, u * 0.35);
+        for (var pass = 0; pass < 2; pass += 1) {
+          ctx.strokeStyle = pass ? '#ffffff' : ARC;
+          ctx.lineWidth = pass ? Math.max(1, u * 0.2) : Math.max(1, u * 0.45);
+          ctx.beginPath();
+          ctx.moveTo(cx, cy);
+          for (var k = 1; k < 4; k += 1) {
+            var t = k / 4;
+            var jx = (noise(idx, k, frame) - 0.5) * u * 3;
+            var jy = (noise(idx + 9, k, frame) - 0.5) * u * 3;
+            ctx.lineTo(cx + (tx - cx) * t + jx, cy + (ty - cy) * t + jy);
+          }
+          ctx.lineTo(tx, ty);
+          ctx.stroke();
+        }
+      } else {
+        // Рассыпается: девять осколков летят наружу, белеют и гаснут.
+        var q = (p - 0.5) / 0.5;
+        coverCell(ctx, size, c.x, c.y);
+        var part = (size - 2 * seam) / 3;
+        for (var sy = 0; sy < 3; sy += 1) {
+          for (var sx = 0; sx < 3; sx += 1) {
+            var ox = c.x * size + seam + sx * part + part / 2;
+            var oy = c.y * size + seam + sy * part + part / 2;
+            var ang = Math.atan2(oy - cy, ox - cx) + (noise(sx, sy, idx) - 0.5) * 1.2;
+            var dist = q * size * (0.4 + noise(sx + 3, sy, idx) * 0.6);
+            var fs = Math.max(1, part * (1 - 0.6 * q) - 1);
+            ctx.globalAlpha = 1 - q;
+            ctx.fillStyle = mix(color, '#ffffff', Math.min(1, q * 1.5));
+            ctx.fillRect(Math.round(ox + Math.cos(ang) * dist - fs / 2), Math.round(oy + Math.sin(ang) * dist - fs / 2), Math.round(fs), Math.round(fs));
+          }
+        }
+        ctx.globalAlpha = 1;
       }
+    });
+    // Устройство: диод горит всё время разряда, в конце гаснет с клеткой.
+    if (p > 0.8) {
+      ctx.globalAlpha = (p - 0.8) / 0.2;
+      coverCell(ctx, size, e.x, e.y);
+      ctx.globalAlpha = 1;
     }
-    ctx.restore();
-    // Осколки: цвета сгоревших клеток, разлетаются от центра и падают, гаснут к концу.
-    ctx.save();
-    if (p > 0.6) ctx.globalAlpha = (1 - p) / 0.4;
-    for (var k = 0; k < 6; k += 1) {
-      var cellK = e.cells[k % e.cells.length];
-      var v = game.board[cellK.y][cellK.x];
-      var color2 = v ? (isSpecial(v) ? INK.plate : COLORS[v]) : INK.fireOrange;
-      var ang = noise(k, 11) * Math.PI * 2;
-      var speed = (0.8 + noise(k, 12) * 1.2) * size;
-      var fx = cx + Math.cos(ang) * speed * p;
-      var fy = cy + Math.sin(ang) * speed * p + 1.6 * size * p * p;
-      var fs = (0.4 + noise(k, 13) * 0.5) * u;
-      ctx.fillStyle = color2;
-      ctx.fillRect(Math.round(fx), Math.round(fy), Math.ceil(fs), Math.ceil(fs));
-    }
-    ctx.restore();
   }
 
   // Цвет между двумя шестнадцатеричными: t = 0 — первый, 1 — второй.
@@ -1352,8 +1360,6 @@
     for (var gy = 1; gy < ROWS; gy += 1) ctx.fillRect(0, gy * cell, COLS * cell, 1);
 
     var ms = LESS_MOTION ? 0 : clock;
-    var jolt = LESS_MOTION ? null : shake(game.effect, ms);
-    if (jolt) { ctx.save(); ctx.translate(jolt.x, jolt.y); }
     var pulled = {};   // клетки, которые тянет дыра: их рисует эффект
     if (game.effect && game.effect.type === 'hole') {
       game.effect.cells.forEach(function (c) { pulled[c.y * COLS + c.x] = true; });
@@ -1380,7 +1386,6 @@
       }
     }
     if (game.effect) drawEffect(ctx, game.effect, cell, ms);
-    if (jolt) ctx.restore();
 
     var nctx = ui.preview.getContext('2d');
     nctx.clearRect(0, 0, 4 * cell, 2 * cell);
