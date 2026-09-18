@@ -393,7 +393,8 @@ check('спецклетка: шанс 0 — ни одной за сорок фи
     all.board.forEach(function (row) { row.fill(0); });
   }
   Object.keys(Tetris.SPECIALS).forEach(function (key) { if (!seen[key]) fail('за сто фигур не выпала ' + key); });
-  if (!(seen.mine > seen.acid && seen.acid > seen.hole)) fail('веса 5:3:2 не соблюдены: ' + JSON.stringify(seen));
+  if (!(seen.mine > seen.acid && seen.acid > seen.hole)) fail('веса 6:3:1 не соблюдены: ' + JSON.stringify(seen));
+  if (!(seen.mine > seen.hole * 3)) fail('мина должна выпадать много чаще дыры: ' + JSON.stringify(seen));
   return 'сто фигур: ' + JSON.stringify(seen);
 });
 
