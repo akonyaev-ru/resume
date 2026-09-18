@@ -43,12 +43,12 @@
      сама спецклетка не в счёт; `lines` и уровень растут только от настоящих
      линий. Розыгрыш — по весам, с первого уровня: посетитель играет одну
      партию, и спецклетка должна успеть ему встретиться. */
-  var SPECIALS = { mine: 6, acid: 3, hole: 1 };   // ключ → вес при розыгрыше (5.42: было 5:3:2 — дыра 5×5 стала редкой)
+  var SPECIALS = { hole: 6, acid: 3, laser: 1 };   // ключ → вес при розыгрыше (5.47: дыра 3×3 частая, лазер-крест редкий)
   var SPECIAL_CHANCE = 0.15;   // доля фигур со спецклеткой (5.39: была 0,1 — владелец после партии)
   var SPECIAL_SCORE = 10;      // за сожжённую клетку стопки, × уровень
-  var MINE_MS = 400;           // мина: взрыв 3×3 вокруг себя (5.39: было 320)
-  var HOLE_MS = 500;           // чёрная дыра: втягивает 5×5 вокруг себя (5.41: был свой ряд)
-  var BLAST = { mine: 1, hole: 2 };   // радиус в клетках: 3×3 и 5×5
+  var HOLE_MS = 500;           // чёрная дыра: втягивает 3×3 вокруг себя (5.47; 5.41–5.46 было 5×5)
+  var LASER_MS = 500;          // лазер: выжигает весь ряд и весь столбец (5.47, вместо мины 3×3)
+  var BLAST = { hole: 1 };     // радиус в клетках: 3×3
   var ACID_STEP = 220;         // кислота: мс на клетку вниз (5.39: было 180)
   var ACID_DEPTH = 4;          // кислота: клеток вниз, потом растворяется сама
 
@@ -247,9 +247,14 @@
 
   function startEffect(special, own) {
     var effect = { type: special.type, x: special.x, y: special.y, t: 0, own: own, burnt: 0 };
-    if (BLAST[effect.type]) {
+    if (effect.type === 'laser') {
+      effect.dur = LASER_MS;
+      effect.cells = [];
+      for (var lx = 0; lx < COLS; lx += 1) effect.cells.push({ x: lx, y: special.y });
+      for (var ly = 0; ly < ROWS; ly += 1) if (ly !== special.y) effect.cells.push({ x: special.x, y: ly });
+    } else if (BLAST[effect.type]) {
       var r = BLAST[effect.type];
-      effect.dur = effect.type === 'mine' ? MINE_MS : HOLE_MS;
+      effect.dur = HOLE_MS;
       effect.cells = [];
       for (var dy = -r; dy <= r; dy += 1) {
         for (var dx = -r; dx <= r; dx += 1) {
@@ -332,7 +337,7 @@
     if (effect.t >= effect.dur) finishEffect(game);
   }
 
-  // Эффект доиграл: мина выбивает 3×3, дыра — 5×5, столбцы оседают; потом
+  // Эффект доиграл: лазер выжигает крест, дыра — 3×3, столбцы оседают; потом
   // обычная чистка линий — и только теперь следующая фигура.
   function finishEffect(game) {
     var effect = game.effect;
@@ -419,8 +424,8 @@
     SPECIALS: SPECIALS,
     SPECIAL_CHANCE: SPECIAL_CHANCE,
     SPECIAL_SCORE: SPECIAL_SCORE,
-    MINE_MS: MINE_MS,
     HOLE_MS: HOLE_MS,
+    LASER_MS: LASER_MS,
     BLAST: BLAST,
     ACID_STEP: ACID_STEP,
     ACID_DEPTH: ACID_DEPTH,
@@ -1074,24 +1079,8 @@
 
   function drawSpecial(ctx, x, y, size, type, ms) {
     var f = Math.floor(ms / FRAME_MS);
-    if (type === 'mine') {
-      block(ctx, x, y, size, INK.gun);
-      screw(ctx, x, y, size, 0.8, 0.8);
-      screw(ctx, x, y, size, 6.4, 0.8);
-      screw(ctx, x, y, size, 0.8, 6.4);
-      screw(ctx, x, y, size, 6.4, 6.4);
-      sprite(ctx, x, y, size, PLATE_ROWS, PLATE_INK, 1, 1);
-      sprite(ctx, x, y, size, SOCKET_ROWS, { x: INK.socket }, 2, 2);
-      var beat = ms % BLINK_MS;
-      var on = beat < 240 || (beat >= 360 && beat < 600);
-      pix(ctx, x, y, size, on ? INK.ledOn : INK.ledOff, 3, 3, 2, 2);
-      if (on) {
-        pix(ctx, x, y, size, INK.ledCore, 3.2, 3.2, 0.8, 0.8);
-        ctx.globalAlpha = 0.35;
-        sprite(ctx, x, y, size, SOCKET_ROWS, { x: INK.ledOn }, 2, 2);
-        ctx.globalAlpha = 1;
-      }
-      bevel(ctx, x, y, size);
+    if (type === 'laser') {
+      drawLaserCell(ctx, x, y, size, ms);
     } else if (type === 'hole') {
       flat(ctx, x, y, size, INK.black);
       sprite(ctx, x, y, size, NEBULA_ROWS, f % 8 < 4 ? NEBULA : NEBULA_DIM, 0.5, 0.5);
@@ -1124,75 +1113,155 @@
     return n - Math.floor(n);
   }
 
-  var ARC = '#9fe8ff';
-  function cellColor(v) { return isSpecial(v) ? INK.plate : COLORS[v]; }
+  var LZ = { body: '#1a0a12', slate: '#8a93a3', beam: '#ff2e4a', core: '#ffffff', halo: 'rgba(255,46,74,0.35)', halo2: 'rgba(255,46,74,0.16)' };
 
-  /* Мина — разряд (5.46, владелец: «взрыв не нравится»): первую половину от
-     диода к восьми соседям бьют ломаные дуги, соседи мигают белым; вторую
-     половину соседи рассыпаются искрами наружу, белея и гаснув; устройство
-     гаснет последним. Стакан не трясётся. */
-  function drawMine(ctx, e, size, p, ms) {
+  // Четверть блока: мини-блок со своей фаской в отведённом прямоугольнике (в единицах).
+  function quarter(ctx, x, y, size, ux, uy, uw, uh, color) {
     var u = size / 8;
-    var frame = Math.floor(ms / 40);
+    var px0 = Math.round(x * size + ux * u);
+    var py0 = Math.round(y * size + uy * u);
+    var pw = Math.round(uw * u);
+    var ph = Math.round(uh * u);
+    var edge = Math.max(1, Math.round(size / 16));
+    ctx.fillStyle = color;
+    ctx.fillRect(px0, py0, pw, ph);
+    ctx.fillStyle = 'rgba(255,255,255,0.2)';
+    ctx.fillRect(px0, py0, pw, edge);
+    ctx.fillRect(px0, py0, edge, ph);
+    ctx.fillStyle = 'rgba(0,0,0,0.3)';
+    ctx.fillRect(px0, py0 + ph - edge, pw, edge);
+    ctx.fillRect(px0 + pw - edge, py0, edge, ph);
+  }
+
+  // Крест из шва: ореол в две ступени, красная линия, белая сердцевина.
+  function cross(ctx, x, y, size, gap, glow, coreOn) {
+    var seam = Math.max(1, Math.round(size / 16));
+    var inner = size - 2 * seam;
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(x * size + seam, y * size + seam, inner, inner);
+    ctx.clip();
+    ctx.globalAlpha = glow;
+    pix(ctx, x, y, size, LZ.halo2, 0.6, 4 - gap / 2 - 1.2, 6.8, gap + 2.4);
+    pix(ctx, x, y, size, LZ.halo2, 4 - gap / 2 - 1.2, 0.6, gap + 2.4, 6.8);
+    pix(ctx, x, y, size, LZ.halo, 0.6, 4 - gap / 2 - 0.5, 6.8, gap + 1);
+    pix(ctx, x, y, size, LZ.halo, 4 - gap / 2 - 0.5, 0.6, gap + 1, 6.8);
+    ctx.globalAlpha = 1;
+    pix(ctx, x, y, size, LZ.beam, 0.6, 4 - gap / 2, 6.8, gap);
+    pix(ctx, x, y, size, LZ.beam, 4 - gap / 2, 0.6, gap, 6.8);
+    if (coreOn) pix(ctx, x, y, size, LZ.core, 4 - gap / 2 - 0.2, 4 - gap / 2 - 0.2, gap + 0.4, gap + 0.4);
+    ctx.restore();
+  }
+
+  function quarters(ctx, x, y, size, gap, color, spread) {
+    var half = 3.4 - gap / 2 - spread;
+    var seam = 0.6 + spread;
+    quarter(ctx, x, y, size, seam, seam, half, half, color);
+    quarter(ctx, x, y, size, 4 + gap / 2, seam, half, half, color);
+    quarter(ctx, x, y, size, seam, 4 + gap / 2, half, half, color);
+    quarter(ctx, x, y, size, 4 + gap / 2, 4 + gap / 2, half, half, color);
+  }
+
+  // Клетка лазера (5.47, владелец выбрал из показов): четыре серых мини-блока,
+  // рассечённых светящимся красным крестом; шов дышит, белая сердцевина
+  // изредка гаснет.
+  function drawLaserCell(ctx, x, y, size, ms) {
+    block(ctx, x, y, size, LZ.body);
+    var glow = 0.6 + 0.4 * (0.5 + 0.5 * Math.sin(ms / 300));
+    cross(ctx, x, y, size, 0.9, glow, (ms % 900) > 100);
+    quarters(ctx, x, y, size, 0.9, LZ.slate, 0);
+  }
+
+  // Половина клетки (верх/низ или лево/право) со служебного холста со сдвигом.
+  function half(ctx, size, x, y, axis, which, dx, dy) {
+    var dpr = root.devicePixelRatio || 1;
+    var w = axis === 'y' ? size : size / 2;
+    var h = axis === 'y' ? size / 2 : size;
+    var sx = axis === 'y' ? 0 : which * size / 2;
+    var sy = axis === 'y' ? which * size / 2 : 0;
+    ctx.drawImage(scratch, Math.round(sx * dpr), Math.round(sy * dpr), Math.round(w * dpr), Math.round(h * dpr), Math.round(x * size + sx + dx), Math.round(y * size + sy + dy), Math.round(w), Math.round(h));
+  }
+
+  /* Лазер (5.47): клетка заряжается — крест светится ярче; потом из шва в
+     четыре стороны до стенок бьют лучи (белая сердцевина в красном ореоле).
+     Луч режет каждую клетку на пути пополам поперёк себя — в ряду на верх и
+     низ, в столбце на лево и право, — половины расходятся и тают; у каждой
+     клетки свой отсчёт от момента, когда луч её прошёл. Четвертинки самой
+     клетки разъезжаются по диагоналям и гаснут, крест остаётся в лучах. */
+  function fxLaser(ctx, e, size, p, ms) {
+    var u = size / 8;
     var cx = (e.x + 0.5) * size;
     var cy = (e.y + 0.5) * size;
-    var seam = Math.max(1, Math.round(size / 16));
+    var charge = Math.min(1, p / 0.15);
+    var shoot = Math.max(0, Math.min(1, (p - 0.15) / 0.4));
+    var reach = shoot * Math.max(COLS, ROWS) * size;
     e.cells.forEach(function (c, idx) {
       var v = game.board[c.y][c.x];
       if (!v || (c.x === e.x && c.y === e.y)) return;
-      var color = cellColor(v);
-      if (p < 0.5) {
-        // Сосед под током: мигает белым через кадр.
-        if ((frame + idx) % 2 === 0) {
-          ctx.globalAlpha = 0.75;
-          flat(ctx, c.x, c.y, size, '#ffffff');
-          ctx.globalAlpha = 1;
-        }
-        // Дуга: ломаная из четырёх звеньев с шумом по кадру.
-        var tx = (c.x + 0.5) * size;
-        var ty = (c.y + 0.5) * size;
-        ctx.lineWidth = Math.max(1, u * 0.35);
-        for (var pass = 0; pass < 2; pass += 1) {
-          ctx.strokeStyle = pass ? '#ffffff' : ARC;
-          ctx.lineWidth = pass ? Math.max(1, u * 0.2) : Math.max(1, u * 0.45);
-          ctx.beginPath();
-          ctx.moveTo(cx, cy);
-          for (var k = 1; k < 4; k += 1) {
-            var t = k / 4;
-            var jx = (noise(idx, k, frame) - 0.5) * u * 3;
-            var jy = (noise(idx + 9, k, frame) - 0.5) * u * 3;
-            ctx.lineTo(cx + (tx - cx) * t + jx, cy + (ty - cy) * t + jy);
-          }
-          ctx.lineTo(tx, ty);
-          ctx.stroke();
-        }
-      } else {
-        // Рассыпается: девять осколков летят наружу, белеют и гаснут.
-        var q = (p - 0.5) / 0.5;
-        coverCell(ctx, size, c.x, c.y);
-        var part = (size - 2 * seam) / 3;
-        for (var sy = 0; sy < 3; sy += 1) {
-          for (var sx = 0; sx < 3; sx += 1) {
-            var ox = c.x * size + seam + sx * part + part / 2;
-            var oy = c.y * size + seam + sy * part + part / 2;
-            var ang = Math.atan2(oy - cy, ox - cx) + (noise(sx, sy, idx) - 0.5) * 1.2;
-            var dist = q * size * (0.4 + noise(sx + 3, sy, idx) * 0.6);
-            var fs = Math.max(1, part * (1 - 0.6 * q) - 1);
-            ctx.globalAlpha = 1 - q;
-            ctx.fillStyle = mix(color, '#ffffff', Math.min(1, q * 1.5));
-            ctx.fillRect(Math.round(ox + Math.cos(ang) * dist - fs / 2), Math.round(oy + Math.sin(ang) * dist - fs / 2), Math.round(fs), Math.round(fs));
-          }
-        }
+      var dist = Math.max(Math.abs(c.x - e.x), Math.abs(c.y - e.y)) * size;
+      if (reach < dist) return;
+      // Свой отсчёт у каждой клетки: от момента, когда луч её прошёл, на разрез — половина эффекта.
+      var pass = 0.15 + (dist / (Math.max(COLS, ROWS) * size)) * 0.4;
+      var hit = Math.max(0, Math.min(1, (p - pass) / 0.5));
+      var axis = c.y === e.y ? 'y' : 'x';          // в ряду режем на верх/низ, в столбце — на лево/право
+      var c2 = cellCanvas(size);
+      block(c2, 0, 0, size, cellColor(v));
+      coverCell(ctx, size, c.x, c.y);
+      var sep = hit * hit * size * 0.9;
+      ctx.globalAlpha = Math.max(0, 1 - hit * 1.05);
+      half(ctx, size, c.x, c.y, axis, 0, axis === 'y' ? 0 : -sep, axis === 'y' ? -sep : 0);
+      half(ctx, size, c.x, c.y, axis, 1, axis === 'y' ? 0 : sep, axis === 'y' ? sep : 0);
+      ctx.globalAlpha = 1;
+      // Вспышка разреза: белая черта поперёк клетки, пока луч только прошёл.
+      if (hit < 0.3) {
+        ctx.globalAlpha = 1 - hit / 0.3;
+        if (axis === 'y') pix(ctx, c.x, c.y, size, LZ.core, 0, 3.7, 8, 0.6);
+        else pix(ctx, c.x, c.y, size, LZ.core, 3.7, 0, 0.6, 8);
         ctx.globalAlpha = 1;
       }
     });
-    // Устройство: диод горит всё время разряда, в конце гаснет с клеткой.
-    if (p > 0.8) {
-      ctx.globalAlpha = (p - 0.8) / 0.2;
-      coverCell(ctx, size, e.x, e.y);
+    // Лучи.
+    if (shoot > 0) {
+      var fade = p > 0.7 ? Math.max(0, 1 - (p - 0.7) / 0.3) : 1;
+      [[1, 0], [-1, 0], [0, 1], [0, -1]].forEach(function (d) {
+        var ex = cx + d[0] * reach;
+        var ey = cy + d[1] * reach;
+        ctx.globalAlpha = 0.45 * fade;
+        ctx.strokeStyle = LZ.beam;
+        ctx.lineWidth = u * 2.2;
+        ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(ex, ey); ctx.stroke();
+        ctx.globalAlpha = fade;
+        ctx.strokeStyle = LZ.core;
+        ctx.lineWidth = Math.max(1, u * 0.7);
+        ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(ex, ey); ctx.stroke();
+      });
       ctx.globalAlpha = 1;
     }
+    // Сама клетка: заряжается — светится; с выстрелом четвертинки разъезжаются по диагоналям.
+    coverCell(ctx, size, e.x, e.y);
+    if (shoot <= 0) {
+      drawLaserCell(ctx, e.x, e.y, size, ms);
+      ctx.globalAlpha = 0.6 * charge;
+      flat(ctx, e.x, e.y, size, LZ.core);
+      ctx.globalAlpha = 1;
+      return;
+    }
+    var fly = Math.min(1, shoot / 0.9);
+    ctx.globalAlpha = Math.max(0, 1 - Math.max(0, fly - 0.5) * 2);
+    cross(ctx, e.x, e.y, size, 0.9, 1, true);
+    ctx.globalAlpha = 1;
+    [[-1, -1], [1, -1], [-1, 1], [1, 1]].forEach(function (q) {
+      ctx.save();
+      ctx.globalAlpha = Math.max(0, 1 - fly * 1.05);
+      ctx.translate(cx + q[0] * (1.7 * u + fly * fly * size * 0.9), cy + q[1] * (1.7 * u + fly * fly * size * 0.9));
+      quarter(ctx, 0, 0, size, -1.45, -1.45, 2.9, 2.9, LZ.slate);
+      ctx.restore();
+    });
+    ctx.globalAlpha = 1;
   }
+
+  // Цвет клетки стакана для эффектов: у спецклетки — тон её пластины.
+  function cellColor(v) { return isSpecial(v) ? INK.plate : COLORS[v]; }
 
   // Цвет между двумя шестнадцатеричными: t = 0 — первый, 1 — второй.
   function mix(a, b, t) {
@@ -1214,7 +1283,7 @@
     e.cells.forEach(function (c) {
       var v = game.board[c.y][c.x];
       if (!v || (c.x === e.x && c.y === e.y)) return;
-      var color = isSpecial(v) ? INK.plate : COLORS[v];
+      var color = cellColor(v);
       var part = (size - 2 * seam) / SHARDS;
       for (var sy = 0; sy < SHARDS; sy += 1) {
         for (var sx = 0; sx < SHARDS; sx += 1) {
@@ -1345,7 +1414,7 @@
 
   function drawEffect(ctx, e, size, ms) {
     var p = Math.min(1, e.t / e.dur);
-    if (e.type === 'mine') drawMine(ctx, e, size, p, ms);
+    if (e.type === 'laser') fxLaser(ctx, e, size, p, ms);
     else if (e.type === 'hole') drawHole(ctx, e, size, p, ms);
     else drawAcid(ctx, e, size, ms);
   }

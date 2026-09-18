@@ -393,8 +393,8 @@ check('спецклетка: шанс 0 — ни одной за сорок фи
     all.board.forEach(function (row) { row.fill(0); });
   }
   Object.keys(Tetris.SPECIALS).forEach(function (key) { if (!seen[key]) fail('за сто фигур не выпала ' + key); });
-  if (!(seen.mine > seen.acid && seen.acid > seen.hole)) fail('веса 6:3:1 не соблюдены: ' + JSON.stringify(seen));
-  if (!(seen.mine > seen.hole * 3)) fail('мина должна выпадать много чаще дыры: ' + JSON.stringify(seen));
+  if (!(seen.hole > seen.acid && seen.acid > seen.laser)) fail('веса 6:3:1 не соблюдены: ' + JSON.stringify(seen));
+  if (!(seen.hole > seen.laser * 3)) fail('дыра должна выпадать много чаще лазера: ' + JSON.stringify(seen));
   return 'сто фигур: ' + JSON.stringify(seen);
 });
 
@@ -409,36 +409,36 @@ check('поворот переносит спецклетку вместе с ф
   return 'четыре поворота, кислота на месте';
 });
 
-check('мина: взрыв 3×3, очки за чужие клетки, следующая фигура ждёт конца взрыва', function () {
-  const g = withSpecial('T', 'mine', 1, 1, 3);
+check('дыра: глотает 3×3, очки за чужие клетки, следующая фигура ждёт конца', function () {
+  const g = withSpecial('T', 'hole', 1, 1, 3);
   fillRow(g, 17, 9); fillRow(g, 18, 9); fillRow(g, 19, 9);
   const fell = Tetris.hardDrop(g);
   if (g.piece !== null) fail('фигура вышла до конца взрыва');
-  if (!g.effect || g.effect.type !== 'mine') fail('эффект не начался: ' + JSON.stringify(g.effect));
-  if (g.score !== fell * 2) fail('очки начислены до взрыва: ' + g.score);
-  Tetris.tick(g, Tetris.MINE_MS - 1);
+  if (!g.effect || g.effect.type !== 'hole' || g.effect.cells.length !== 9) fail('эффект не начался: ' + JSON.stringify(g.effect));
+  if (g.score !== fell * 2) fail('очки начислены до конца: ' + g.score);
+  Tetris.tick(g, Tetris.HOLE_MS - 1);
   if (g.piece !== null) fail('фигура вышла раньше срока');
   Tetris.tick(g, 2);
-  if (g.piece === null || g.effect) fail('взрыв не кончился');
+  if (g.piece === null || g.effect) fail('дыра не кончилась');
   // Сгорели три чужие клетки ряда 17 под фигурой (по 10) и сама фигура (без очков).
   if (g.score !== fell * 2 + 30) fail('очки ' + g.score + ', ожидалось ' + (fell * 2 + 30));
-  if (g.lines !== 0) fail('взрыв посчитан линией');
-  const rest = cellsOf(g).filter(function (c) { return c.indexOf(':T') > 0 || c.indexOf(':mine') > 0; });
+  if (g.lines !== 0) fail('дыра посчитана линией');
+  const rest = cellsOf(g).filter(function (c) { return c.indexOf(':T') > 0 || c.indexOf(':hole') > 0; });
   if (rest.length) fail('от фигуры что-то осталось: ' + rest.join(' '));
   for (let x = 3; x <= 5; x += 1) if (g.board[17][x]) fail('кратер не пуст в ' + x);
-  if (g.board[17][2] !== 'J' || g.board[17][6] !== 'J' || g.board[18][4] !== 'J') fail('взрыв задел лишнее');
-  return 'кратер 3×3, +30, следующая ' + g.piece.kind + ' через ' + Tetris.MINE_MS + ' мс';
+  if (g.board[17][2] !== 'J' || g.board[17][6] !== 'J' || g.board[18][4] !== 'J') fail('дыра задела лишнее');
+  return 'квадрат 3×3, +30, следующая ' + g.piece.kind + ' через ' + Tetris.HOLE_MS + ' мс';
 });
 
 check('оседание: что выше кратера, опускается; остаток фигуры садится в просвет под собой (5.43)', function () {
-  const g = withSpecial('I', 'mine', 0, 3, 0);
-  Tetris.rotate(g);                                            // палка вертикально, мина внизу
-  if (g.piece.shape[3][0] !== 'mine') fail('мина не внизу: ' + JSON.stringify(g.piece.shape));
+  const g = withSpecial('I', 'hole', 0, 3, 0);
+  Tetris.rotate(g);                                            // палка вертикально, дыра внизу
+  if (g.piece.shape[3][0] !== 'hole') fail('дыра не внизу: ' + JSON.stringify(g.piece.shape));
   g.board[10][0] = 'J';                                        // верхушка башни
   for (let y = 12; y < 20; y += 1) g.board[y][0] = 'J';        // башня с просветом на 11
   const fell = Tetris.hardDrop(g);                             // палка на верхушке: клетки 6..9, мина на 9
   if (g.piece !== null || !g.effect || g.effect.y !== 9) fail('палка не легла на башню: ' + JSON.stringify(g.effect));
-  Tetris.tick(g, Tetris.MINE_MS);
+  Tetris.tick(g, Tetris.HOLE_MS);
   // Сгорели свои (0,8), (0,9) и чужая верхушка (0,10): две верхние клетки палки съехали на три
   // и, оставшись над просветом, сели на башню (до 5.43 висели над ним).
   const col = [];
@@ -448,24 +448,23 @@ check('оседание: что выше кратера, опускается; �
   return 'две клетки палки спустились на башню, просвет закрыт остатком';
 });
 
-check('чёрная дыра: глотает 5×5 вокруг себя, что выше — оседает, очки за чужие клетки, линии не растут', function () {
-  const g = withSpecial('T', 'hole', 1, 1, 4);
+check('лазер: выжигает весь ряд и весь столбец, очки за чужие клетки, соседние ряды целы', function () {
+  const g = withSpecial('T', 'laser', 1, 1, 4);
   fillRow(g, 17, 9); fillRow(g, 18, 9); fillRow(g, 19, 9);
-  g.board[16][1] = 'S'; g.board[16][8] = 'S';                 // за краем квадрата — целы
-  g.board[14][3] = 'L';                                        // верхний угол квадрата — сгорит
-  const fell = Tetris.hardDrop(g);                             // T на ряду 17: низ 16, дыра (5,16)
-  if (!g.effect || g.effect.type !== 'hole' || g.effect.y !== 16 || g.effect.cells.length !== 25) fail('эффект не начался: ' + JSON.stringify(g.effect));
-  Tetris.tick(g, Tetris.HOLE_MS - 1);
+  g.board[3][5] = 'S';                                         // высоко в столбце лазера — тоже сгорит
+  const fell = Tetris.hardDrop(g);                             // T на ряду 17: низ 16, лазер (5,16)
+  if (!g.effect || g.effect.type !== 'laser' || g.effect.cells.length !== Tetris.COLS + Tetris.ROWS - 1) fail('эффект не начался: ' + JSON.stringify(g.effect));
+  Tetris.tick(g, Tetris.LASER_MS - 1);
   if (g.piece !== null) fail('фигура вышла раньше срока');
   Tetris.tick(g, 2);
-  if (g.piece === null || g.effect) fail('дыра не кончилась');
-  // Квадрат 5×5 вокруг (5,16): ряды 14–18, столбцы 3–7. Чужих: ряд 17 — 5, ряд 18 — 5, L на (3,14) — 1 → 11.
-  if (g.score !== fell * 2 + 110) fail('очки ' + g.score + ', ожидалось ' + (fell * 2 + 110));
-  if (g.lines !== 0) fail('дыра посчитана линией');
-  for (let y = 14; y <= 18; y += 1) for (let x = 3; x <= 7; x += 1) if (g.board[y][x]) fail('в квадрате осталось ' + y + ',' + x + ':' + g.board[y][x]);
-  if (g.board[16][1] !== 'S' || g.board[16][8] !== 'S' || g.board[17][2] !== 'J' || g.board[18][8] !== 'J') fail('дыра задела лишнее');
-  if (g.board[19][5] !== 'J') fail('ряд 19 под квадратом задет');
-  return 'квадрат 5×5 пуст, +110, соседи целы, следующая через ' + Tetris.HOLE_MS + ' мс';
+  if (g.piece === null || g.effect) fail('лазер не кончился');
+  // Ряд 16: только свои. Столбец 5: S наверху и три чужие в рядах 17–19 → четыре по 10.
+  if (g.score !== fell * 2 + 40) fail('очки ' + g.score + ', ожидалось ' + (fell * 2 + 40));
+  if (g.lines !== 0) fail('лазер посчитан линией');
+  for (let y = 0; y < 20; y += 1) if (g.board[y][5]) fail('столбец 5 не пуст в ряду ' + y);
+  if (g.board[16][4] || g.board[16][6]) fail('ряд 16 не выгорел');
+  if (g.board[17][4] !== 'J' || g.board[19][9]) fail('соседние ряды задеты');
+  return 'ряд и столбец пусты, +40, следующая через ' + Tetris.LASER_MS + ' мс';
 });
 
 check('кислота: прожигает четыре клетки под собой по шагу времени, столбец тонет, потом растворяется', function () {
@@ -504,26 +503,26 @@ check('кислота останавливается, когда под ней �
 });
 
 check('спецклетка, ушедшая с линией, ничего не делает; выше линии — съезжает и срабатывает там', function () {
-  const g = withSpecial('T', 'mine', 1, 1, 3);
+  const g = withSpecial('T', 'hole', 1, 1, 3);
   for (let x = 0; x < 10; x += 1) if (x < 3 || x > 5) g.board[17][x] = 'J';   // ряд 17 ждёт трёх клеток
   fillRow(g, 18, 9); fillRow(g, 19, 9);
   const fell = Tetris.hardDrop(g);
-  if (g.effect || g.piece === null) fail('мина в снятой линии сработала');
+  if (g.effect || g.piece === null) fail('дыра в снятой линии сработала');
   if (g.lines !== 1 || g.score !== fell * 2 + Tetris.LINE_SCORE[1]) fail('линия не засчитана: ' + g.score);
-  // Теперь мина в верхней клетке T: линия снимается, мина съезжает на ряд ниже и взрывается там.
-  const h = withSpecial('T', 'mine', 0, 1, 3);
+  // Теперь дыра в верхней клетке T: линия снимается, дыра съезжает на ряд ниже и глотает там.
+  const h = withSpecial('T', 'hole', 0, 1, 3);
   for (let x = 0; x < 10; x += 1) if (x < 3 || x > 5) h.board[17][x] = 'J';
   fillRow(h, 18, 9); fillRow(h, 19, 9);
   Tetris.hardDrop(h);
-  if (!h.effect || h.effect.y !== 17 || h.board[17][4] !== 'mine') fail('мина не съехала на снятую линию: ' + JSON.stringify(h.effect));
-  Tetris.tick(h, Tetris.MINE_MS);
-  if (h.board[18][3] || h.board[18][4] || h.board[18][5]) fail('взрыв на новом месте не выбил ряд 18');
+  if (!h.effect || h.effect.y !== 17 || h.board[17][4] !== 'hole') fail('дыра не съехала на снятую линию: ' + JSON.stringify(h.effect));
+  Tetris.tick(h, Tetris.HOLE_MS);
+  if (h.board[18][3] || h.board[18][4] || h.board[18][5]) fail('дыра на новом месте не выбила ряд 18');
   if (h.lines !== 1) fail('линий ' + h.lines);
-  return 'в линии — молчит; над линией — съезжает и взрывается';
+  return 'в линии — молчит; над линией — съезжает и глотает';
 });
 
 check('во время эффекта ходов нет: сброс, сдвиг и поворот ничего не делают', function () {
-  const g = withSpecial('T', 'mine', 1, 1, 3);
+  const g = withSpecial('T', 'laser', 1, 1, 3);
   fillRow(g, 19, 9);
   const score = g.score + Tetris.hardDrop(g) * 2;
   if (Tetris.hardDrop(g) !== 0 || Tetris.move(g, 1) || Tetris.rotate(g) || Tetris.softDrop(g)) fail('ход прошёл во время эффекта');
@@ -570,12 +569,12 @@ check('остаток фигуры после кислоты не висит: б
   return 'пик съеден, три клетки T сели на дно, +30';
 });
 
-check('остаток фигуры после мины не висит: палка, лежавшая концом на пике, падает', function () {
-  const g = withSpecial('I', 'mine', 0, 3, 3);                        // мина на правом конце палки
+check('остаток фигуры после дыры не висит: палка, лежавшая концом на пике, падает', function () {
+  const g = withSpecial('I', 'hole', 0, 3, 3);                        // дыра на правом конце палки
   g.board[17][6] = 'J'; g.board[18][6] = 'J'; g.board[19][6] = 'J';   // пик под правым концом
   const fell = Tetris.hardDrop(g);                                     // палка легла на пик: ряд 16, столбцы 3–6
-  if (!g.effect || g.effect.type !== 'mine' || g.effect.y !== 16 || g.effect.x !== 6) fail('мина не легла: ' + JSON.stringify(g.effect));
-  Tetris.tick(g, Tetris.MINE_MS);
+  if (!g.effect || g.effect.type !== 'hole' || g.effect.y !== 16 || g.effect.x !== 6) fail('дыра не легла: ' + JSON.stringify(g.effect));
+  Tetris.tick(g, Tetris.HOLE_MS);
   if (floating(g, 'I').length) fail('висят: ' + floating(g, 'I').join(' '));
   if (g.board[19][3] !== 'I' || g.board[19][4] !== 'I') fail('уцелевшие клетки палки не на дне: ' + cellsOf(g).join(' '));
   if (g.board[18][6] !== 'J' || g.board[19][6] !== 'J') fail('пик под кратером задет');
@@ -584,11 +583,11 @@ check('остаток фигуры после мины не висит: палк
 });
 
 check('чужие навесы стопки после эффекта не падают — как в классике', function () {
-  const g = withSpecial('T', 'mine', 1, 1, 3);
+  const g = withSpecial('T', 'laser', 1, 1, 3);
   fillRow(g, 19, 9);
   g.board[15][0] = 'S'; g.board[15][1] = 'S';                          // чужой навес в стороне от взрыва
   Tetris.hardDrop(g);
-  Tetris.tick(g, Tetris.MINE_MS);
+  Tetris.tick(g, Tetris.LASER_MS);
   if (g.board[15][0] !== 'S' || g.board[15][1] !== 'S') fail('чужой навес сдвинулся: ' + cellsOf(g).join(' '));
   return 'навес S на месте';
 });
