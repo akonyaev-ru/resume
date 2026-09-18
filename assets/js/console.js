@@ -47,7 +47,8 @@
   var SPECIAL_CHANCE = 0.15;   // доля фигур со спецклеткой (5.39: была 0,1 — владелец после партии)
   var SPECIAL_SCORE = 10;      // за сожжённую клетку стопки, × уровень
   var MINE_MS = 400;           // мина: взрыв 3×3 вокруг себя (5.39: было 320)
-  var HOLE_MS = 500;           // чёрная дыра: втягивает свой ряд целиком (5.39: было 400)
+  var HOLE_MS = 500;           // чёрная дыра: втягивает 5×5 вокруг себя (5.41: был свой ряд)
+  var BLAST = { mine: 1, hole: 2 };   // радиус в клетках: 3×3 и 5×5
   var ACID_STEP = 220;         // кислота: мс на клетку вниз (5.39: было 180)
   var ACID_DEPTH = 4;          // кислота: клеток вниз, потом растворяется сама
 
@@ -246,18 +247,17 @@
 
   function startEffect(special, own) {
     var effect = { type: special.type, x: special.x, y: special.y, t: 0, own: own, burnt: 0 };
-    if (effect.type === 'mine') {
-      effect.dur = MINE_MS;
+    if (BLAST[effect.type]) {
+      var r = BLAST[effect.type];
+      effect.dur = effect.type === 'mine' ? MINE_MS : HOLE_MS;
       effect.cells = [];
-      for (var dy = -1; dy <= 1; dy += 1) {
-        for (var dx = -1; dx <= 1; dx += 1) {
+      for (var dy = -r; dy <= r; dy += 1) {
+        for (var dx = -r; dx <= r; dx += 1) {
           var cy = special.y + dy;
           var cx = special.x + dx;
           if (cy >= 0 && cy < ROWS && cx >= 0 && cx < COLS) effect.cells.push({ x: cx, y: cy });
         }
       }
-    } else if (effect.type === 'hole') {
-      effect.dur = HOLE_MS;
     } else {
       effect.dur = ACID_STEP * (ACID_DEPTH + 1);   // прикидка для окна; шаги считает acidStep
     }
@@ -313,11 +313,11 @@
     if (effect.t >= effect.dur) finishEffect(game);
   }
 
-  // Эффект доиграл: мина выбивает 3×3 и столбцы оседают, дыра забирает ряд как
-  // линию; потом обычная чистка линий — и только теперь следующая фигура.
+  // Эффект доиграл: мина выбивает 3×3, дыра — 5×5, столбцы оседают; потом
+  // обычная чистка линий — и только теперь следующая фигура.
   function finishEffect(game) {
     var effect = game.effect;
-    if (effect.type === 'mine') {
+    if (effect.cells) {
       var holes = {};
       effect.cells.forEach(function (c) {
         if (!game.board[c.y][c.x]) return;
@@ -329,14 +329,6 @@
         holes[x].sort(function (a, b) { return a - b; });   // верхняя дыра первой: нижние не сдвигаются
         holes[x].forEach(function (y) { dropAbove(game, effect, Number(x), y); });
       });
-    } else if (effect.type === 'hole') {
-      for (var x = 0; x < COLS; x += 1) {
-        if (x !== effect.x && game.board[effect.y][x] && !isOwn(effect, x, effect.y)) {
-          game.score += SPECIAL_SCORE * game.level;
-        }
-      }
-      game.board.splice(effect.y, 1);
-      game.board.unshift(emptyRow());
     }
     game.effect = null;
     scoreLines(game, clearLines(game));
@@ -409,6 +401,7 @@
     SPECIAL_SCORE: SPECIAL_SCORE,
     MINE_MS: MINE_MS,
     HOLE_MS: HOLE_MS,
+    BLAST: BLAST,
     ACID_STEP: ACID_STEP,
     ACID_DEPTH: ACID_DEPTH,
     isSpecial: isSpecial,
@@ -1023,11 +1016,18 @@
   var BLINK_MS = 2400;      // период двойного мигания диода мины
   var FLOAT_MS = 1800;      // период плавания черепа
 
-  // Пиксель значка: координаты и размер в восьмых долях клетки.
+  // Пиксель значка: координаты и размер в восьмых долях клетки. Края считаются
+  // одной формулой от начала и конца, а не «начало плюс округлённая ширина»:
+  // иначе при дробной доле (клетка 34 px → 4,25) соседние пиксели не
+  // стыкуются, и череп рассыпается на части (дефект 5.41, найден владельцем).
   function pix(ctx, x, y, size, color, ux, uy, uw, uh) {
     var u = size / 8;
+    var x0 = Math.round(x * size + ux * u);
+    var y0 = Math.round(y * size + uy * u);
+    var x1 = Math.round(x * size + (ux + (uw || 1)) * u);
+    var y1 = Math.round(y * size + (uy + (uh || 1)) * u);
     ctx.fillStyle = color;
-    ctx.fillRect(Math.round(x * size + ux * u), Math.round(y * size + uy * u), Math.round((uw || 1) * u), Math.round((uh || 1) * u));
+    ctx.fillRect(x0, y0, Math.max(1, x1 - x0), Math.max(1, y1 - y0));
   }
 
   // Растровый значок: строки из точек и букв, каждая буква — свой цвет.
@@ -1169,27 +1169,28 @@
   function drawHole(ctx, e, size, p, ms) {
     var u = size / 8;
     var q = p * p;   // с ускорением
-    for (var x = 0; x < COLS; x += 1) {
-      var v = game.board[e.y][x];
-      if (!v || x === e.x) continue;
-      var color = COLORS[v];
-      var nx = x + (e.x - x) * q;
+    e.cells.forEach(function (c) {
+      var v = game.board[c.y][c.x];
+      if (!v || (c.x === e.x && c.y === e.y)) return;
+      var color = isSpecial(v) ? INK.plate : COLORS[v];
+      var nx = c.x + (e.x - c.x) * q;
+      var ny = c.y + (e.y - c.y) * q;
       var scale = Math.max(0.05, 1 - 0.95 * q);
       ctx.save();
-      ctx.translate((nx + 0.5) * size, (e.y + 0.5) * size);
+      ctx.translate((nx + 0.5) * size, (ny + 0.5) * size);
       ctx.scale(scale, scale);
       ctx.translate(-0.5 * size, -0.5 * size);
       block(ctx, 0, 0, size, color);
       ctx.restore();
-    }
-    // Звёздная пыль стекается с обеих сторон.
+    });
+    // Звёздная пыль стекается со всех сторон.
     ctx.fillStyle = INK.star;
-    for (var k = 0; k < 6; k += 1) {
-      var side = k % 2 ? 1 : -1;
-      var from = e.x + 0.5 + side * (1.5 + noise(k, 21) * 4);
+    for (var k = 0; k < 8; k += 1) {
+      var ang = noise(k, 21) * Math.PI * 2;
+      var dist = 2 + noise(k, 24) * 1.5;
       var qk = Math.max(0, Math.min(1, p * 1.4 - noise(k, 22) * 0.4));
-      var sx = from + (e.x + 0.5 - from) * qk;
-      var sy = e.y + 0.5 + (noise(k, 23) - 0.5) * 0.8 * (1 - qk);
+      var sx = e.x + 0.5 + Math.cos(ang) * dist * (1 - qk);
+      var sy = e.y + 0.5 + Math.sin(ang) * dist * (1 - qk);
       ctx.globalAlpha = 1 - qk * 0.8;
       ctx.fillRect(Math.round(sx * size), Math.round(sy * size), Math.ceil(u * 0.45), Math.ceil(u * 0.45));
     }
@@ -1267,12 +1268,14 @@
     var ms = LESS_MOTION ? 0 : clock;
     var jolt = LESS_MOTION ? null : shake(game.effect, ms);
     if (jolt) { ctx.save(); ctx.translate(jolt.x, jolt.y); }
-    var holeRow = game.effect && game.effect.type === 'hole' ? game.effect.y : -1;
+    var pulled = {};   // клетки, которые тянет дыра: их рисует эффект
+    if (game.effect && game.effect.type === 'hole') {
+      game.effect.cells.forEach(function (c) { pulled[c.y * COLS + c.x] = true; });
+    }
     for (var y = 0; y < ROWS; y += 1) {
-      if (y === holeRow) continue;   // ряд дыры рисует эффект: клетки съезжаются к ней
       for (var x = 0; x < COLS; x += 1) {
         var v = game.board[y][x];
-        if (!v) continue;
+        if (!v || pulled[y * COLS + x]) continue;
         if (isSpecial(v)) drawSpecial(ctx, x, y, cell, v, ms);
         else block(ctx, x, y, cell, COLORS[v]);
       }

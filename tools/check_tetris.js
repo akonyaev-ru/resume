@@ -446,23 +446,24 @@ check('оседание: что выше кратера, опускается н
   return 'две клетки палки спустились на три, просвет над башней остался';
 });
 
-check('чёрная дыра: забирает свой ряд целиком, неполный тоже; ряды выше съезжают; линии не растут', function () {
-  const g = withSpecial('T', 'hole', 1, 1, 3);
-  fillRow(g, 18, 9); fillRow(g, 19, 9);
-  [0, 1, 2, 7, 8].forEach(function (x) { g.board[17][x] = 'L'; });
-  g.board[16][0] = 'S';
-  const fell = Tetris.hardDrop(g);
-  if (!g.effect || g.effect.type !== 'hole' || g.effect.y !== 17) fail('эффект не начался: ' + JSON.stringify(g.effect));
+check('чёрная дыра: глотает 5×5 вокруг себя, что выше — оседает, очки за чужие клетки, линии не растут', function () {
+  const g = withSpecial('T', 'hole', 1, 1, 4);
+  fillRow(g, 17, 9); fillRow(g, 18, 9); fillRow(g, 19, 9);
+  g.board[16][1] = 'S'; g.board[16][8] = 'S';                 // за краем квадрата — целы
+  g.board[14][3] = 'L';                                        // верхний угол квадрата — сгорит
+  const fell = Tetris.hardDrop(g);                             // T на ряду 17: низ 16, дыра (5,16)
+  if (!g.effect || g.effect.type !== 'hole' || g.effect.y !== 16 || g.effect.cells.length !== 25) fail('эффект не начался: ' + JSON.stringify(g.effect));
   Tetris.tick(g, Tetris.HOLE_MS - 1);
   if (g.piece !== null) fail('фигура вышла раньше срока');
   Tetris.tick(g, 2);
-  if (g.piece === null) fail('дыра не кончилась');
-  if (g.score !== fell * 2 + 50) fail('очки ' + g.score + ', ожидалось ' + (fell * 2 + 50) + ' (пять чужих клеток ряда)');
-  if (g.lines !== 0) fail('ряд дыры посчитан линией');
-  if (g.board[17][0] !== 'S' || g.board[17][4] !== 'T') fail('клетки над рядом не съехали вниз: ' + cellsOf(g).join(' '));
-  if (g.board[16][0] || g.board[17][1] || g.board[17][2] || g.board[17][3]) fail('ряд не исчез: ' + cellsOf(g).join(' '));
-  if (g.board[18][0] !== 'J' || g.board[19][9]) fail('ряды ниже задеты');
-  return 'ряд из восьми клеток исчез, +50, S и верхушка T спустились';
+  if (g.piece === null || g.effect) fail('дыра не кончилась');
+  // Квадрат 5×5 вокруг (5,16): ряды 14–18, столбцы 3–7. Чужих: ряд 17 — 5, ряд 18 — 5, L на (3,14) — 1 → 11.
+  if (g.score !== fell * 2 + 110) fail('очки ' + g.score + ', ожидалось ' + (fell * 2 + 110));
+  if (g.lines !== 0) fail('дыра посчитана линией');
+  for (let y = 14; y <= 18; y += 1) for (let x = 3; x <= 7; x += 1) if (g.board[y][x]) fail('в квадрате осталось ' + y + ',' + x + ':' + g.board[y][x]);
+  if (g.board[16][1] !== 'S' || g.board[16][8] !== 'S' || g.board[17][2] !== 'J' || g.board[18][8] !== 'J') fail('дыра задела лишнее');
+  if (g.board[19][5] !== 'J') fail('ряд 19 под квадратом задет');
+  return 'квадрат 5×5 пуст, +110, соседи целы, следующая через ' + Tetris.HOLE_MS + ' мс';
 });
 
 check('кислота: прожигает четыре клетки под собой по шагу времени, столбец тонет, потом растворяется', function () {
