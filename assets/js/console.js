@@ -276,6 +276,24 @@
     effect.own.forEach(function (c) { if (c.x === x && c.y < y) c.y += 1; });
   }
 
+  // Остаток фигуры не висит: свои клетки с пустотой под собой опускаются,
+  // пока не упрутся, — снизу вверх, чтобы нижняя села первой, а верхняя легла
+  // на неё. Фигура держалась на том, что сгорело, — значит, падает (5.43,
+  // дефект нашёл владелец: боковые клетки T зависли над съеденным пиком).
+  // Сама кислота не падает — растворяется на месте; чужие навесы стопки, как
+  // в классике, остаются.
+  function settleOwn(game, effect) {
+    effect.own.slice().sort(function (a, b) { return b.y - a.y; }).forEach(function (c) {
+      var v = game.board[c.y][c.x];
+      if (!v || v === 'acid') return;
+      while (c.y + 1 < ROWS && !game.board[c.y + 1][c.x]) {
+        game.board[c.y + 1][c.x] = v;
+        game.board[c.y][c.x] = 0;
+        c.y += 1;
+      }
+    });
+  }
+
   // Сжечь клетку: очки за чужую, пусто на её месте, столбец над ней оседает.
   function burnCell(game, effect, x, y) {
     if (!game.board[y][x]) return;
@@ -293,6 +311,7 @@
       burnCell(game, effect, effect.x, below);
       effect.y = below;
       effect.burnt += 1;
+      settleOwn(game, effect);
       return;
     }
     game.board[effect.y][effect.x] = 0;
@@ -330,6 +349,7 @@
         holes[x].forEach(function (y) { dropAbove(game, effect, Number(x), y); });
       });
     }
+    settleOwn(game, effect);
     game.effect = null;
     scoreLines(game, clearLines(game));
     spawn(game);
