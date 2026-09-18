@@ -1116,9 +1116,9 @@
   function shake(e, ms) {
     if (!e || e.type !== 'mine') return null;
     var p = e.t / e.dur;
-    if (p > 0.4) return null;
+    if (p > 0.25) return null;
     var k = Math.floor(ms / 30);
-    var amp = 3 * (1 - p / 0.4);
+    var amp = 1.5 * (1 - p / 0.25);
     return { x: (noise(k, 1) - 0.5) * 2 * amp, y: (noise(k, 2) - 0.5) * 2 * amp };
   }
 
@@ -1132,21 +1132,17 @@
     ctx.rect((e.x - 1) * size, (e.y - 1) * size, 3 * size, 3 * size);
     ctx.clip();
     // Огненный шар: за первую половину вырастает до полутора клеток, потом остывает и тает.
-    var grow = Math.min(1, p / 0.5);
-    var radius = (0.3 + 1.2 * easeOut(grow)) * size;
-    var cool = p < 0.5 ? 0 : (p - 0.5) / 0.5;
-    if (p > 0.85) ctx.globalAlpha = (1 - p) / 0.15;
+    var grow = Math.min(1, p / 0.45);
+    var radius = (0.3 + 0.95 * easeOut(grow)) * size;
+    if (p > 0.55) ctx.globalAlpha = Math.max(0, (1 - p) / 0.45);
     for (var gy = -12; gy < 12; gy += 1) {
       for (var gx = -12; gx < 12; gx += 1) {
         var dx = (gx + 0.5) * u;
         var dy = (gy + 0.5) * u;
-        var d = Math.sqrt(dx * dx + dy * dy) + (noise(gx, gy, frame) - 0.5) * u * 2.5;
+        var d = Math.sqrt(dx * dx + dy * dy) + (noise(gx, gy, frame) - 0.5) * u * 1.2;
         if (d > radius) continue;
-        if (cool > 0 && noise(gx + 7, gy + 3, frame) < cool * 0.95) continue;   // дым рвётся
         var band = d / radius;
-        var color;
-        if (cool < 0.45) color = band < 0.3 ? INK.fireWhite : band < 0.6 ? INK.fireYellow : band < 0.85 ? INK.fireOrange : INK.fireDark;
-        else color = band < 0.4 ? '#4a4a52' : '#2a2a30';
+        var color = band < 0.3 ? INK.fireWhite : band < 0.6 ? INK.fireYellow : band < 0.85 ? INK.fireOrange : INK.fireDark;
         ctx.fillStyle = color;
         ctx.fillRect(Math.round(cx + gx * u), Math.round(cy + gy * u), Math.ceil(u), Math.ceil(u));
       }
@@ -1155,7 +1151,7 @@
     // Осколки: цвета сгоревших клеток, разлетаются от центра и падают, гаснут к концу.
     ctx.save();
     if (p > 0.6) ctx.globalAlpha = (1 - p) / 0.4;
-    for (var k = 0; k < 14; k += 1) {
+    for (var k = 0; k < 6; k += 1) {
       var cellK = e.cells[k % e.cells.length];
       var v = game.board[cellK.y][cellK.x];
       var color2 = v ? (isSpecial(v) ? INK.plate : COLORS[v]) : INK.fireOrange;
@@ -1179,10 +1175,8 @@
       var color = COLORS[v];
       var nx = x + (e.x - x) * q;
       var scale = Math.max(0.05, 1 - 0.95 * q);
-      var rot = q * Math.PI * (x < e.x ? 1 : -1);
       ctx.save();
       ctx.translate((nx + 0.5) * size, (e.y + 0.5) * size);
-      ctx.rotate(rot);
       ctx.scale(scale, scale);
       ctx.translate(-0.5 * size, -0.5 * size);
       block(ctx, 0, 0, size, color);
@@ -1190,7 +1184,7 @@
     }
     // Звёздная пыль стекается с обеих сторон.
     ctx.fillStyle = INK.star;
-    for (var k = 0; k < 10; k += 1) {
+    for (var k = 0; k < 6; k += 1) {
       var side = k % 2 ? 1 : -1;
       var from = e.x + 0.5 + side * (1.5 + noise(k, 21) * 4);
       var qk = Math.max(0, Math.min(1, p * 1.4 - noise(k, 22) * 0.4));
@@ -1201,23 +1195,14 @@
     }
     ctx.globalAlpha = 1;
     // Сама дыра: крутится, набухает, схлопывается.
-    var grow = p < 0.75 ? 1 + 0.5 * Math.sin(p / 0.75 * Math.PI) : Math.max(0.02, (1 - p) / 0.25);
+    var grow = p < 0.75 ? 1 + 0.25 * Math.sin(p / 0.75 * Math.PI) : Math.max(0.02, (1 - p) / 0.25);
     ctx.save();
     ctx.translate((e.x + 0.5) * size, (e.y + 0.5) * size);
-    ctx.rotate(p * Math.PI * 2);
+    ctx.rotate(p * Math.PI);
     ctx.scale(grow, grow);
     ctx.translate(-0.5 * size, -0.5 * size);
     drawSpecial(ctx, 0, 0, size, 'hole', ms);
     ctx.restore();
-    // Волна по ряду: после схлопывания расходится и гаснет.
-    if (p > 0.6) {
-      var w = (p - 0.6) / 0.4;
-      ctx.globalAlpha = 1 - w;
-      ctx.fillStyle = NEBULA.l;
-      var half = w * 5 * size;
-      ctx.fillRect(Math.round((e.x + 0.5) * size - half), Math.round((e.y + 0.5) * size - u * 0.6), Math.round(half * 2), Math.ceil(u * 1.2));
-      ctx.globalAlpha = 1;
-    }
   }
 
   function drawAcid(ctx, e, size, ms) {
@@ -1236,21 +1221,16 @@
       ctx.fillStyle = INK.acid;
       ctx.fillRect(left, top, inner, Math.round(melt));
       for (var i = 0; i < 8; i += 1) {
-        var extra = noise(i, e.burnt, frame) * u * 1.2;
+        var extra = noise(i, e.burnt, frame) * u * 0.6;
         ctx.fillRect(Math.round(left + i * inner / 8), Math.round(top + melt), Math.ceil(inner / 8), Math.min(Math.round(extra), Math.round(inner - melt)));
       }
       ctx.fillStyle = INK.acidDark;
-      for (var b = 0; b < 4; b += 1) {
+      for (var b = 0; b < 2; b += 1) {
         if (melt < u) break;
         var by = top + melt - ((ms / 50 + b * 23) % Math.max(1, melt));
         var bx = left + (0.8 + noise(b, e.burnt) * 5.6) * u;
         ctx.fillRect(Math.round(bx), Math.round(by), Math.ceil(u * 0.5), Math.ceil(u * 0.5));
       }
-      // Капли по бокам: стекают из-под кислоты в плавящуюся клетку.
-      ctx.fillStyle = INK.acid;
-      var drip = q * inner * 0.8;
-      ctx.fillRect(Math.round(left + u * 0.6), Math.round(top - seam), Math.ceil(u * 0.8), Math.round(drip * (0.6 + 0.4 * noise(1, e.burnt))));
-      ctx.fillRect(Math.round(left + inner - u * 1.4), Math.round(top - seam), Math.ceil(u * 0.8), Math.round(drip * (0.6 + 0.4 * noise(2, e.burnt))));
     } else {
       // Последний шаг: кислота тает снизу вверх, пузырьки уходят вверх.
       var gone = q * size;
