@@ -44,11 +44,11 @@
      линий. Розыгрыш — по весам, с первого уровня: посетитель играет одну
      партию, и спецклетка должна успеть ему встретиться. */
   var SPECIALS = { mine: 5, acid: 3, hole: 2 };   // ключ → вес при розыгрыше
-  var SPECIAL_CHANCE = 0.1;    // доля фигур со спецклеткой
+  var SPECIAL_CHANCE = 0.15;   // доля фигур со спецклеткой (5.39: была 0,1 — владелец после партии)
   var SPECIAL_SCORE = 10;      // за сожжённую клетку стопки, × уровень
-  var MINE_MS = 320;           // мина: взрыв 3×3 вокруг себя
-  var HOLE_MS = 400;           // чёрная дыра: втягивает свой ряд целиком
-  var ACID_STEP = 180;         // кислота: мс на клетку вниз
+  var MINE_MS = 400;           // мина: взрыв 3×3 вокруг себя (5.39: было 320)
+  var HOLE_MS = 500;           // чёрная дыра: втягивает свой ряд целиком (5.39: было 400)
+  var ACID_STEP = 220;         // кислота: мс на клетку вниз (5.39: было 180)
   var ACID_DEPTH = 4;          // кислота: клеток вниз, потом растворяется сама
 
   function rotateShape(shape) {
@@ -1093,60 +1093,186 @@
     }
   }
 
-  // Клетка, уменьшенная вокруг своего центра, в дробных координатах клеток.
-  function scaled(ctx, cx, cy, size, scale, draw) {
+  /* --- эффекты поверх стакана (5.39) --------------------------------------------
+     Сам стакан меняется в ядре по концу эффекта, здесь только картинка. Шум —
+     детерминированный, по координатам и номеру кадра: кадры не мигают, а
+     прогон с подменёнными часами повторяем. Мина: стакан вздрагивает, из
+     центра растёт рваный огненный шар — белое ядро, жёлтое, оранжевое, тёмный
+     край, — потом остывает в рвущийся дым, осколки цветов сгоревших клеток
+     разлетаются и падают. Дыра: клетки ряда летят к ней с ускорением, кувыркаясь
+     и уменьшаясь, дальние — быстрее; сама она крутится, набухает и схлопывается,
+     звёздная пыль с обеих сторон стекается к ней, в конце по ряду расходится
+     фиолетовая волна. Кислота: клетка под ней плавится сверху вниз рваным
+     фронтом, по лайму всплывают пузырьки, по бокам стекают капли; на последнем
+     шаге сама кислота тает снизу вверх, пузырьки уходят вверх. */
+  function noise(a, b, c) {
+    var n = Math.sin(a * 12.9898 + b * 78.233 + (c || 0) * 37.719) * 43758.5453;
+    return n - Math.floor(n);
+  }
+
+  function easeOut(t) { return 1 - (1 - t) * (1 - t); }
+
+  // Сколько сдвинуть стакан в этот кадр: только пока взрыв мины в разгаре.
+  function shake(e, ms) {
+    if (!e || e.type !== 'mine') return null;
+    var p = e.t / e.dur;
+    if (p > 0.4) return null;
+    var k = Math.floor(ms / 30);
+    var amp = 3 * (1 - p / 0.4);
+    return { x: (noise(k, 1) - 0.5) * 2 * amp, y: (noise(k, 2) - 0.5) * 2 * amp };
+  }
+
+  function drawMine(ctx, e, size, p, ms) {
+    var u = size / 8;
+    var cx = (e.x + 0.5) * size;
+    var cy = (e.y + 0.5) * size;
+    var frame = Math.floor(ms / 40);
     ctx.save();
-    ctx.translate((cx + 0.5) * size, (cy + 0.5) * size);
-    ctx.scale(scale, scale);
-    ctx.translate(-0.5 * size, -0.5 * size);
-    draw();
+    ctx.beginPath();
+    ctx.rect((e.x - 1) * size, (e.y - 1) * size, 3 * size, 3 * size);
+    ctx.clip();
+    // Огненный шар: за первую половину вырастает до полутора клеток, потом остывает и тает.
+    var grow = Math.min(1, p / 0.5);
+    var radius = (0.3 + 1.2 * easeOut(grow)) * size;
+    var cool = p < 0.5 ? 0 : (p - 0.5) / 0.5;
+    if (p > 0.85) ctx.globalAlpha = (1 - p) / 0.15;
+    for (var gy = -12; gy < 12; gy += 1) {
+      for (var gx = -12; gx < 12; gx += 1) {
+        var dx = (gx + 0.5) * u;
+        var dy = (gy + 0.5) * u;
+        var d = Math.sqrt(dx * dx + dy * dy) + (noise(gx, gy, frame) - 0.5) * u * 2.5;
+        if (d > radius) continue;
+        if (cool > 0 && noise(gx + 7, gy + 3, frame) < cool * 0.95) continue;   // дым рвётся
+        var band = d / radius;
+        var color;
+        if (cool < 0.45) color = band < 0.3 ? INK.fireWhite : band < 0.6 ? INK.fireYellow : band < 0.85 ? INK.fireOrange : INK.fireDark;
+        else color = band < 0.4 ? '#4a4a52' : '#2a2a30';
+        ctx.fillStyle = color;
+        ctx.fillRect(Math.round(cx + gx * u), Math.round(cy + gy * u), Math.ceil(u), Math.ceil(u));
+      }
+    }
+    ctx.restore();
+    // Осколки: цвета сгоревших клеток, разлетаются от центра и падают, гаснут к концу.
+    ctx.save();
+    if (p > 0.6) ctx.globalAlpha = (1 - p) / 0.4;
+    for (var k = 0; k < 14; k += 1) {
+      var cellK = e.cells[k % e.cells.length];
+      var v = game.board[cellK.y][cellK.x];
+      var color2 = v ? (isSpecial(v) ? INK.plate : COLORS[v]) : INK.fireOrange;
+      var ang = noise(k, 11) * Math.PI * 2;
+      var speed = (0.8 + noise(k, 12) * 1.2) * size;
+      var fx = cx + Math.cos(ang) * speed * p;
+      var fy = cy + Math.sin(ang) * speed * p + 1.6 * size * p * p;
+      var fs = (0.4 + noise(k, 13) * 0.5) * u;
+      ctx.fillStyle = color2;
+      ctx.fillRect(Math.round(fx), Math.round(fy), Math.ceil(fs), Math.ceil(fs));
+    }
     ctx.restore();
   }
 
-  /* Эффект поверх стакана, пока идёт: мина — вспышка на всех 3×3 от белого к
-     оранжевому и гаснущему тёмно-красному, искры разлетаются; дыра — клетки
-     ряда съезжаются к ней и тают, сама она на миг растёт; кислота — клетка под
-     ней наливается лаймом по ходу шага. Сам стакан меняется в ядре по концу
-     эффекта, здесь только картинка. */
-  function drawEffect(ctx, e, size, ms) {
-    var p = Math.min(1, e.t / e.dur);
-    if (e.type === 'mine') {
-      e.cells.forEach(function (c) {
-        if (p < 0.3) flat(ctx, c.x, c.y, size, p < 0.15 ? INK.fireWhite : INK.fireYellow);
-        else if (p < 0.65) {
-          flat(ctx, c.x, c.y, size, INK.fireOrange);
-          pix(ctx, c.x, c.y, size, INK.fireYellow, 2, 2, 4, 4);
-        } else {
-          ctx.globalAlpha = (1 - p) / 0.35;
-          flat(ctx, c.x, c.y, size, INK.fireDark);
-          ctx.globalAlpha = 1;
-        }
-      });
-      var u = size / 8;
-      ctx.globalAlpha = p < 0.6 ? 1 : (1 - p) / 0.4;
-      for (var k = 0; k < 8; k += 1) {
-        var ang = k * Math.PI / 4;
-        var r = (0.4 + 1.3 * p) * size;
-        ctx.fillStyle = k % 2 ? INK.fireYellow : INK.fireOrange;
-        ctx.fillRect(Math.round((e.x + 0.5) * size + Math.cos(ang) * r - u * 0.25), Math.round((e.y + 0.5) * size + Math.sin(ang) * r - u * 0.25), Math.round(u * 0.5), Math.round(u * 0.5));
+  function drawHole(ctx, e, size, p, ms) {
+    var u = size / 8;
+    var q = p * p;   // с ускорением
+    for (var x = 0; x < COLS; x += 1) {
+      var v = game.board[e.y][x];
+      if (!v || x === e.x) continue;
+      var color = COLORS[v];
+      var nx = x + (e.x - x) * q;
+      var scale = Math.max(0.05, 1 - 0.95 * q);
+      var rot = q * Math.PI * (x < e.x ? 1 : -1);
+      ctx.save();
+      ctx.translate((nx + 0.5) * size, (e.y + 0.5) * size);
+      ctx.rotate(rot);
+      ctx.scale(scale, scale);
+      ctx.translate(-0.5 * size, -0.5 * size);
+      block(ctx, 0, 0, size, color);
+      ctx.restore();
+    }
+    // Звёздная пыль стекается с обеих сторон.
+    ctx.fillStyle = INK.star;
+    for (var k = 0; k < 10; k += 1) {
+      var side = k % 2 ? 1 : -1;
+      var from = e.x + 0.5 + side * (1.5 + noise(k, 21) * 4);
+      var qk = Math.max(0, Math.min(1, p * 1.4 - noise(k, 22) * 0.4));
+      var sx = from + (e.x + 0.5 - from) * qk;
+      var sy = e.y + 0.5 + (noise(k, 23) - 0.5) * 0.8 * (1 - qk);
+      ctx.globalAlpha = 1 - qk * 0.8;
+      ctx.fillRect(Math.round(sx * size), Math.round(sy * size), Math.ceil(u * 0.45), Math.ceil(u * 0.45));
+    }
+    ctx.globalAlpha = 1;
+    // Сама дыра: крутится, набухает, схлопывается.
+    var grow = p < 0.75 ? 1 + 0.5 * Math.sin(p / 0.75 * Math.PI) : Math.max(0.02, (1 - p) / 0.25);
+    ctx.save();
+    ctx.translate((e.x + 0.5) * size, (e.y + 0.5) * size);
+    ctx.rotate(p * Math.PI * 2);
+    ctx.scale(grow, grow);
+    ctx.translate(-0.5 * size, -0.5 * size);
+    drawSpecial(ctx, 0, 0, size, 'hole', ms);
+    ctx.restore();
+    // Волна по ряду: после схлопывания расходится и гаснет.
+    if (p > 0.6) {
+      var w = (p - 0.6) / 0.4;
+      ctx.globalAlpha = 1 - w;
+      ctx.fillStyle = NEBULA.l;
+      var half = w * 5 * size;
+      ctx.fillRect(Math.round((e.x + 0.5) * size - half), Math.round((e.y + 0.5) * size - u * 0.6), Math.round(half * 2), Math.ceil(u * 1.2));
+      ctx.globalAlpha = 1;
+    }
+  }
+
+  function drawAcid(ctx, e, size, ms) {
+    var u = size / 8;
+    var seam = Math.max(1, Math.round(size / 16));
+    var inner = size - 2 * seam;
+    var q = Math.min(1, e.t / ACID_STEP);
+    var frame = Math.floor(ms / 60);
+    var below = e.y + 1;
+    var burning = e.burnt < ACID_DEPTH && below < ROWS && game.board[below][e.x];
+    var left = e.x * size + seam;
+    if (burning) {
+      // Фронт плавления идёт сверху вниз рваной кромкой, по лайму всплывают пузырьки.
+      var top = below * size + seam;
+      var melt = q * inner;
+      ctx.fillStyle = INK.acid;
+      ctx.fillRect(left, top, inner, Math.round(melt));
+      for (var i = 0; i < 8; i += 1) {
+        var extra = noise(i, e.burnt, frame) * u * 1.2;
+        ctx.fillRect(Math.round(left + i * inner / 8), Math.round(top + melt), Math.ceil(inner / 8), Math.min(Math.round(extra), Math.round(inner - melt)));
+      }
+      ctx.fillStyle = INK.acidDark;
+      for (var b = 0; b < 4; b += 1) {
+        if (melt < u) break;
+        var by = top + melt - ((ms / 50 + b * 23) % Math.max(1, melt));
+        var bx = left + (0.8 + noise(b, e.burnt) * 5.6) * u;
+        ctx.fillRect(Math.round(bx), Math.round(by), Math.ceil(u * 0.5), Math.ceil(u * 0.5));
+      }
+      // Капли по бокам: стекают из-под кислоты в плавящуюся клетку.
+      ctx.fillStyle = INK.acid;
+      var drip = q * inner * 0.8;
+      ctx.fillRect(Math.round(left + u * 0.6), Math.round(top - seam), Math.ceil(u * 0.8), Math.round(drip * (0.6 + 0.4 * noise(1, e.burnt))));
+      ctx.fillRect(Math.round(left + inner - u * 1.4), Math.round(top - seam), Math.ceil(u * 0.8), Math.round(drip * (0.6 + 0.4 * noise(2, e.burnt))));
+    } else {
+      // Последний шаг: кислота тает снизу вверх, пузырьки уходят вверх.
+      var gone = q * size;
+      ctx.fillStyle = '#0b1018';
+      ctx.fillRect(e.x * size, Math.round((e.y + 1) * size - gone), size, Math.ceil(gone));
+      ctx.fillStyle = INK.acid;
+      for (var k = 0; k < 6; k += 1) {
+        var rise = (q * 1.6 + noise(k, 31) * 0.5) * size;
+        var py = (e.y + 1) * size - gone - rise;
+        if (py < 0) continue;
+        ctx.globalAlpha = Math.max(0, 1 - q * 1.1);
+        ctx.fillRect(Math.round(left + noise(k, 32) * inner), Math.round(py), Math.ceil(u * 0.5), Math.ceil(u * 0.5));
       }
       ctx.globalAlpha = 1;
-    } else if (e.type === 'hole') {
-      for (var x = 0; x < COLS; x += 1) {
-        var v = game.board[e.y][x];
-        if (!v || x === e.x) continue;
-        var color = COLORS[v];
-        scaled(ctx, x + (e.x - x) * p, e.y, size, 1 - 0.85 * p, function () { block(ctx, 0, 0, size, color); });
-      }
-      scaled(ctx, e.x, e.y, size, 1 + 0.35 * Math.sin(p * Math.PI), function () { drawSpecial(ctx, 0, 0, size, 'hole', ms); });
-    } else if (e.type === 'acid') {
-      var below = e.y + 1;
-      if (below < ROWS && game.board[below][e.x]) {
-        ctx.globalAlpha = 0.15 + 0.6 * Math.min(1, e.t / ACID_STEP);
-        flat(ctx, e.x, below, size, INK.acid);
-        ctx.globalAlpha = 1;
-      }
     }
+  }
+
+  function drawEffect(ctx, e, size, ms) {
+    var p = Math.min(1, e.t / e.dur);
+    if (e.type === 'mine') drawMine(ctx, e, size, p, ms);
+    else if (e.type === 'hole') drawHole(ctx, e, size, p, ms);
+    else drawAcid(ctx, e, size, ms);
   }
 
   function render() {
@@ -1159,6 +1285,8 @@
     for (var gy = 1; gy < ROWS; gy += 1) ctx.fillRect(0, gy * cell, COLS * cell, 1);
 
     var ms = LESS_MOTION ? 0 : clock;
+    var jolt = LESS_MOTION ? null : shake(game.effect, ms);
+    if (jolt) { ctx.save(); ctx.translate(jolt.x, jolt.y); }
     var holeRow = game.effect && game.effect.type === 'hole' ? game.effect.y : -1;
     for (var y = 0; y < ROWS; y += 1) {
       if (y === holeRow) continue;   // ряд дыры рисует эффект: клетки съезжаются к ней
@@ -1183,6 +1311,7 @@
       }
     }
     if (game.effect) drawEffect(ctx, game.effect, cell, ms);
+    if (jolt) ctx.restore();
 
     var nctx = ui.preview.getContext('2d');
     nctx.clearRect(0, 0, 4 * cell, 2 * cell);
