@@ -411,6 +411,22 @@ check('поворот переносит спецклетку вместе с ф
   return 'четыре поворота, кислота на месте';
 });
 
+check('квадрат тоже крутится (5.67): спецклетка в O обходит углы по часовой и за четыре поворота возвращается', function () {
+  const g = withSpecial('O', 'hole', 0, 0, 4);                                 // дыра в левом верхнем углу
+  const corners = [];
+  for (let turn = 0; turn < 4; turn += 1) {
+    if (!Tetris.rotate(g)) fail('поворот O ' + turn + ' не прошёл');
+    const sh = g.piece.shape;
+    const at = [];
+    sh.forEach(function (row, y) { row.forEach(function (v, x) { if (v === 'hole') at.push(y + ',' + x); }); });
+    if (at.length !== 1) fail('после поворота дыр ' + at.length);
+    corners.push(at[0]);
+    if (g.piece.x !== 4) fail('квадрат сдвинулся поворотом: x ' + g.piece.x);
+  }
+  if (corners.join(' ') !== '0,1 1,1 1,0 0,0') fail('дыра обошла углы не так: ' + corners.join(' '));
+  return 'углы по часовой: ' + corners.join(' → ');
+});
+
 check('дыра: глотает 3×3, очки за чужие клетки, следующая фигура ждёт конца', function () {
   const g = withSpecial('T', 'hole', 1, 1, 3);
   fillRow(g, 17, 9); fillRow(g, 18, 9); fillRow(g, 19, 9);

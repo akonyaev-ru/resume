@@ -258,7 +258,8 @@
   function rotate(game) {
     if (!active(game)) return false;
     var p = game.piece;
-    if (p.kind === 'O') return true;
+    // Квадрат крутится тоже (5.67): форма та же, но спецклетка в нём обходит
+    // углы по часовой — иначе её не поставить куда надо.
     var turned = rotateShape(p.shape);
     for (var i = 0; i < KICKS.length; i += 1) {
       if (!collides(game, turned, p.x + KICKS[i], p.y)) {
