@@ -577,6 +577,40 @@ check('лазер в снятой линии бьёт крестом с мест
   return 'линия снята, лазер выжег столбец под собой: +20';
 });
 
+check('радуга (5.68): снимает все клетки цвета своей фигуры — чужие с очками, свои без, вирус того же цвета тоже, камень и другие цвета целы', function () {
+  const g = withSpecial('T', 'rainbow', 0, 1, 3);                              // радуга — верхушка T
+  fillRow(g, 19, 9);
+  g.board[19][0] = 'T'; g.board[19][5] = 'T'; g.board[17][8] = 'T';           // три чужие T
+  g.board[16][0] = 'virus:T:3'; g.board[19][8] = 'stone:T:5';                 // вирус цвета T — снимается, камень — нет
+  g.board[18][0] = 'J'; g.board[15][8] = 'J';                                  // другие цвета целы
+  const fell = Tetris.hardDrop(g);                                             // T: низ 18 (3–5), верхушка (4,17)
+  if (!g.effect || g.effect.type !== 'rainbow' || g.effect.x !== 4 || g.effect.y !== 17) fail('радуга не сработала: ' + JSON.stringify(g.effect));
+  if (g.piece !== null) fail('следующая вышла до эффекта');
+  const targets = g.effect.cells.map(function (c) { return c.y + ',' + c.x; }).sort().join(' ');
+  if (targets !== '16,0 17,4 17,8 18,3 18,4 18,5 19,0 19,5') fail('цели радуги не те: ' + targets);
+  Tetris.tick(g, Tetris.RAINBOW_MS);
+  if (g.effect || g.piece === null) fail('радуга не кончилась');
+  const left = cellsOf(g).filter(function (c) { return c.indexOf(':T') > 0; }).join(' ');
+  if (left !== '19,8:stone:T:' + (Tetris.STONE_LIFE - 1)) fail('цвет T не снят целиком: ' + left);   // камень постарел на посадке, но цел
+  if (!g.board[19][8] || !cellsOf(g).some(function (c) { return c.endsWith(':J'); })) fail('камень или чужой цвет задеты: ' + cellsOf(g).join(' '));
+  // Очки: четыре чужие (19,0), (19,5), (17,8), (16,0) по 10; свои четыре — ноль; линий нет (ряд 19 потерял две клетки).
+  if (g.score !== fell * 2 + 40) fail('очки ' + g.score + ', ожидалось ' + (fell * 2 + 40));
+  if (g.lines !== 0) fail('линия снята: ' + g.lines);
+  return 'снято восемь клеток цвета T, +40 за четыре чужие, камень и J целы';
+});
+
+check('радуга без родни: снимает только саму фигуру, очков ноль, следующая выходит', function () {
+  const g = withSpecial('O', 'rainbow', 0, 0, 4);
+  fillRow(g, 19, 9);
+  const fell = Tetris.hardDrop(g);
+  if (!g.effect || g.effect.cells.length !== 4) fail('целей ' + (g.effect && g.effect.cells.length));
+  Tetris.tick(g, Tetris.RAINBOW_MS);
+  if (cellsOf(g).some(function (c) { return c.endsWith(':O'); })) fail('квадрат остался');
+  if (g.score !== fell * 2) fail('очки за свои: ' + g.score);
+  if (g.piece === null) fail('следующая не вышла');
+  return 'квадрат растаял сам, очков ноль';
+});
+
 check('во время эффекта ходов нет: сброс, сдвиг и поворот ничего не делают', function () {
   const g = withSpecial('T', 'laser', 1, 1, 3);
   fillRow(g, 19, 9);
@@ -837,6 +871,7 @@ check('розыгрыш: камень выпадает, а полезные — 
   }
   if (!seen.stone) fail('камень не выпал: ' + JSON.stringify(seen));
   if (!seen.virus) fail('вирус не выпал: ' + JSON.stringify(seen));
+  if (!seen.rainbow) fail('радуга не выпала: ' + JSON.stringify(seen));
   // Веса 6 : 3 : 1 : 6 — полезные чаще камня в 1,67 раза; порог 1,3 на четырёхстах
   // розыгрышах — три сигмы, на ста тридцати порог 1,4 краснел от шума (5.58).
   if (!(seen.hole + seen.acid + seen.laser > seen.stone * 1.3)) fail('камень слишком част: ' + JSON.stringify(seen));

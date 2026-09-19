@@ -52,8 +52,9 @@
      сама спецклетка не в счёт; `lines` и уровень растут только от настоящих
      линий. Розыгрыш — по весам, с первого уровня: посетитель играет одну
      партию, и спецклетка должна успеть ему встретиться. */
-  var SPECIALS = { hole: 6, acid: 3, laser: 1, stone: 6, virus: 3 };   // ключ → вес при розыгрыше (5.50: камень; 5.54: камень 6; 5.63: вирус 3)
-  var SPECIAL_CHANCE = 0.25;   // доля фигур со спецклеткой (5.54: 0,21; 5.63: 0,25 — полезные те же 13 %, камень 7,9 %, вирус 3,9 %)
+  var SPECIALS = { hole: 6, acid: 3, laser: 1, rainbow: 2, stone: 6, virus: 3 };   // ключ → вес при розыгрыше (5.50: камень; 5.54: камень 6; 5.63: вирус 3; 5.68: радуга 2)
+  var SPECIAL_CHANCE = 0.27;   // доля фигур со спецклеткой (5.63: 0,25; 5.68: 0,27 — полезные 15,4 %, камень 7,7 %, вирус 3,9 %, радуга 2,6 %)
+  var RAINBOW_MS = 640;        // радуга (5.68): клетки её цвета вспыхивают волной и гаснут
   var STONE_LIFE = 5;          // камень крошится сам через столько приземлений других фигур
   var VIRUS_LIFE = 5;          // вирус лечится через столько приземлений других фигур
   var FAKE_MS = 1000;          // пока вирус в стопке, «далее» врёт и меняет ложь раз в столько мс
@@ -307,7 +308,7 @@
           : v === 'virus' ? 'virus:' + p.kind + ':' + VIRUS_LIFE
           : (isSpecial(v) ? v : p.kind);
         own.push({ x: nx, y: ny });
-        if (isSpecial(v) && v !== 'stone' && v !== 'virus') special = { type: v, x: nx, y: ny };
+        if (isSpecial(v) && v !== 'stone' && v !== 'virus') special = { type: v, x: nx, y: ny, kind: p.kind };
       }
     }
     ageStones(game, own);
@@ -336,20 +337,34 @@
         special.y = by;
         own.push({ x: special.x, y: by });
       }
-      game.effect = startEffect(special, own);
+      game.effect = startEffect(game, special, own);
       game.piece = null;
       return;
     }
     spawn(game);
   }
 
-  function startEffect(special, own) {
+  function startEffect(game, special, own) {
     var effect = { type: special.type, x: special.x, y: special.y, t: 0, own: own, burnt: 0 };
     if (effect.type === 'laser') {
       effect.dur = LASER_MS;
       effect.cells = [];
       for (var lx = 0; lx < COLS; lx += 1) effect.cells.push({ x: lx, y: special.y });
       for (var ly = 0; ly < ROWS; ly += 1) if (ly !== special.y) effect.cells.push({ x: special.x, y: ly });
+    } else if (effect.type === 'rainbow') {
+      // Радуга (5.68): все клетки стакана цвета своей фигуры — и свои, и чужие
+      // (свои без очков), и заражённые вирусом того же цвета; камень — не цвет.
+      effect.dur = RAINBOW_MS;
+      effect.cells = [{ x: special.x, y: special.y }];   // сама радуга уходит первой
+      for (var ry = 0; ry < ROWS; ry += 1) {
+        for (var rx = 0; rx < COLS; rx += 1) {
+          var rv = game.board[ry][rx];
+          if (rv === special.kind || (isVirus(rv) && virusKind(rv) === special.kind)) effect.cells.push({ x: rx, y: ry });
+        }
+      }
+      effect.cells.sort(function (a, b) {
+        return (Math.abs(a.x - special.x) + Math.abs(a.y - special.y)) - (Math.abs(b.x - special.x) + Math.abs(b.y - special.y));
+      });
     } else if (BLAST[effect.type]) {
       var r = BLAST[effect.type];
       effect.dur = HOLE_MS;
@@ -576,6 +591,7 @@
     SPECIAL_SCORE: SPECIAL_SCORE,
     HOLE_MS: HOLE_MS,
     LASER_MS: LASER_MS,
+    RAINBOW_MS: RAINBOW_MS,
     BLAST: BLAST,
     ACID_STEP: ACID_STEP,
     ACID_DEPTH: ACID_DEPTH,
@@ -760,6 +776,7 @@
       laser: { name: { ru: 'лазер', en: 'laser' }, text: { ru: 'выжигает весь ряд и столбец', en: 'burns its whole row and column' } },
       stone: { name: { ru: 'камень', en: 'stone' }, text: { ru: 'ряд с ним не снимается {life} фигур', en: 'its row will not clear for {life} pieces' } },
       virus: { name: { ru: 'вирус', en: 'virus' }, text: { ru: 'пока он в стопке, окно «далее» врёт', en: 'while it sits in the stack, the “next” box lies' } },
+      rainbow: { name: { ru: 'радуга', en: 'rainbow' }, text: { ru: 'снимает все клетки цвета своей фигуры', en: 'removes every cell of its piece’s colour' } },
     },
     paused: { ru: 'Пауза', en: 'Paused' },
     over: { ru: 'Игра окончена', en: 'Game over' },
@@ -1359,6 +1376,26 @@
     bevel(ctx, x, y, size);
   }
 
+  // Радуга (5.68): семь цветов фигур диагональными полосами внутри обычного
+  // блока — размер и фаска те же, что у соседей (владелец: «не больше по
+  // размеру»); полосы медленно ползут по диагонали (shift — сдвиг в полосах).
+  var RAINBOW = ['#00c5cd', '#79c0ff', '#b48cff', '#ff86c0', '#ff6b6b', '#ffb454', '#3ddc97'];
+  function drawRainbowCell(ctx, x, y, size, shift) {
+    var seam = Math.max(1, Math.round(size / 16));
+    var u = (size - 2 * seam) / 8;
+    for (var j = 0; j < 8; j += 1) {
+      for (var i = 0; i < 8; i += 1) {
+        var x0 = Math.round(x * size + seam + i * u);
+        var x1 = Math.round(x * size + seam + (i + 1) * u);
+        var y0 = Math.round(y * size + seam + j * u);
+        var y1 = Math.round(y * size + seam + (j + 1) * u);
+        ctx.fillStyle = RAINBOW[(Math.floor((i + j) / 2) + shift) % RAINBOW.length];
+        ctx.fillRect(x0, y0, Math.max(1, x1 - x0), Math.max(1, y1 - y0));
+      }
+    }
+    bevel(ctx, x, y, size);
+  }
+
   // ms = null — поза покоя для значка легенды (5.54): череп по центру, без
   // пузырьков; остальным типам это первый кадр. kind — фигура-носитель: вирус
   // рисуется её цветом (в легенде — цветом T).
@@ -1368,6 +1405,8 @@
     var f = Math.floor(ms / FRAME_MS);
     if (type === 'virus') {   // без фигуры-носителя (легенда) — нейтральный светло-серый (5.65)
       drawVirusCell(ctx, x, y, size, kind ? COLORS[kind] : NEUTRAL, ms, x * 7 + y * 13, still ? true : undefined);
+    } else if (type === 'rainbow') {
+      drawRainbowCell(ctx, x, y, size, still ? 0 : Math.floor(ms / 160));
     } else if (type === 'stone') {
       drawStone(ctx, x, y, size, STONE_LIFE, ms);
     } else if (type === 'laser') {
@@ -1734,9 +1773,37 @@
     });
   }
 
+  function drawRainbow(ctx, e, size, p, ms) {
+    var n = Math.max(1, e.cells.length);
+    e.cells.forEach(function (c, i) {
+      var v = game.board[c.y][c.x];
+      if (!v) return;
+      var delay = 0.55 * i / n;                       // волна от радуги наружу
+      var q = Math.max(0, Math.min(1, (p - delay) / 0.45));
+      if (c.x === e.x && c.y === e.y) {                // сама радуга: кружится и сжимается
+        ctx.save();
+        ctx.translate((c.x + 0.5) * size, (c.y + 0.5) * size);
+        ctx.rotate(q * Math.PI);
+        ctx.scale(1 - q * 0.95, 1 - q * 0.95);
+        ctx.translate(-0.5 * size, -0.5 * size);
+        drawRainbowCell(ctx, 0, 0, size, Math.floor(ms / 60));
+        ctx.restore();
+        return;
+      }
+      ctx.globalAlpha = 1 - q;
+      cellBlock(ctx, c.x, c.y, size, isVirus(v) ? virusKind(v) : v);
+      if (q > 0 && q < 0.5) {                          // вспышка цвета радуги, потом растворение
+        ctx.globalAlpha = 1 - q * 2;
+        flat(ctx, c.x, c.y, size, RAINBOW[(i + Math.floor(ms / 60)) % RAINBOW.length]);
+      }
+      ctx.globalAlpha = 1;
+    });
+  }
+
   function drawEffect(ctx, e, size, ms) {
     var p = Math.min(1, e.t / e.dur);
-    if (e.type === 'laser') fxLaser(ctx, e, size, p, ms);
+    if (e.type === 'rainbow') drawRainbow(ctx, e, size, p, ms);
+    else if (e.type === 'laser') fxLaser(ctx, e, size, p, ms);
     else if (e.type === 'hole') drawHole(ctx, e, size, p, ms);
     else drawAcid(ctx, e, size, ms);
   }
@@ -1751,8 +1818,8 @@
     for (var gy = 1; gy < ROWS; gy += 1) ctx.fillRect(0, gy * cell, COLS * cell, 1);
 
     var ms = LESS_MOTION ? 0 : clock;
-    var pulled = {};   // клетки, которые тянет дыра: их рисует эффект
-    if (game.effect && game.effect.type === 'hole') {
+    var pulled = {};   // клетки, которые тянет дыра или гасит радуга: их рисует эффект
+    if (game.effect && (game.effect.type === 'hole' || game.effect.type === 'rainbow')) {
       game.effect.cells.forEach(function (c) { pulled[c.y * COLS + c.x] = true; });
     }
     for (var y = 0; y < ROWS; y += 1) {
