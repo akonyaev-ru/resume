@@ -588,7 +588,8 @@ check('радуга (5.68): снимает все клетки цвета сво
   if (g.piece !== null) fail('следующая вышла до эффекта');
   const targets = g.effect.cells.map(function (c) { return c.y + ',' + c.x; }).sort().join(' ');
   if (targets !== '16,0 17,4 17,8 18,3 18,4 18,5 19,0 19,5') fail('цели радуги не те: ' + targets);
-  Tetris.tick(g, Tetris.RAINBOW_MS);
+  if (g.effect.dur !== Tetris.rainbowPlan(7).dur) fail('длительность не по плану лучей: ' + g.effect.dur);
+  Tetris.tick(g, g.effect.dur);
   if (g.effect || g.piece === null) fail('радуга не кончилась');
   const left = cellsOf(g).filter(function (c) { return c.indexOf(':T') > 0; }).join(' ');
   if (left !== '19,8:stone:T:' + (Tetris.STONE_LIFE - 1)) fail('цвет T не снят целиком: ' + left);   // камень постарел на посадке, но цел
@@ -604,11 +605,25 @@ check('радуга без родни: снимает только саму фи
   fillRow(g, 19, 9);
   const fell = Tetris.hardDrop(g);
   if (!g.effect || g.effect.cells.length !== 4) fail('целей ' + (g.effect && g.effect.cells.length));
-  Tetris.tick(g, Tetris.RAINBOW_MS);
+  if (g.effect.dur !== Tetris.rainbowPlan(3).dur) fail('длительность не по плану: ' + g.effect.dur);
+  Tetris.tick(g, g.effect.dur);
   if (cellsOf(g).some(function (c) { return c.endsWith(':O'); })) fail('квадрат остался');
   if (g.score !== fell * 2) fail('очки за свои: ' + g.score);
   if (g.piece === null) fail('следующая не вышла');
   return 'квадрат растаял сам, очков ноль';
+});
+
+check('радуга (5.69): план лучей — без родни только пульс и взрыв, семь целей по 40 мс, длинная очередь ужимается до 320 мс', function () {
+  const T = Tetris.RAINBOW_T;
+  const none = Tetris.rainbowPlan(0);
+  if (none.step !== 0 || none.last !== T.pulse || none.dur !== T.pulse + T.burst) fail('без целей: ' + JSON.stringify(none));
+  const seven = Tetris.rainbowPlan(7);
+  if (seven.step !== T.step || seven.last !== T.pulse + 6 * T.step + T.flight || seven.dur !== seven.last + T.burst) fail('семь целей: ' + JSON.stringify(seven));
+  if (seven.dur !== 640) fail('семь целей — не 640 мс, как было: ' + seven.dur);
+  const many = Tetris.rainbowPlan(41);
+  if (many.step !== T.queue / 40 || many.last !== T.pulse + T.queue + T.flight || many.dur !== many.last + T.burst) fail('сорок одна цель: ' + JSON.stringify(many));
+  if (many.dur > 800) fail('длинная очередь тянет эффект: ' + many.dur);
+  return 'без целей ' + none.dur + ' мс, семь целей ' + seven.dur + ' мс, сорок одна — ' + many.dur + ' мс';
 });
 
 check('во время эффекта ходов нет: сброс, сдвиг и поворот ничего не делают', function () {

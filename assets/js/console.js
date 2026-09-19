@@ -54,7 +54,12 @@
      партию, и спецклетка должна успеть ему встретиться. */
   var SPECIALS = { hole: 6, acid: 3, laser: 1, rainbow: 2, stone: 6, virus: 3 };   // ключ → вес при розыгрыше (5.50: камень; 5.54: камень 6; 5.63: вирус 3; 5.68: радуга 2)
   var SPECIAL_CHANCE = 0.27;   // доля фигур со спецклеткой (5.63: 0,25; 5.68: 0,27 — полезные 15,4 %, камень 7,7 %, вирус 3,9 %, радуга 2,6 %)
-  var RAINBOW_MS = 640;        // радуга (5.68): клетки её цвета вспыхивают волной и гаснут
+  // Радуга (5.69, «Лучи» — выбор владельца из четырёх анимаций на настоящем
+  // стакане): пульс, затем к каждой клетке своего цвета по очереди летит луч
+  // (между стартами step, но вся очередь не дольше queue — иначе двадцать
+  // целей тянули бы эффект за секунду); долетел — вспышка flash и искры pop;
+  // после последнего луча взрывается сама радуга (burst). Времена в мс.
+  var RAINBOW_T = { pulse: 80, step: 40, queue: 320, flight: 120, flash: 40, pop: 160, burst: 200 };
   var STONE_LIFE = 5;          // камень крошится сам через столько приземлений других фигур
   var VIRUS_LIFE = 5;          // вирус лечится через столько приземлений других фигур
   var FAKE_MS = 1000;          // пока вирус в стопке, «далее» врёт и меняет ложь раз в столько мс
@@ -344,6 +349,15 @@
     spawn(game);
   }
 
+  // План радуги по числу целей без неё самой: задержка между лучами, момент
+  // прилёта последнего (с него взрывается радуга) и длительность эффекта.
+  function rainbowPlan(n) {
+    var T = RAINBOW_T;
+    var step = n > 1 ? Math.min(T.step, T.queue / (n - 1)) : 0;
+    var last = T.pulse + (n > 0 ? step * (n - 1) + T.flight : 0);
+    return { step: step, last: last, dur: last + Math.max(T.burst, T.flash + T.pop) };
+  }
+
   function startEffect(game, special, own) {
     var effect = { type: special.type, x: special.x, y: special.y, t: 0, own: own, burnt: 0 };
     if (effect.type === 'laser') {
@@ -354,7 +368,6 @@
     } else if (effect.type === 'rainbow') {
       // Радуга (5.68): все клетки стакана цвета своей фигуры — и свои, и чужие
       // (свои без очков), и заражённые вирусом того же цвета; камень — не цвет.
-      effect.dur = RAINBOW_MS;
       effect.cells = [{ x: special.x, y: special.y }];   // сама радуга уходит первой
       for (var ry = 0; ry < ROWS; ry += 1) {
         for (var rx = 0; rx < COLS; rx += 1) {
@@ -365,6 +378,10 @@
       effect.cells.sort(function (a, b) {
         return (Math.abs(a.x - special.x) + Math.abs(a.y - special.y)) - (Math.abs(b.x - special.x) + Math.abs(b.y - special.y));
       });
+      var plan = rainbowPlan(effect.cells.length - 1);
+      effect.step = plan.step;
+      effect.last = plan.last;
+      effect.dur = plan.dur;
     } else if (BLAST[effect.type]) {
       var r = BLAST[effect.type];
       effect.dur = HOLE_MS;
@@ -591,7 +608,8 @@
     SPECIAL_SCORE: SPECIAL_SCORE,
     HOLE_MS: HOLE_MS,
     LASER_MS: LASER_MS,
-    RAINBOW_MS: RAINBOW_MS,
+    RAINBOW_T: RAINBOW_T,
+    rainbowPlan: rainbowPlan,
     BLAST: BLAST,
     ACID_STEP: ACID_STEP,
     ACID_DEPTH: ACID_DEPTH,
@@ -1276,7 +1294,7 @@
     acid: '#d4ff2e', acidDark: '#5f8a00',
     gun: '#3a4152', plateLight: '#7c8699', plate: '#5c6478', plateDark: '#454c5e', socket: '#22262f',
     screw: '#8a93a3', ledOn: '#ff2e2e', ledOff: '#5a1010', ledCore: '#ffb0b0',
-    black: '#05030d', star: '#e7eaf2', starDim: '#9aa3b5',
+    black: '#05030d', star: '#e7eaf2', starDim: '#9aa3b5', flash: '#ffffff',
     fireWhite: '#fff3b0', fireYellow: '#ffd23f', fireOrange: '#ff7a1a', fireDark: '#7a2416',
   };
   var NEBULA = { n: '#2a3f8f', p: '#5a3aa8', m: '#9b5de5', l: '#d8c8ff', k: '#000000' };
@@ -1380,20 +1398,32 @@
   // блока — размер и фаска те же, что у соседей (владелец: «не больше по
   // размеру»); полосы медленно ползут по диагонали (shift — сдвиг в полосах).
   var RAINBOW = ['#00c5cd', '#79c0ff', '#b48cff', '#ff86c0', '#ff6b6b', '#ffb454', '#3ddc97'];
-  function drawRainbowCell(ctx, x, y, size, shift) {
-    var seam = Math.max(1, Math.round(size / 16));
-    var u = (size - 2 * seam) / 8;
+  function rainbowStripes(ctx, x0, y0, s, shift) {
+    var u = s / 8;
     for (var j = 0; j < 8; j += 1) {
       for (var i = 0; i < 8; i += 1) {
-        var x0 = Math.round(x * size + seam + i * u);
-        var x1 = Math.round(x * size + seam + (i + 1) * u);
-        var y0 = Math.round(y * size + seam + j * u);
-        var y1 = Math.round(y * size + seam + (j + 1) * u);
+        var ax = Math.round(x0 + i * u);
+        var bx = Math.round(x0 + (i + 1) * u);
+        var ay = Math.round(y0 + j * u);
+        var by = Math.round(y0 + (j + 1) * u);
         ctx.fillStyle = RAINBOW[(Math.floor((i + j) / 2) + shift) % RAINBOW.length];
-        ctx.fillRect(x0, y0, Math.max(1, x1 - x0), Math.max(1, y1 - y0));
+        ctx.fillRect(ax, ay, Math.max(1, bx - ax), Math.max(1, by - ay));
       }
     }
+  }
+  function drawRainbowCell(ctx, x, y, size, shift) {
+    var seam = Math.max(1, Math.round(size / 16));
+    rainbowStripes(ctx, x * size + seam, y * size + seam, size - 2 * seam, shift);
     bevel(ctx, x, y, size);
+  }
+  // Ободок по краю пластины в полпикселя значка — пульс радуги перед лучами.
+  function rim(ctx, x, y, size, color, alpha) {
+    ctx.globalAlpha = alpha;
+    pix(ctx, x, y, size, color, 0.5, 0.5, 7, 0.5);
+    pix(ctx, x, y, size, color, 0.5, 7, 7, 0.5);
+    pix(ctx, x, y, size, color, 0.5, 0.5, 0.5, 7);
+    pix(ctx, x, y, size, color, 7, 0.5, 0.5, 7);
+    ctx.globalAlpha = 1;
   }
 
   // ms = null — поза покоя для значка легенды (5.54): череп по центру, без
@@ -1773,36 +1803,85 @@
     });
   }
 
-  function drawRainbow(ctx, e, size, p, ms) {
-    var n = Math.max(1, e.cells.length);
-    e.cells.forEach(function (c, i) {
+  /* Радуга, «Лучи» (5.69; 5.68 была волна вспышек с растворением и поворотом
+     клетки — владелец: «анимация исчезновения радуги мне не нравится»; из
+     четырёх форм на настоящем стакане — лучи, хлопок, волна, смыв — выбраны
+     лучи). Радуга пульсирует ободком; к каждой цели по очереди тянется нить
+     из пикселей цветов радуги с белой головкой; долетела — клетка вспыхивает
+     белым и лопается четырьмя искрами по диагоналям; после последнего луча
+     радуга схлопывается белым квадратом и разлетается семью цветными искрами.
+     Ни поворота, ни прозрачного тумана: всё шагами по сетке пикселей. */
+  function drawRainbow(ctx, e, size, ms) {
+    var T = RAINBOW_T;
+    var t = e.t;
+    var u = size / 8;
+    var ox = (e.x + 0.5) * size;
+    var oy = (e.y + 0.5) * size;
+    var seam = Math.max(1, Math.round(size / 16));
+    var inner = size - 2 * seam;
+    var i, k;
+    for (i = 1; i < e.cells.length; i += 1) {
+      var c = e.cells[i];
       var v = game.board[c.y][c.x];
-      if (!v) return;
-      var delay = 0.55 * i / n;                       // волна от радуги наружу
-      var q = Math.max(0, Math.min(1, (p - delay) / 0.45));
-      if (c.x === e.x && c.y === e.y) {                // сама радуга: кружится и сжимается
-        ctx.save();
-        ctx.translate((c.x + 0.5) * size, (c.y + 0.5) * size);
-        ctx.rotate(q * Math.PI);
-        ctx.scale(1 - q * 0.95, 1 - q * 0.95);
-        ctx.translate(-0.5 * size, -0.5 * size);
-        drawRainbowCell(ctx, 0, 0, size, Math.floor(ms / 60));
-        ctx.restore();
-        return;
+      if (!v) continue;
+      var kind = isVirus(v) ? virusKind(v) : v;
+      var start = T.pulse + (i - 1) * e.step;
+      var arrive = start + T.flight;
+      if (t < arrive) cellBlock(ctx, c.x, c.y, size, kind);
+      if (t >= start && t < arrive) {                    // луч: нить пикселей от радуги к цели, головка белая
+        var q = (t - start) / T.flight;
+        var hx = ox + ((c.x + 0.5) * size - ox) * q;
+        var hy = oy + ((c.y + 0.5) * size - oy) * q;
+        var len = Math.sqrt((hx - ox) * (hx - ox) + (hy - oy) * (hy - oy));
+        var steps = Math.max(1, Math.round(len / (u * 0.5)));
+        var bead = Math.ceil(u * 0.75);
+        for (k = 0; k <= steps; k += 1) {
+          var sx = ox + (hx - ox) * k / steps;
+          var sy = oy + (hy - oy) * k / steps;
+          ctx.fillStyle = RAINBOW[(i + Math.floor(t / 40) + Math.floor(k / 3)) % RAINBOW.length];
+          ctx.fillRect(Math.round(sx / (u * 0.5)) * (u * 0.5) - u * 0.25, Math.round(sy / (u * 0.5)) * (u * 0.5) - u * 0.25, bead, bead);
+        }
+        ctx.fillStyle = INK.flash;
+        ctx.fillRect(Math.round(hx - u * 0.75), Math.round(hy - u * 0.75), Math.round(u * 1.5), Math.round(u * 1.5));
+      } else if (t >= arrive && t < arrive + T.flash) {  // вспышка
+        flat(ctx, c.x, c.y, size, INK.flash);
+      } else if (t >= arrive + T.flash && t < arrive + T.flash + T.pop) {   // искры по диагоналям
+        var p = (t - arrive - T.flash) / T.pop;
+        var r = 0.5 + p * 3.2;
+        var col = mix(INK.flash, cellColor(kind), p);
+        ctx.globalAlpha = 1 - p * 0.8;
+        pix(ctx, c.x, c.y, size, col, 3.5 - r, 3.5 - r, 1, 1);
+        pix(ctx, c.x, c.y, size, col, 3.5 + r, 3.5 - r, 1, 1);
+        pix(ctx, c.x, c.y, size, col, 3.5 - r, 3.5 + r, 1, 1);
+        pix(ctx, c.x, c.y, size, col, 3.5 + r, 3.5 + r, 1, 1);
+        ctx.globalAlpha = 1;
       }
-      ctx.globalAlpha = 1 - q;
-      cellBlock(ctx, c.x, c.y, size, isVirus(v) ? virusKind(v) : v);
-      if (q > 0 && q < 0.5) {                          // вспышка цвета радуги, потом растворение
-        ctx.globalAlpha = 1 - q * 2;
-        flat(ctx, c.x, c.y, size, RAINBOW[(i + Math.floor(ms / 60)) % RAINBOW.length]);
-      }
-      ctx.globalAlpha = 1;
-    });
+    }
+    if (t < e.last) {                                    // сама радуга: полосы бегут, ободок мигает
+      drawRainbowCell(ctx, e.x, e.y, size, Math.floor(t / 20));
+      if (Math.floor(t / 40) % 2 === 0) rim(ctx, e.x, e.y, size, INK.flash, 0.9);
+      return;
+    }
+    var q2 = (t - e.last) / T.burst;                     // взрыв: белый квадрат схлопывается, семь искр наружу
+    if (q2 >= 1) return;
+    if (q2 < 0.4) {
+      var sq = inner * (1 - q2 / 0.4);
+      ctx.fillStyle = INK.flash;
+      ctx.fillRect(Math.round(ox - sq / 2), Math.round(oy - sq / 2), Math.round(sq), Math.round(sq));
+    }
+    ctx.globalAlpha = 1 - q2;
+    for (i = 0; i < RAINBOW.length; i += 1) {
+      var ang = i * Math.PI * 2 / RAINBOW.length - Math.PI / 2;
+      var rr = (0.25 + q2 * 1.2) * size;
+      ctx.fillStyle = RAINBOW[i];
+      ctx.fillRect(Math.round(ox + Math.cos(ang) * rr - u * 0.6), Math.round(oy + Math.sin(ang) * rr - u * 0.6), Math.round(u * 1.2), Math.round(u * 1.2));
+    }
+    ctx.globalAlpha = 1;
   }
 
   function drawEffect(ctx, e, size, ms) {
     var p = Math.min(1, e.t / e.dur);
-    if (e.type === 'rainbow') drawRainbow(ctx, e, size, p, ms);
+    if (e.type === 'rainbow') drawRainbow(ctx, e, size, ms);
     else if (e.type === 'laser') fxLaser(ctx, e, size, p, ms);
     else if (e.type === 'hole') drawHole(ctx, e, size, p, ms);
     else drawAcid(ctx, e, size, ms);
