@@ -395,8 +395,8 @@ check('спецклетка: шанс 0 — ни одной за сорок фи
     all.board.forEach(function (row) { row.fill(0); });
   }
   Object.keys(Tetris.SPECIALS).forEach(function (key) { if (!seen[key]) fail('за сто фигур не выпала ' + key); });
-  if (!(seen.hole > seen.acid && seen.acid > seen.laser)) fail('веса 6:3:1 не соблюдены: ' + JSON.stringify(seen));
-  if (!(seen.hole > seen.laser * 3)) fail('дыра должна выпадать много чаще лазера: ' + JSON.stringify(seen));
+  if (!(seen.hole > seen.acid && seen.acid > seen.laser)) fail('веса 5:3:2 не соблюдены: ' + JSON.stringify(seen));
+  if (!(seen.hole > seen.laser * 1.5)) fail('дыра должна выпадать заметно чаще лазера (5 : 2; до 5.70 было 6 : 1): ' + JSON.stringify(seen));
   return 'сто фигур: ' + JSON.stringify(seen);
 });
 
@@ -873,6 +873,17 @@ check('вирус: два вируса — лечение одного не сн
   return 'один вылечен, окно всё ещё врёт из-за второго';
 });
 
+check('веса (5.70): дыра 5, лазер 2 — лазер не реже радуги, полезных 12 из 21, шанс 0,27', function () {
+  const w = Tetris.SPECIALS;
+  const want = { hole: 5, acid: 3, laser: 2, rainbow: 2, stone: 6, virus: 3 };
+  Object.keys(want).forEach(function (k) { if (w[k] !== want[k]) fail(k + ': вес ' + w[k] + ', ожидался ' + want[k]); });
+  if (Object.keys(w).join(',') !== Object.keys(want).join(',')) fail('состав или порядок легенды: ' + Object.keys(w).join(','));
+  if (w.laser < w.rainbow) fail('лазер реже радуги');
+  if (w.hole + w.acid + w.laser + w.rainbow !== 12 || w.stone + w.virus !== 9) fail('доли полезных и помех сдвинулись');
+  if (Tetris.SPECIAL_CHANCE !== 0.27) fail('шанс ' + Tetris.SPECIAL_CHANCE);
+  return 'лазер один на ' + Math.round(21 / (2 * 0.27)) + ' фигур, дыра один на ' + Math.round(21 / (5 * 0.27));
+});
+
 check('розыгрыш: камень выпадает, а полезные — чаще него', function () {
   const g = Tetris.create(rng(21), { specialChance: 1 });
   const seen = {};
@@ -887,7 +898,7 @@ check('розыгрыш: камень выпадает, а полезные — 
   if (!seen.stone) fail('камень не выпал: ' + JSON.stringify(seen));
   if (!seen.virus) fail('вирус не выпал: ' + JSON.stringify(seen));
   if (!seen.rainbow) fail('радуга не выпала: ' + JSON.stringify(seen));
-  // Веса 6 : 3 : 1 : 6 — полезные чаще камня в 1,67 раза; порог 1,3 на четырёхстах
+  // Веса 5 : 3 : 2 (+ радуга 2) : 6 — полезные чаще камня в 1,67 раза; порог 1,3 на четырёхстах
   // розыгрышах — три сигмы, на ста тридцати порог 1,4 краснел от шума (5.58).
   if (!(seen.hole + seen.acid + seen.laser > seen.stone * 1.3)) fail('камень слишком част: ' + JSON.stringify(seen));
   return 'четыреста фигур: ' + JSON.stringify(seen);
