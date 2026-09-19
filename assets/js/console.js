@@ -742,9 +742,10 @@
   // L — magenta; у страницы нет фиолетового и красного, T и Z добраны в её тоне.
   var COLORS = {
     I: '#00c5cd', O: '#ffb454', T: '#b48cff', S: '#3ddc97', Z: '#ff6b6b', J: '#79c0ff', L: '#ff86c0',
-    T5: '#b48cff', X: '#ff6b6b', U: '#79c0ff',   // пентамино — цвет родича, кольцо внутри (BIG, 5.55)
+    // Пентамино — свои цвета (5.56; владелец: «просто других цветов», кольцо
+    // 5.55 снято): оранжевый, оливковый и бирюзовый темнее соседей по тону.
+    T5: '#ff7f2a', X: '#a7c957', U: '#1fa38a',
   };
-  var BIG = { T5: 1, X: 1, U: 1 };
 
   function t(value) {
     return value && typeof value === 'object' ? value[LANG] : value;
@@ -1479,28 +1480,11 @@
   // Цвет клетки стакана для эффектов: у спецклетки — тон её пластины.
   function cellColor(v) { return isStone(v) ? STONE.body : isSpecial(v) ? INK.plate : COLORS[v]; }
 
-  // Кольцо пентамино (5.55): тёмная рамка внутри фаски, от 2/8 до 6/8 клетки,
-  // толщиной ~0,8/8 — «большая фигура» читается и в стакане, и в «далее».
-  function ring(ctx, x, y, size) {
-    var u = size / 8;
-    var t = Math.max(1, Math.round(u * 0.8));
-    var x0 = Math.round(x * size + 2 * u);
-    var x1 = Math.round(x * size + 6 * u);
-    var y0 = Math.round(y * size + 2 * u);
-    var y1 = Math.round(y * size + 6 * u);
-    ctx.fillStyle = 'rgba(0,0,0,0.38)';
-    ctx.fillRect(x0, y0, x1 - x0, t);
-    ctx.fillRect(x0, y1 - t, x1 - x0, t);
-    ctx.fillRect(x0, y0, t, y1 - y0);
-    ctx.fillRect(x1 - t, y0, t, y1 - y0);
-  }
-
   // Обычная клетка по её значению: цвет фигуры (камень — тело, спецклетка —
-  // пластина), у пентамино поверх — кольцо. Одна точка для стакана, фигуры,
-  // «далее» и служебных холстов эффектов.
+  // пластина). Одна точка для стакана, фигуры, «далее» и служебных холстов
+  // эффектов.
   function cellBlock(ctx, x, y, size, v) {
     block(ctx, x, y, size, cellColor(v));
-    if (BIG[v]) ring(ctx, x, y, size);
   }
 
   // Цвет между двумя шестнадцатеричными: t = 0 — первый, 1 — второй.
