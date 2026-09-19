@@ -83,39 +83,26 @@ check('мешок из восьми: семь классических по од
   return seen.join(' ') + ' | пентамино по мешкам: ' + extras.join(' ');
 });
 
-check('пентамино: пять клеток, T5 и X в три ряда, U в два; T5 возвращается за четыре поворота, X не меняется', function () {
-  ['T5', 'X', 'U'].forEach(function (k) {
-    const n = Tetris.SHAPES[k].reduce(function (a, row) { return a + row.filter(Boolean).length; }, 0);
-    if (n !== 5) fail(k + ': клеток ' + n);
-  });
-  if (Tetris.SHAPES.T5.length !== 3 || Tetris.SHAPES.X.length !== 3 || Tetris.SHAPES.U.length !== 2) fail('высоты форм');
-  const g = scripted(['T5', 'O', 'I']);
+check('пентамино одна — U (5.65): пять клеток в два ряда, возвращается за четыре поворота; T5 и X сняты', function () {
+  if (Tetris.EXTRA.join(',') !== 'U') fail('лишние пентамино: ' + Tetris.EXTRA.join(','));
+  if (Tetris.SHAPES.T5 || Tetris.SHAPES.X) fail('T5 или X остались в формах');
+  const n = Tetris.SHAPES.U.reduce(function (a, row) { return a + row.filter(Boolean).length; }, 0);
+  if (n !== 5 || Tetris.SHAPES.U.length !== 2) fail('U: клеток ' + n + ', рядов ' + Tetris.SHAPES.U.length);
+  const g = scripted(['U', 'O', 'I']);
   const start = JSON.stringify(g.piece.shape);
-  for (let i = 0; i < 4; i += 1) if (!Tetris.rotate(g)) fail('поворот T5 ' + i + ' не прошёл');
-  if (JSON.stringify(g.piece.shape) !== start) fail('T5 после четырёх поворотов другая: ' + JSON.stringify(g.piece.shape));
-  const x = scripted(['X', 'O', 'I']);
-  const xs = JSON.stringify(x.piece.shape);
-  Tetris.rotate(x);
-  if (JSON.stringify(x.piece.shape) !== xs || x.piece.x !== 3) fail('X изменилась поворотом');
-  return 'формы и повороты в порядке';
+  for (let i = 0; i < 4; i += 1) if (!Tetris.rotate(g)) fail('поворот U ' + i + ' не прошёл');
+  if (JSON.stringify(g.piece.shape) !== start) fail('U после четырёх поворотов другая: ' + JSON.stringify(g.piece.shape));
+  return 'U одна, форма и повороты в порядке';
 });
 
-check('пентамино появляются по центру и ложатся своей формой: T5 ножкой вниз, X крестом, U чашей вверх', function () {
-  const t = scripted(['T5', 'O', 'I']);
-  if (t.piece.x !== 3 || t.piece.y !== 0) fail('T5 не по центру: ' + t.piece.x + ',' + t.piece.y);
-  Tetris.hardDrop(t);
-  const tc = cellsOf(t).join(' ');
-  if (tc !== '17,3:T5 17,4:T5 17,5:T5 18,4:T5 19,4:T5') fail('T5 легла не так: ' + tc);
-  const x = scripted(['X', 'O', 'I']);
-  Tetris.hardDrop(x);
-  const xc = cellsOf(x).join(' ');
-  if (xc !== '17,4:X 18,3:X 18,4:X 18,5:X 19,4:X') fail('X легла не так: ' + xc);
+check('U появляется по центру и ложится чашей вверх', function () {
   const u = scripted(['U', 'O', 'I']);
+  if (u.piece.x !== 3 || u.piece.y !== 0) fail('U не по центру: ' + u.piece.x + ',' + u.piece.y);
   Tetris.hardDrop(u);
   const uc = cellsOf(u).join(' ');
   if (uc !== '18,3:U 18,5:U 19,3:U 19,4:U 19,5:U') fail('U легла не так: ' + uc);
-  if (t.piece === null || x.piece === null || u.piece === null) fail('следующая фигура не вышла');
-  return 'T5 ' + tc + ' | X ' + xc + ' | U ' + uc;
+  if (u.piece === null) fail('следующая фигура не вышла');
+  return 'U ' + uc;
 });
 
 check('спецклетка ложится и в пентамино: одна на пять клеток; камень в U крошится в клетку U', function () {
