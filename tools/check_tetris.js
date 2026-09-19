@@ -749,7 +749,8 @@ check('розыгрыш: камень выпадает, а полезные — 
     g.board.forEach(function (row) { row.fill(0); });
   }
   if (!seen.stone) fail('камень не выпал: ' + JSON.stringify(seen));
-  if (!(seen.hole + seen.acid + seen.laser > seen.stone * 2)) fail('камень слишком част: ' + JSON.stringify(seen));
+  // 5.54: веса 6 : 3 : 1 : 6 — полезные чаще камня в полтора раза (было вдвое при 5).
+  if (!(seen.hole + seen.acid + seen.laser > seen.stone * 1.4)) fail('камень слишком част: ' + JSON.stringify(seen));
   return 'сто тридцать фигур: ' + JSON.stringify(seen);
 });
 

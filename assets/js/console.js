@@ -43,8 +43,8 @@
      сама спецклетка не в счёт; `lines` и уровень растут только от настоящих
      линий. Розыгрыш — по весам, с первого уровня: посетитель играет одну
      партию, и спецклетка должна успеть ему встретиться. */
-  var SPECIALS = { hole: 6, acid: 3, laser: 1, stone: 5 };   // ключ → вес при розыгрыше (5.50: камень — негативная; 5.51: камень 3 → 5)
-  var SPECIAL_CHANCE = 0.2;    // доля фигур со спецклеткой (5.39: 0,1; 5.50: 0,18; 5.51: 0,2 — камень один на 15 фигур)
+  var SPECIALS = { hole: 6, acid: 3, laser: 1, stone: 6 };   // ключ → вес при розыгрыше (5.50: камень — негативная; 5.51: камень 3 → 5; 5.54: 5 → 6)
+  var SPECIAL_CHANCE = 0.21;   // доля фигур со спецклеткой (5.39: 0,1; 5.50: 0,18; 5.51: 0,2; 5.54: 0,21 — камень один на 13 фигур, полезные по-прежнему 13 %)
   var STONE_LIFE = 5;          // камень крошится сам через столько приземлений других фигур
   var SPECIAL_SCORE = 10;      // за сожжённую клетку стопки, × уровень
   var HOLE_MS = 500;           // чёрная дыра: втягивает 3×3 вокруг себя (5.47; 5.41–5.46 было 5×5)
@@ -898,7 +898,7 @@
     var legend = {};
     var legendRows = Object.keys(SPECIALS).map(function (type) {
       var icon = el('canvas', { class: 'console__legend-icon', 'aria-hidden': 'true' });
-      drawSpecial(sizeCanvas(icon, LEGEND_ICON, LEGEND_ICON), 0, 0, LEGEND_ICON, type, 0);
+      drawSpecial(sizeCanvas(icon, LEGEND_ICON, LEGEND_ICON), 0, 0, LEGEND_ICON, type, null);
       legend[type] = el('div', { class: 'console__legend-row', 'data-type': type }, [
         icon,
         el('div', null, [el('b', { text: t(TEXT.blocks[type].name) }), el('span', { text: blockText(type) })]),
@@ -1251,7 +1251,11 @@
     }
   }
 
+  // ms = null — поза покоя для значка легенды (5.54): череп по центру, без
+  // пузырьков; остальным типам это первый кадр.
   function drawSpecial(ctx, x, y, size, type, ms) {
+    var still = ms === null;
+    ms = ms || 0;
     var f = Math.floor(ms / FRAME_MS);
     if (type === 'stone') {
       drawStone(ctx, x, y, size, STONE_LIFE, ms);
@@ -1268,9 +1272,10 @@
     } else if (type === 'acid') {
       block(ctx, x, y, size, INK.acid);
       var ph = (ms % FLOAT_MS) / FLOAT_MS * Math.PI * 2;
-      var dy = -0.25 - 0.45 * Math.cos(ph);
-      var dx = 0.2 * Math.sin(ph * 0.5);
+      var dy = still ? 0 : -0.25 - 0.45 * Math.cos(ph);
+      var dx = still ? 0 : 0.2 * Math.sin(ph * 0.5);
       sprite(ctx, x, y, size, SKULL_ROWS, { x: INK.acidDark }, 1.5 + dx, 1.5 + dy);
+      if (still) return;
       var b1 = (f % 30) * 0.19;
       var b2 = ((f + 15) % 30) * 0.19;
       if (b1 < 5) pix(ctx, x, y, size, INK.acidDark, 0.9, 6.4 - b1, 0.5, 0.5);
