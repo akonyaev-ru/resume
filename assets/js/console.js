@@ -58,9 +58,9 @@
      сама спецклетка не в счёт; `lines` и уровень растут только от настоящих
      линий. Розыгрыш — по весам, с первого уровня: посетитель играет одну
      партию, и спецклетка должна успеть ему встретиться. */
-  var SPECIALS = { hole: 6, acid: 3, laser: 1, stone: 6 };   // ключ → вес при розыгрыше (5.50: камень — негативная; 5.51: камень 3 → 5; 5.54: 5 → 6)
-  var SPECIAL_CHANCE = 0.21;   // доля фигур со спецклеткой (5.39: 0,1; 5.50: 0,18; 5.51: 0,2; 5.54: 0,21 — камень один на 13 фигур, полезные по-прежнему 13 %)
-  var STONE_LIFE = 5;          // камень крошится сам через столько приземлений других фигур
+  var SPECIALS = { hole: 6, acid: 3, laser: 1, ice: 5 };   // ключ → вес при розыгрыше (5.50–5.58 камень 3 → 5 → 6; 5.59: лёд 5 — сильнее камня, потому реже)
+  var SPECIAL_CHANCE = 0.2;    // доля фигур со спецклеткой (5.39: 0,1; 5.50: 0,18; 5.51: 0,2; 5.54: 0,21; 5.59: 0,2 — лёд один на 15 фигур, полезные 13,3 %)
+  var ICE_LIFE = 4;            // лёд тает через столько приземлений других фигур
   var SPECIAL_SCORE = 10;      // за сожжённую клетку стопки, × уровень
   var HOLE_MS = 500;           // чёрная дыра: втягивает 3×3 вокруг себя (5.47; 5.41–5.46 было 5×5)
   var LASER_MS = 560;          // лазер: выжигает весь ряд и весь столбец (5.47; 5.49: было 500 — «чуть медленнее»)
@@ -101,31 +101,53 @@
     return typeof value === 'string' && Object.prototype.hasOwnProperty.call(SPECIALS, value);
   }
 
-  /* Камень (5.50) — негативная спецклетка: при приземлении не даёт эффекта,
-     а остаётся в стопке камнем `stone:<фигура>:<жизней>`. Ряд с камнем не
-     считается полным. С каждым приземлением другой фигуры жизней на одну
-     меньше; на нуле камень становится обычной клеткой цвета своей фигуры, и
-     полный ряд снимается тут же. Любая спецклетка ломает камень как обычную
-     клетку стопки. */
-  function isStone(value) {
-    return typeof value === 'string' && value.indexOf('stone:') === 0;
+  /* Лёд (5.59; 5.50–5.58 на этом месте был камень — одна клетка на пять
+     приземлений) — негативная спецклетка: при приземлении не даёт эффекта, а
+     сковывает: сама и все занятые соседи по восьми сторонам становятся льдом
+     `ice:<фигура>:<жизней>` — цвет клетки под глазурью помнится. Ряд со
+     льдом не считается полным. С каждым приземлением другой фигуры жизней
+     на одну меньше; на нуле лёд тает в обычную клетку своего цвета, и полный
+     ряд снимается тут же. Соседний лёд при новой заморозке обновляет жизни.
+     Любая спецклетка ломает лёд как обычную клетку стопки. */
+  function isIce(value) {
+    return typeof value === 'string' && value.indexOf('ice:') === 0;
   }
 
-  function stoneKind(value) { return value.split(':')[1]; }
-  function stoneLife(value) { return parseInt(value.split(':')[2], 10); }
+  function iceKind(value) { return value.split(':')[1]; }
+  function iceLife(value) { return parseInt(value.split(':')[2], 10); }
 
-  // Камни стареют на одно приземление; своих клеток только что легшей фигуры не касается.
-  function ageStones(game, own) {
-    game.crumbled = [];
+  // Лёд тает на одно приземление; своих клеток только что легшей фигуры не касается.
+  function thawIce(game, own) {
+    game.thawed = [];
     for (var y = 0; y < ROWS; y += 1) {
       for (var x = 0; x < COLS; x += 1) {
         var v = game.board[y][x];
-        if (!isStone(v)) continue;
+        if (!isIce(v)) continue;
         var mine = own.some(function (c) { return c.x === x && c.y === y; });
         if (mine) continue;
-        var life = stoneLife(v) - 1;
-        if (life > 0) game.board[y][x] = 'stone:' + stoneKind(v) + ':' + life;
-        else { game.board[y][x] = stoneKind(v); game.crumbled.push({ x: x, y: y }); }
+        var life = iceLife(v) - 1;
+        if (life > 0) game.board[y][x] = 'ice:' + iceKind(v) + ':' + life;
+        else { game.board[y][x] = iceKind(v); game.thawed.push({ x: x, y: y }); }
+      }
+    }
+  }
+
+  // Заморозка вокруг легшей клетки льда: занятые соседи по восьми сторонам —
+  // свои и чужие — становятся льдом с полным запасом жизней; уже ледяные
+  // обновляют запас. Спецклетки соседями не бывают: они не задерживаются в
+  // стакане. Список — для картинки (иней вспыхивает).
+  function freezeAround(game, at) {
+    game.frozen = [{ x: at.x, y: at.y }];
+    for (var dy = -1; dy <= 1; dy += 1) {
+      for (var dx = -1; dx <= 1; dx += 1) {
+        if (!dx && !dy) continue;
+        var x = at.x + dx;
+        var y = at.y + dy;
+        if (x < 0 || x >= COLS || y < 0 || y >= ROWS) continue;
+        var v = game.board[y][x];
+        if (!v || isSpecial(v)) continue;
+        game.board[y][x] = 'ice:' + (isIce(v) ? iceKind(v) : v) + ':' + ICE_LIFE;
+        game.frozen.push({ x: x, y: y });
       }
     }
   }
@@ -244,7 +266,7 @@
     var cleared = [];
     for (var y = 0; y < ROWS; y += 1) {
       var full = true;
-      for (var x = 0; x < COLS; x += 1) if (!game.board[y][x] || isStone(game.board[y][x])) { full = false; break; }
+      for (var x = 0; x < COLS; x += 1) if (!game.board[y][x] || isIce(game.board[y][x])) { full = false; break; }
       if (full) cleared.push(y);
       else kept.push(game.board[y]);
     }
@@ -264,6 +286,7 @@
     var p = game.piece;
     var own = [];          // клетки фигуры в стакане: за них очков не дают
     var special = null;
+    var ice = null;
     for (var y = 0; y < p.shape.length; y += 1) {
       for (var x = 0; x < p.shape[y].length; x += 1) {
         var v = p.shape[y][x];
@@ -271,12 +294,14 @@
         var ny = p.y + y;
         var nx = p.x + x;
         if (ny < 0) { game.over = true; continue; }
-        game.board[ny][nx] = v === 'stone' ? 'stone:' + p.kind + ':' + STONE_LIFE : (isSpecial(v) ? v : p.kind);
+        game.board[ny][nx] = v === 'ice' ? 'ice:' + p.kind + ':' + ICE_LIFE : (isSpecial(v) ? v : p.kind);
         own.push({ x: nx, y: ny });
-        if (isSpecial(v) && v !== 'stone') special = { type: v, x: nx, y: ny };
+        if (v === 'ice') ice = { x: nx, y: ny };
+        else if (isSpecial(v)) special = { type: v, x: nx, y: ny };
       }
     }
-    ageStones(game, own);
+    thawIce(game, own);                   // старый лёд стареет до новой заморозки
+    if (ice && !game.over) freezeAround(game, ice);
     scoreLines(game, clearLines(game));
     game.fall = 0;
     if (game.over) return;
@@ -543,9 +568,10 @@
     ACID_STEP: ACID_STEP,
     ACID_DEPTH: ACID_DEPTH,
     isSpecial: isSpecial,
-    isStone: isStone,
-    stoneLife: stoneLife,
-    STONE_LIFE: STONE_LIFE,
+    isIce: isIce,
+    iceKind: iceKind,
+    iceLife: iceLife,
+    ICE_LIFE: ICE_LIFE,
   };
 
   /* --- таблица рекордов ----------------------------------------------------
@@ -715,7 +741,7 @@
       hole: { name: { ru: 'чёрная дыра', en: 'black hole' }, text: { ru: 'глотает {span} вокруг себя', en: 'swallows {span} around it' } },
       acid: { name: { ru: 'кислота', en: 'acid' }, text: { ru: 'прожигает до {depth} клеток вниз', en: 'burns up to {depth} cells down' } },
       laser: { name: { ru: 'лазер', en: 'laser' }, text: { ru: 'выжигает весь ряд и столбец', en: 'burns its whole row and column' } },
-      stone: { name: { ru: 'камень', en: 'stone' }, text: { ru: 'ряд с ним не снимается — крошится через {life} фигур', en: 'its row will not clear — crumbles after {life} pieces' } },
+      ice: { name: { ru: 'лёд', en: 'ice' }, text: { ru: 'сковывает соседей: их ряды не снимаются, пока не растает — {life} фигуры', en: 'freezes its neighbours: their rows will not clear until it thaws — {life} pieces' } },
     },
     paused: { ru: 'Пауза', en: 'Paused' },
     over: { ru: 'Игра окончена', en: 'Game over' },
@@ -757,7 +783,7 @@
     return t(TEXT.blocks[type].text)
       .replace('{span}', span + '×' + span)
       .replace('{depth}', String(ACID_DEPTH))
-      .replace('{life}', String(STONE_LIFE));
+      .replace('{life}', String(ICE_LIFE));
   }
 
   function readLang() {
@@ -1228,7 +1254,7 @@
   var PLATE_INK = { l: INK.plateLight, m: INK.plate, d: INK.plateDark };
   var SOCKET_ROWS = ['.xx.', 'xxxx', 'xxxx', '.xx.'];
   var SKULL_ROWS = ['.xxx.', 'xxxxx', 'x.x.x', 'xxxxx', '.x.x.'];
-  var STONE = { body: '#7c8699', dark: '#5c6478', crack: '#2c313d', light: '#9aa3b5' };
+  var ICE = { body: '#bfe3f2', glaze: '#dff4ff', rime: '#ffffff', crack: '#7fb3cc', deep: '#5d93b0' };   // лёд (5.59)
   var FRAME_MS = 120;       // шаг дискретных движений: мигание, мерцание, пузырьки
   var BLINK_MS = 2400;      // период двойного мигания диода мины
   var FLOAT_MS = 1800;      // период плавания черепа
@@ -1269,21 +1295,32 @@
     pix(ctx, x, y, size, INK.socket, sx + 0.1, sy + 0.3, 0.6, 0.2);
   }
 
-  // Камень: серая глыба с крапом; трещин тем больше, чем меньше жизней —
-  // обратный отсчёт виден. В полёте и в «далее» — целый.
-  function drawStone(ctx, x, y, size, life, ms) {
-    block(ctx, x, y, size, STONE.body);
-    sprite(ctx, x, y, size, ['.d....l.', '...d....', 'l.....d.', '....l...', '.d....d.', '...l....', 'l....d..'], { d: STONE.dark, l: STONE.light }, 0.6, 0.6);
+  // Лёд: в полёте и в «далее» — ледяной куб (kind = null): бледное тело, блик
+  // по диагонали, иней по верхней и левой кромке. В стопке — клетка своего
+  // цвета под полупрозрачной глазурью; трещин тем больше, чем меньше жизней
+  // (обратный отсчёт виден), на последней жизни по клетке сползает капля.
+  function drawIce(ctx, x, y, size, kind, life, ms) {
+    block(ctx, x, y, size, kind ? COLORS[kind] : ICE.body);
+    ctx.globalAlpha = kind ? 0.5 : 0.35;
+    block(ctx, x, y, size, ICE.glaze);
+    ctx.globalAlpha = 0.85;
+    sprite(ctx, x, y, size, ['rrrrrr..', 'r.......', 'r.......', 'r.......', '........', '........', '........', '........'], { r: ICE.rime }, 0.6, 0.6);
+    if (!kind) {
+      pix(ctx, x, y, size, ICE.rime, 4.6, 1.6, 1, 1);
+      pix(ctx, x, y, size, ICE.rime, 3.6, 2.6, 1, 1);
+      pix(ctx, x, y, size, ICE.rime, 2.6, 3.6, 1, 1);
+    }
+    ctx.globalAlpha = 1;
     var cracks = [
-      ['..c.....', '..c.....', '.c......', '.c......'],
-      ['......c.', '.....c..', '.....c..', '......c.', '......c.'],
-      ['........', '........', '........', 'cc......', '..cc....', '....c...'],
-      ['........', '........', '.....ccc', '....c...', '........', '........', '....cc..'],
+      ['........', '........', '.....c..', '....c...', '....c...', '...c....', '........', '........'],
+      ['........', '..c.....', '..c.....', '.c......', '........', '........', '........', '........'],
+      ['........', '........', '........', '........', '.....cc.', '......c.', '........', '........'],   // не дальше 7-й колонки: со сдвигом 0,6 восьмая вылезает за клетку
     ];
-    var n = Math.max(0, Math.min(cracks.length, STONE_LIFE - life));
-    for (var k = 0; k < n; k += 1) sprite(ctx, x, y, size, cracks[k], { c: STONE.crack }, 0.6, 0.6);
-    if (life <= 1 && (Math.floor(ms / 200) % 2 === 0)) {   // вот-вот раскрошится — дрожит крапом
-      pix(ctx, x, y, size, STONE.crack, 3.2, 3.4, 0.6, 0.6);
+    var n = Math.max(0, Math.min(cracks.length, ICE_LIFE - life));
+    for (var k = 0; k < n; k += 1) sprite(ctx, x, y, size, cracks[k], { c: ICE.crack }, 0.6, 0.6);
+    if (kind && life <= 1) {   // тает: капля сползает по клетке
+      var drip = ((ms % 900) / 900) * 5;
+      pix(ctx, x, y, size, ICE.deep, 5.6, 1.6 + drip, 0.7, 1);
     }
   }
 
@@ -1293,8 +1330,8 @@
     var still = ms === null;
     ms = ms || 0;
     var f = Math.floor(ms / FRAME_MS);
-    if (type === 'stone') {
-      drawStone(ctx, x, y, size, STONE_LIFE, ms);
+    if (type === 'ice') {
+      drawIce(ctx, x, y, size, null, ICE_LIFE, ms);
     } else if (type === 'laser') {
       drawLaserCell(ctx, x, y, size, ms);
     } else if (type === 'hole') {
@@ -1478,9 +1515,9 @@
   }
 
   // Цвет клетки стакана для эффектов: у спецклетки — тон её пластины.
-  function cellColor(v) { return isStone(v) ? STONE.body : isSpecial(v) ? INK.plate : COLORS[v]; }
+  function cellColor(v) { return isIce(v) ? ICE.body : isSpecial(v) ? INK.plate : COLORS[v]; }
 
-  // Обычная клетка по её значению: цвет фигуры (камень — тело, спецклетка —
+  // Обычная клетка по её значению: цвет фигуры (лёд — тело льда, спецклетка —
   // пластина). Одна точка для стакана, фигуры, «далее» и служебных холстов
   // эффектов.
   function cellBlock(ctx, x, y, size, v) {
@@ -1593,7 +1630,7 @@
     if (burning) {
       var v = game.board[below][e.x];
       var c2 = cellCanvas(size);
-      cellBlock(c2, 0, 0, size, v);   // 5.55: и камень под кислотой стал своего цвета — раньше COLORS[камень] был undefined
+      cellBlock(c2, 0, 0, size, v);   // 5.55: и лёд под кислотой своего цвета — раньше COLORS[камень] был undefined
       coverCell(ctx, size, e.x, below);
       for (j = 0; j < 8; j += 1) {
         for (i = 0; i < 8; i += 1) {
@@ -1636,26 +1673,37 @@
     }
   }
 
-  // Крошка: камень рассыпался — шесть серых пылинок разлетаются и гаснут за 350 мс.
-  var dust = [];
-  function drawDust(ctx, size, ms) {
-    if (game.crumbled && game.crumbled.length) {
-      game.crumbled.forEach(function (c) { dust.push({ x: c.x, y: c.y, t0: ms }); });
-      game.crumbled = [];
+  // Лёд (5.59): при заморозке иней вспыхивает на скованных клетках и гаснет за
+  // 300 мс; при таянии три капли стекают с клетки и гаснут за 450 мс.
+  var frost = [];
+  var drops = [];
+  function drawIceFx(ctx, size, ms) {
+    if (game.frozen && game.frozen.length) {
+      game.frozen.forEach(function (c) { frost.push({ x: c.x, y: c.y, t0: ms }); });
+      game.frozen = [];
+    }
+    if (game.thawed && game.thawed.length) {
+      game.thawed.forEach(function (c) { drops.push({ x: c.x, y: c.y, t0: ms }); });
+      game.thawed = [];
     }
     var u = size / 8;
-    dust = dust.filter(function (d) { return ms - d.t0 < 350; });
-    dust.forEach(function (d) {
-      var q = (ms - d.t0) / 350;
-      ctx.globalAlpha = 1 - q;
-      for (var k = 0; k < 6; k += 1) {
-        var ang = k * Math.PI / 3 + noise(k, 7);
-        var r = (0.2 + q * 0.7) * size;
-        ctx.fillStyle = k % 2 ? STONE.light : STONE.dark;
-        ctx.fillRect(Math.round((d.x + 0.5) * size + Math.cos(ang) * r), Math.round((d.y + 0.5) * size + Math.sin(ang) * r - q * u * 2), Math.ceil(u * 0.5), Math.ceil(u * 0.5));
-      }
-      ctx.globalAlpha = 1;
+    frost = frost.filter(function (d) { return ms - d.t0 < 300; });
+    frost.forEach(function (d) {
+      ctx.globalAlpha = 0.7 * (1 - (ms - d.t0) / 300);
+      flat(ctx, d.x, d.y, size, ICE.rime);
     });
+    drops = drops.filter(function (d) { return ms - d.t0 < 450; });
+    drops.forEach(function (d) {
+      var q = (ms - d.t0) / 450;
+      ctx.globalAlpha = 1 - q;
+      ctx.fillStyle = ICE.glaze;
+      for (var k = 0; k < 3; k += 1) {
+        var dx = (1.5 + k * 2.5 + noise(k, 9) * 0.8) * u;
+        var dy = size * 0.6 + q * q * size * (0.8 + noise(k, 10) * 0.6);
+        ctx.fillRect(Math.round(d.x * size + dx), Math.round(d.y * size + dy), Math.ceil(u * 0.6), Math.ceil(u * 0.9));
+      }
+    });
+    ctx.globalAlpha = 1;
   }
 
   function drawEffect(ctx, e, size, ms) {
@@ -1684,7 +1732,7 @@
         var v = game.board[y][x];
         if (!v || pulled[y * COLS + x]) continue;
         if (isSpecial(v)) drawSpecial(ctx, x, y, cell, v, ms);
-        else if (isStone(v)) drawStone(ctx, x, y, cell, stoneLife(v), ms);
+        else if (isIce(v)) drawIce(ctx, x, y, cell, iceKind(v), iceLife(v), ms);
         else cellBlock(ctx, x, y, cell, v);
       }
     }
@@ -1702,7 +1750,7 @@
       }
     }
     if (game.effect) drawEffect(ctx, game.effect, cell, ms);
-    drawDust(ctx, cell, ms);
+    drawIceFx(ctx, cell, ms);
 
     var nctx = ui.preview.getContext('2d');
     nctx.clearRect(0, 0, PREVIEW_W * cell, PREVIEW_H * cell);

@@ -118,7 +118,7 @@ check('пентамино появляются по центру и ложатс
   return 'T5 ' + tc + ' | X ' + xc + ' | U ' + uc;
 });
 
-check('спецклетка ложится и в пентамино: одна на пять клеток; камень в U крошится в клетку U', function () {
+check('спецклетка ложится и в пентамино: одна на пять клеток; лёд в U сковывает её и тает в клетки U', function () {
   const g = Tetris.create(rng(5), { specialChance: 1 });
   let bigSeen = 0;
   for (let i = 0; i < 40 && bigSeen < 3; i += 1) {
@@ -130,12 +130,12 @@ check('спецклетка ложится и в пентамино: одна н
     g.board.forEach(function (row) { row.fill(0); });
   }
   if (bigSeen < 3) fail('пентамино со спецклеткой встретились лишь ' + bigSeen + ' раз');
-  const u = withSpecial('U', 'stone', 1, 1, 3);   // камень в дне чаши
+  const u = withSpecial('U', 'ice', 1, 1, 3);     // лёд в дне чаши: сковывает всю U
   Tetris.hardDrop(u);
-  if (u.board[19][4] !== 'stone:U:' + Tetris.STONE_LIFE) fail('камень не лёг: ' + cellsOf(u).join(' '));
-  for (let i = 0; i < Tetris.STONE_LIFE; i += 1) { Tetris.hardDrop(u); Tetris.tick(u, 3000); }
-  if (u.board[19][4] !== 'U') fail('камень не стал клеткой U: ' + u.board[19][4]);
-  return 'пентамино со спецклеткой: ' + bigSeen + ', камень → U';
+  if (u.board[19][4] !== 'ice:U:' + Tetris.ICE_LIFE || u.board[18][3] !== 'ice:U:' + Tetris.ICE_LIFE) fail('лёд не сковал U: ' + cellsOf(u).join(' '));
+  for (let i = 0; i < Tetris.ICE_LIFE; i += 1) { Tetris.hardDrop(u); Tetris.tick(u, 3000); }
+  if (u.board[19][4] !== 'U' || u.board[18][3] !== 'U') fail('лёд не растаял в клетки U: ' + cellsOf(u).join(' '));
+  return 'пентамино со спецклеткой: ' + bigSeen + ', лёд → U';
 });
 
 check('движение упирается в стенки и не выходит за поле', function () {
@@ -757,49 +757,68 @@ check('во всех прежних сценах после эффекта ос�
   return 'три сцены чисты';
 });
 
-/* --- камень (5.50) ------------------------------------------------------------ */
+/* --- лёд (5.59; до того камень 5.50–5.58) ----------------------------------- */
 
-check('камень: ряд с ним не снимается, через пять приземлений крошится — и ряд снимается', function () {
-  const g = withSpecial('T', 'stone', 1, 1, 3);
-  for (let x = 0; x < 10; x += 1) if (x < 3 || x > 5) g.board[19][x] = 'J';   // ряд 19 ждёт трёх клеток
-  Tetris.hardDrop(g);                                                          // T: низ 19, камень в (4,19)
-  if (g.effect) fail('камень запустил эффект');
+check('лёд: при посадке сковывает себя и занятых соседей — ряд с ним не снимается, через четыре приземления тает, и ряд снимается', function () {
+  const g = withSpecial('T', 'ice', 1, 0, 3);                                  // лёд — левая рука T
+  for (let x = 0; x < 10; x += 1) if (x < 3 || x > 5) { g.board[18][x] = 'J'; g.board[19][x] = 'J'; }   // ряд 19 ждёт T
+  Tetris.hardDrop(g);                                                          // T: низ 19, верхушка (4,18), лёд (3,19)
+  if (g.effect) fail('лёд запустил эффект');
   if (g.piece === null) fail('следующая фигура не вышла');
-  if (g.lines !== 0) fail('ряд с камнем снялся: линий ' + g.lines);
-  const cell = g.board[19][4];
-  if (!Tetris.isStone(cell) || Tetris.stoneLife(cell) !== Tetris.STONE_LIFE) fail('камня нет в (4,19): ' + cell);
+  if (g.lines !== 0) fail('ряд со льдом снялся: линий ' + g.lines);
+  const L = Tetris.ICE_LIFE;
+  const iced = cellsOf(g).filter(function (c) { return c.indexOf(':ice:') > 0; }).sort().join(' ');
+  if (iced !== '18,2:ice:J:L 18,4:ice:T:L 19,2:ice:J:L 19,3:ice:T:L 19,4:ice:T:L'.replace(/L/g, L)) fail('скованы не те клетки: ' + iced);
+  if (g.board[19][5] !== 'T') fail('правая рука не соседка льда, а скована: ' + g.board[19][5]);
   for (let x = 0; x < 10; x += 1) if (!g.board[19][x]) fail('ряд 19 не полон в ' + x);
-  // Пять приземлений палок в разных столбцах — камень стареет, ряд 19 ждёт.
-  [0, 1, 2, 6, 7].forEach(function (col, i) {
+  // Четыре приземления палок в свободных столбцах — лёд стареет, ряд ждёт.
+  [0, 1, 6, 7].forEach(function (col, i) {
     const k = i + 1;
     g.piece = { kind: 'I', shape: [[1], [1], [1], [1]], x: col, y: 0 };
     Tetris.hardDrop(g);
-    if (k < 5) {
-      if (Tetris.stoneLife(g.board[19][4]) !== Tetris.STONE_LIFE - k) fail('после ' + k + ' приземлений: ' + g.board[19][4]);
-      if (g.lines !== 0) fail('ряд с камнем снялся раньше срока');
+    if (k < L) {
+      if (Tetris.iceLife(g.board[19][3]) !== L - k || Tetris.iceLife(g.board[18][2]) !== L - k) fail('после ' + k + ' приземлений: ' + g.board[19][3] + ' ' + g.board[18][2]);
+      if (g.lines !== 0) fail('ряд со льдом снялся раньше срока');
     }
   });
-  if (g.board[19][4] && Tetris.isStone(g.board[19][4])) fail('камень не раскрошился: ' + g.board[19][4]);
-  if (g.lines !== 1) fail('после крошения ряд не снялся: линий ' + g.lines);
-  return 'ряд ждал пять фигур, камень стал клеткой, ряд снят';
+  if (cellsOf(g).some(function (c) { return c.indexOf(':ice:') > 0; })) fail('лёд не растаял: ' + cellsOf(g).join(' '));
+  if (g.lines !== 1) fail('после таяния ряд не снялся: линий ' + g.lines);
+  return 'пять клеток скованы (в том числе две чужие J), ряд ждал четыре фигуры и снялся';
 });
 
-check('камень ломается спецклеткой, как обычная клетка стопки, с очками', function () {
-  const g = withSpecial('T', 'stone', 1, 1, 3);
+check('лёд у стенки сковывает только занятое; новая заморозка обновляет жизни соседнего льда, дальний стареет', function () {
+  const g = withSpecial('I', 'ice', 0, 0, 0);                                  // палка у левой стенки, лёд в (0,19)
+  Tetris.hardDrop(g);
+  const L = Tetris.ICE_LIFE;
+  const iced = cellsOf(g).filter(function (c) { return c.indexOf(':ice:') > 0; }).join(' ');
+  if (iced !== '19,0:ice:I:' + L + ' 19,1:ice:I:' + L) fail('скованы не те: ' + iced);
+  if (g.board[19][2] !== 'I') fail('дальняя клетка палки не должна замёрзнуть: ' + g.board[19][2]);
+  g.piece = { kind: 'O', shape: [[1, 1], [1, 1]], x: 6, y: 0 }; Tetris.hardDrop(g);   // чужое приземление: лёд стареет
+  if (Tetris.iceLife(g.board[19][0]) !== L - 1) fail('лёд не постарел: ' + g.board[19][0]);
+  // Новый лёд в (2,18): соседи — старый лёд (1,19), клетки I (2,19) и (3,19); (0,19) не сосед.
+  g.piece = { kind: 'O', shape: [[1, 1], ['ice', 1]], x: 2, y: 0 }; Tetris.hardDrop(g);
+  if (Tetris.iceLife(g.board[19][1]) !== L) fail('соседний лёд не обновил жизни: ' + g.board[19][1]);
+  if (Tetris.iceLife(g.board[19][0]) !== L - 2) fail('лёд вне соседства должен просто стареть: ' + g.board[19][0]);
+  if (!Tetris.isIce(g.board[19][2]) || Tetris.iceKind(g.board[19][2]) !== 'I' || !Tetris.isIce(g.board[19][3])) fail('чужие I рядом с новым льдом не скованы: ' + cellsOf(g).join(' '));
+  return 'у стенки скованы две клетки, соседний лёд обновился, дальний постарел дважды';
+});
+
+check('лёд ломается спецклеткой, как обычная клетка стопки, с очками', function () {
+  const g = withSpecial('T', 'ice', 1, 1, 3);
   fillRow(g, 19, 9);
-  Tetris.hardDrop(g);                                                          // T: низ 18, камень в (4,18), верх (4,17)
-  if (!Tetris.isStone(g.board[18][4])) fail('камня нет: ' + cellsOf(g).join(' '));
+  Tetris.hardDrop(g);                                                          // T: низ 18, лёд в (4,18), верх (4,17)
+  if (!Tetris.isIce(g.board[18][4]) || !Tetris.isIce(g.board[19][4]) || Tetris.iceKind(g.board[19][4]) !== 'J') fail('лёд не сковал столбец: ' + cellsOf(g).join(' '));
   const before = g.score;
   g.piece = { kind: 'T', shape: [[0, 1, 0], [1, 'laser', 1]], x: 3, y: 0 };
   const fell = Tetris.hardDrop(g);                                             // лазер в (4,16), столбец 4 сгорает
   Tetris.tick(g, Tetris.LASER_MS);
-  if (Tetris.isStone(g.board[18][4]) || g.board[18][4]) fail('камень уцелел: ' + cellsOf(g).join(' '));
-  // Столбец 4: верхушка прежней T (17), камень (18) и J (19) — три чужие по 10; ряд 16 — свои.
-  if (g.score - before !== fell * 2 + 30) fail('очки за камень: ' + (g.score - before));
-  return 'лазер сжёг камень, +10 за него как за клетку стопки';
+  if (g.board[18][4] || g.board[17][4] || g.board[19][4]) fail('столбец уцелел: ' + cellsOf(g).join(' '));
+  // Столбец 4: верхушка прежней T (17), лёд (18) и ледяная J (19) — три чужие по 10; ряд 16 — свои.
+  if (g.score - before !== fell * 2 + 30) fail('очки за лёд: ' + (g.score - before));
+  return 'лазер сжёг столбец со льдом, +10 за каждую как за клетку стопки';
 });
 
-check('розыгрыш: камень выпадает, а полезные — чаще него', function () {
+check('розыгрыш: лёд выпадает, а полезные — чаще него', function () {
   const g = Tetris.create(rng(21), { specialChance: 1 });
   const seen = {};
   for (let i = 0; i < 400; i += 1) {
@@ -810,10 +829,10 @@ check('розыгрыш: камень выпадает, а полезные — 
     Tetris.tick(g, 3000);
     g.board.forEach(function (row) { row.fill(0); });
   }
-  if (!seen.stone) fail('камень не выпал: ' + JSON.stringify(seen));
-  // Веса 6 : 3 : 1 : 6 — полезные чаще камня в 1,67 раза; порог 1,3 на четырёхстах
-  // розыгрышах — три сигмы, на ста тридцати порог 1,4 краснел от шума (5.58).
-  if (!(seen.hole + seen.acid + seen.laser > seen.stone * 1.3)) fail('камень слишком част: ' + JSON.stringify(seen));
+  if (!seen.ice) fail('лёд не выпал: ' + JSON.stringify(seen));
+  // Веса 6 : 3 : 1 : 5 — полезные чаще льда вдвое; порог 1,5 на четырёхстах
+  // розыгрышах — с запасом в три сигмы (5.59).
+  if (!(seen.hole + seen.acid + seen.laser > seen.ice * 1.5)) fail('лёд слишком част: ' + JSON.stringify(seen));
   return 'четыреста фигур: ' + JSON.stringify(seen);
 });
 
