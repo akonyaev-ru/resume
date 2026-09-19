@@ -58,9 +58,11 @@
      сама спецклетка не в счёт; `lines` и уровень растут только от настоящих
      линий. Розыгрыш — по весам, с первого уровня: посетитель играет одну
      партию, и спецклетка должна успеть ему встретиться. */
-  var SPECIALS = { hole: 6, acid: 3, laser: 1, stone: 6 };   // ключ → вес при розыгрыше (5.50: камень — негативная; 5.51: камень 3 → 5; 5.54: 5 → 6)
-  var SPECIAL_CHANCE = 0.21;   // доля фигур со спецклеткой (5.39: 0,1; 5.50: 0,18; 5.51: 0,2; 5.54: 0,21 — камень один на 13 фигур, полезные по-прежнему 13 %)
+  var SPECIALS = { hole: 6, acid: 3, laser: 1, stone: 6, virus: 3 };   // ключ → вес при розыгрыше (5.50: камень; 5.54: камень 6; 5.63: вирус 3)
+  var SPECIAL_CHANCE = 0.25;   // доля фигур со спецклеткой (5.54: 0,21; 5.63: 0,25 — полезные те же 13 %, камень 7,9 %, вирус 3,9 %)
   var STONE_LIFE = 5;          // камень крошится сам через столько приземлений других фигур
+  var VIRUS_LIFE = 5;          // вирус лечится через столько приземлений других фигур
+  var FAKE_MS = 1000;          // пока вирус в стопке, «далее» врёт и меняет ложь раз в столько мс
   var SPECIAL_SCORE = 10;      // за сожжённую клетку стопки, × уровень
   var HOLE_MS = 500;           // чёрная дыра: втягивает 3×3 вокруг себя (5.47; 5.41–5.46 было 5×5)
   var LASER_MS = 560;          // лазер: выжигает весь ряд и весь столбец (5.47; 5.49: было 500 — «чуть медленнее»)
@@ -114,20 +116,56 @@
   function stoneKind(value) { return value.split(':')[1]; }
   function stoneLife(value) { return parseInt(value.split(':')[2], 10); }
 
-  // Камни стареют на одно приземление; своих клеток только что легшей фигуры не касается.
-  function ageStones(game, own) {
-    game.crumbled = [];
+  // Клетки со сроком — камень и вирус, `<тег>:<фигура>:<жизней>`: стареют на одно
+  // приземление, своих клеток только что легшей фигуры не касается; на нуле —
+  // обычная клетка своей фигуры. Возвращает, где это случилось (для картинки).
+  function age(game, own, tag) {
+    var done = [];
     for (var y = 0; y < ROWS; y += 1) {
       for (var x = 0; x < COLS; x += 1) {
         var v = game.board[y][x];
-        if (!isStone(v)) continue;
+        if (typeof v !== 'string' || v.indexOf(tag + ':') !== 0) continue;
         var mine = own.some(function (c) { return c.x === x && c.y === y; });
         if (mine) continue;
-        var life = stoneLife(v) - 1;
-        if (life > 0) game.board[y][x] = 'stone:' + stoneKind(v) + ':' + life;
-        else { game.board[y][x] = stoneKind(v); game.crumbled.push({ x: x, y: y }); }
+        var parts = v.split(':');
+        var life = parseInt(parts[2], 10) - 1;
+        if (life > 0) game.board[y][x] = tag + ':' + parts[1] + ':' + life;
+        else { game.board[y][x] = parts[1]; done.push({ x: x, y: y }); }
       }
     }
+    return done;
+  }
+
+  function ageStones(game, own) { game.crumbled = age(game, own, 'stone'); }
+
+  /* Вирус (5.63) — вторая негативная спецклетка, компьютерная: ложится в
+     стопку клеткой `virus:<фигура>:<жизней>` и лечится через VIRUS_LIFE
+     приземлений (строка со сроком снимается линией как обычная — вред не в
+     стопке). Пока в стакане есть хоть один вирус, окно «далее» врёт: показывает
+     не ту фигуру (`game.fake`), и раз в FAKE_MS ложь меняется на другую —
+     очередь при этом настоящая. Ложь никогда не совпадает ни с настоящей
+     следующей, ни с предыдущей ложью. */
+  function isVirus(value) {
+    return typeof value === 'string' && value.indexOf('virus:') === 0;
+  }
+
+  function virusKind(value) { return value.split(':')[1]; }
+  function virusLife(value) { return parseInt(value.split(':')[2], 10); }
+
+  function infected(game) {
+    for (var y = 0; y < ROWS; y += 1) {
+      for (var x = 0; x < COLS; x += 1) if (isVirus(game.board[y][x])) return true;
+    }
+    return false;
+  }
+
+  // Новая ложь для «далее»: любая фигура, кроме настоящей следующей и прежней лжи.
+  function refreshFake(game) {
+    if (!infected(game)) { game.fake = null; game.fakeT = 0; return; }
+    var pool = ORDER.concat(EXTRA).filter(function (k) { return k !== game.next.kind && k !== game.fake; });
+    game.fake = pool[Math.min(pool.length - 1, Math.floor(game.rng() * pool.length))];
+    game.fakeSeq += 1;
+    game.fakeT = 0;
   }
 
   // Спецклетка — по шансу игры (`specialChance`, по умолчанию SPECIAL_CHANCE),
@@ -182,6 +220,7 @@
   function spawn(game) {
     var piece = game.next;
     game.next = drawPiece(game);
+    refreshFake(game);
     piece.x = Math.floor((COLS - piece.shape[0].length) / 2);
     piece.y = 0;
     game.piece = piece;
@@ -204,6 +243,9 @@
       fall: 0,          // накопленное время до следующего шага вниз, мс
       specialChance: options && typeof options.specialChance === 'number' ? options.specialChance : SPECIAL_CHANCE,
       effect: null,     // идущий эффект спецклетки: держит следующую фигуру
+      fake: null,       // ложь окна «далее» при вирусе: имя фигуры или null
+      fakeSeq: 0,       // номер лжи: окно по нему замечает смену и глючит
+      fakeT: 0,         // мс с последней смены лжи
       cleared: [],      // номера строк, снятых последней чисткой
     };
     for (var y = 0; y < ROWS; y += 1) game.board.push(emptyRow());
@@ -271,12 +313,15 @@
         var ny = p.y + y;
         var nx = p.x + x;
         if (ny < 0) { game.over = true; continue; }
-        game.board[ny][nx] = v === 'stone' ? 'stone:' + p.kind + ':' + STONE_LIFE : (isSpecial(v) ? v : p.kind);
+        game.board[ny][nx] = v === 'stone' ? 'stone:' + p.kind + ':' + STONE_LIFE
+          : v === 'virus' ? 'virus:' + p.kind + ':' + VIRUS_LIFE
+          : (isSpecial(v) ? v : p.kind);
         own.push({ x: nx, y: ny });
-        if (isSpecial(v) && v !== 'stone') special = { type: v, x: nx, y: ny };
+        if (isSpecial(v) && v !== 'stone' && v !== 'virus') special = { type: v, x: nx, y: ny };
       }
     }
     ageStones(game, own);
+    game.cured = age(game, own, 'virus');
     scoreLines(game, clearLines(game));
     game.fall = 0;
     if (game.over) return;
@@ -505,6 +550,10 @@
 
   // Время идёт: накопили интервал — шаг вниз. Несколько шагов, если кадр был долгим.
   function tick(game, dt) {
+    if (game.fake && !game.over && !game.paused) {
+      game.fakeT += dt;
+      if (game.fakeT >= FAKE_MS) refreshFake(game);
+    }
     if (game.effect && !game.over && !game.paused) { advanceEffect(game, dt); return; }
     if (!active(game)) return;
     game.fall += dt;
@@ -546,6 +595,12 @@
     isStone: isStone,
     stoneLife: stoneLife,
     STONE_LIFE: STONE_LIFE,
+    isVirus: isVirus,
+    virusKind: virusKind,
+    virusLife: virusLife,
+    infected: infected,
+    VIRUS_LIFE: VIRUS_LIFE,
+    FAKE_MS: FAKE_MS,
   };
 
   /* --- таблица рекордов ----------------------------------------------------
@@ -716,6 +771,7 @@
       acid: { name: { ru: 'кислота', en: 'acid' }, text: { ru: 'прожигает до {depth} клеток вниз', en: 'burns up to {depth} cells down' } },
       laser: { name: { ru: 'лазер', en: 'laser' }, text: { ru: 'выжигает весь ряд и столбец', en: 'burns its whole row and column' } },
       stone: { name: { ru: 'камень', en: 'stone' }, text: { ru: 'ряд с ним не снимается — крошится через {life} фигур', en: 'its row will not clear — crumbles after {life} pieces' } },
+      virus: { name: { ru: 'вирус', en: 'virus' }, text: { ru: 'пока он в стопке, окно «далее» врёт', en: 'while it sits in the stack, the “next” box lies' } },
     },
     paused: { ru: 'Пауза', en: 'Paused' },
     over: { ru: 'Игра окончена', en: 'Game over' },
@@ -1148,6 +1204,7 @@
     ui.stats.score.textContent = String(game.score);
     ui.stats.level.textContent = String(game.level);
     ui.stats.lines.textContent = String(game.lines);
+    ui.preview.classList.toggle('is-infected', !!game.fake);
     updateLegend();
   }
 
@@ -1156,7 +1213,7 @@
   var legendLive = '';
   function updateLegend() {
     var live = {};
-    [game.piece, game.next].forEach(function (p) {
+    [game.piece, game.fake ? null : game.next].forEach(function (p) {   // при вирусе очередь — тайна и для легенды
       if (!p || !p.shape) return;
       p.shape.forEach(function (row) { row.forEach(function (v) { if (isSpecial(v)) live[v] = true; }); });
     });
@@ -1287,13 +1344,48 @@
     }
   }
 
+  /* Вирус (5.63): клетка своего цвета, которую «глючит» приступами — раз в
+     VIRUS_PERIOD на VIRUS_BURST мс четыре полосы разъезжаются на долю-другую с
+     голубым и малиновым краями (расщепление цвета), между приступами клетка
+     целая, изредка мигает зелёная крапина. У каждой клетки своя фаза, чтобы
+     несколько вирусов не дёргались хором. В позе покоя (легенда) — разрыв. */
+  var GLITCH = { cyan: '#3df2ff', magenta: '#ff3df2', black: '#05070c', green: '#3dff7a' };
+  var VIRUS_PERIOD = 900;
+  var VIRUS_BURST = 220;
+  function tear(ctx, x, y, size, color, py, ph, dx) {
+    pix(ctx, x, y, size, GLITCH.black, 0.5, py, 7, ph);
+    var left = Math.max(0.5, 0.5 + dx);
+    var right = Math.min(7.5, 7.5 + dx);
+    pix(ctx, x, y, size, color, left, py, right - left, ph);
+    pix(ctx, x, y, size, dx > 0 ? GLITCH.cyan : GLITCH.magenta, left, py, 0.5, ph);
+    pix(ctx, x, y, size, dx > 0 ? GLITCH.magenta : GLITCH.cyan, right - 0.5, py, 0.5, ph);
+  }
+  function drawVirusCell(ctx, x, y, size, color, ms, seed, burst) {
+    block(ctx, x, y, size, color);
+    var phase = (ms + seed * 137) % VIRUS_PERIOD;
+    var f = Math.floor(ms / FRAME_MS);
+    if (burst === true || (burst !== false && phase < VIRUS_BURST)) {
+      for (var b = 0; b < 4; b += 1) {
+        var dx = burst === true ? (b % 2 ? -1 : 1) * (b < 2 ? 1 : 0) : Math.round((noise(f, b + 1, seed) - 0.5) * 3.2);
+        if (!dx && b === 1 && burst !== true) dx = noise(f, 8, seed) > 0.5 ? 1 : -1;   // хотя бы одна полоса рвётся всегда
+        if (dx) tear(ctx, x, y, size, color, 0.5 + b * 1.75, 1.75, dx);
+      }
+    } else if (noise(f, 9, seed) > 0.8) {
+      pix(ctx, x, y, size, GLITCH.green, 1 + Math.floor(noise(f, 10, seed) * 6), 1 + Math.floor(noise(f, 11, seed) * 6), 0.6, 0.6);
+    }
+    bevel(ctx, x, y, size);
+  }
+
   // ms = null — поза покоя для значка легенды (5.54): череп по центру, без
-  // пузырьков; остальным типам это первый кадр.
-  function drawSpecial(ctx, x, y, size, type, ms) {
+  // пузырьков; остальным типам это первый кадр. kind — фигура-носитель: вирус
+  // рисуется её цветом (в легенде — цветом T).
+  function drawSpecial(ctx, x, y, size, type, ms, kind) {
     var still = ms === null;
     ms = ms || 0;
     var f = Math.floor(ms / FRAME_MS);
-    if (type === 'stone') {
+    if (type === 'virus') {
+      drawVirusCell(ctx, x, y, size, COLORS[kind || 'T'], ms, x * 7 + y * 13, still ? true : undefined);
+    } else if (type === 'stone') {
       drawStone(ctx, x, y, size, STONE_LIFE, ms);
     } else if (type === 'laser') {
       drawLaserCell(ctx, x, y, size, ms);
@@ -1643,6 +1735,10 @@
       game.crumbled.forEach(function (c) { dust.push({ x: c.x, y: c.y, t0: ms }); });
       game.crumbled = [];
     }
+    if (game.cured && game.cured.length) {   // вирус вылечен: те же искры, но зелёные и вверх
+      game.cured.forEach(function (c) { dust.push({ x: c.x, y: c.y, t0: ms, cure: true }); });
+      game.cured = [];
+    }
     var u = size / 8;
     dust = dust.filter(function (d) { return ms - d.t0 < 350; });
     dust.forEach(function (d) {
@@ -1651,8 +1747,8 @@
       for (var k = 0; k < 6; k += 1) {
         var ang = k * Math.PI / 3 + noise(k, 7);
         var r = (0.2 + q * 0.7) * size;
-        ctx.fillStyle = k % 2 ? STONE.light : STONE.dark;
-        ctx.fillRect(Math.round((d.x + 0.5) * size + Math.cos(ang) * r), Math.round((d.y + 0.5) * size + Math.sin(ang) * r - q * u * 2), Math.ceil(u * 0.5), Math.ceil(u * 0.5));
+        ctx.fillStyle = d.cure ? GLITCH.green : (k % 2 ? STONE.light : STONE.dark);
+        ctx.fillRect(Math.round((d.x + 0.5) * size + Math.cos(ang) * r), Math.round((d.y + 0.5) * size + Math.sin(ang) * r - q * u * (d.cure ? 5 : 2)), Math.ceil(u * 0.5), Math.ceil(u * 0.5));
       }
       ctx.globalAlpha = 1;
     });
@@ -1684,6 +1780,7 @@
         var v = game.board[y][x];
         if (!v || pulled[y * COLS + x]) continue;
         if (isSpecial(v)) drawSpecial(ctx, x, y, cell, v, ms);
+        else if (isVirus(v)) drawVirusCell(ctx, x, y, cell, COLORS[virusKind(v)], ms, x * 7 + y * 13);
         else if (isStone(v)) drawStone(ctx, x, y, cell, stoneLife(v), ms);
         else cellBlock(ctx, x, y, cell, v);
       }
@@ -1696,7 +1793,7 @@
           var pv = p.shape[py][px];
           if (!pv) continue;
           if (gy2 !== p.y) block(ctx, p.x + px, gy2 + py, cell, COLORS[p.kind], true);
-          if (isSpecial(pv)) drawSpecial(ctx, p.x + px, p.y + py, cell, pv, ms);
+          if (isSpecial(pv)) drawSpecial(ctx, p.x + px, p.y + py, cell, pv, ms, p.kind);
           else cellBlock(ctx, p.x + px, p.y + py, cell, p.kind);
         }
       }
@@ -1704,18 +1801,43 @@
     if (game.effect) drawEffect(ctx, game.effect, cell, ms);
     drawDust(ctx, cell, ms);
 
+    drawNext(cell, ms);
+  }
+
+  // Окно «далее». При вирусе показывает ложь (`game.fake`): каждая смена лжи —
+  // приступ глитча на всех клетках (FAKE_BURST мс), между сменами по окну
+  // бегает зелёный «снег».
+  var FAKE_BURST = 260;
+  var fakeSeen = 0;
+  var fakeFlipAt = -1e9;
+  function drawNext(cell, ms) {
     var nctx = ui.preview.getContext('2d');
     nctx.clearRect(0, 0, PREVIEW_W * cell, PREVIEW_H * cell);
-    var n = game.next;
-    var ox = Math.floor((PREVIEW_W - n.shape[0].length) / 2);
-    var oy = (PREVIEW_H - n.shape.length) / 2;
-    for (var ny = 0; ny < n.shape.length; ny += 1) {
-      for (var nx = 0; nx < n.shape[ny].length; nx += 1) {
-        var nv = n.shape[ny][nx];
+    var lying = !!game.fake;
+    if (lying && game.fakeSeq !== fakeSeen) { fakeSeen = game.fakeSeq; fakeFlipAt = ms; }
+    var shape = lying ? SHAPES[game.fake] : game.next.shape;
+    var kind = lying ? game.fake : game.next.kind;
+    var burst = lying && ms - fakeFlipAt < FAKE_BURST;
+    var ox = Math.floor((PREVIEW_W - shape[0].length) / 2);
+    var oy = (PREVIEW_H - shape.length) / 2;
+    for (var ny = 0; ny < shape.length; ny += 1) {
+      for (var nx = 0; nx < shape[ny].length; nx += 1) {
+        var nv = shape[ny][nx];
         if (!nv) continue;
-        if (isSpecial(nv)) drawSpecial(nctx, ox + nx, oy + ny, cell, nv, ms);
-        else cellBlock(nctx, ox + nx, oy + ny, cell, n.kind);
+        if (lying) drawVirusCell(nctx, ox + nx, oy + ny, cell, COLORS[kind], ms, nx * 7 + ny * 13 + 5, burst ? true : false);
+        else if (isSpecial(nv)) drawSpecial(nctx, ox + nx, oy + ny, cell, nv, ms, kind);
+        else cellBlock(nctx, ox + nx, oy + ny, cell, kind);
       }
+    }
+    if (lying) {   // снег по окну
+      var f = Math.floor(ms / FRAME_MS);
+      var u = cell / 8;
+      nctx.fillStyle = GLITCH.green;
+      for (var k = 0; k < 7; k += 1) {
+        nctx.globalAlpha = 0.35 + noise(f, k + 30) * 0.5;
+        nctx.fillRect(Math.round(noise(f, k + 40) * PREVIEW_W * cell), Math.round(noise(f, k + 50) * PREVIEW_H * cell), Math.ceil(u * 0.6), Math.ceil(u * 0.6));
+      }
+      nctx.globalAlpha = 1;
     }
   }
 
@@ -1936,6 +2058,7 @@
     isOpen: function () { return phase !== 'closed'; },
     phase: function () { return phase; },
     game: function () { return game; },
+    shapes: function () { return SHAPES; },   // для живых проверок: формы по имени
     record: readRecord,
     nick: function () { return nick; },
     act: act,

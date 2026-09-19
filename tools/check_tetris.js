@@ -799,6 +799,75 @@ check('камень ломается спецклеткой, как обычна
   return 'лазер сжёг камень, +10 за него как за клетку стопки';
 });
 
+/* --- вирус (5.63) ------------------------------------------------------------ */
+
+check('вирус: ложится клеткой со сроком, эффекта нет, «далее» врёт — не настоящей и по-настоящему из колоды', function () {
+  const g = withSpecial('T', 'virus', 1, 1, 3);
+  if (g.fake !== null) fail('ложь до вируса: ' + g.fake);
+  Tetris.hardDrop(g);                                                          // T: низ 19, вирус (4,19)
+  if (g.effect) fail('вирус запустил эффект');
+  if (g.piece === null) fail('следующая не вышла');
+  const cell = g.board[19][4];
+  if (!Tetris.isVirus(cell) || Tetris.virusKind(cell) !== 'T' || Tetris.virusLife(cell) !== Tetris.VIRUS_LIFE) fail('вируса нет в (4,19): ' + cell);
+  if (!Tetris.infected(g)) fail('стакан не заражён');
+  if (!g.fake || g.fake === g.next.kind) fail('ложь не выставлена или совпала с правдой: ' + g.fake + ' / ' + g.next.kind);
+  if (!Tetris.SHAPES[g.fake]) fail('ложь не из колоды: ' + g.fake);
+  return 'вирус в (4,19), настоящая следующая ' + g.next.kind + ', окно покажет ' + g.fake;
+});
+
+check('вирус: ложь меняется раз в FAKE_MS и при каждой смене «далее», никогда не повторяя правду и прежнюю ложь', function () {
+  const g = Tetris.create(rng(8), { specialChance: 0 });
+  g.board[19][4] = 'virus:T:' + Tetris.VIRUS_LIFE;
+  Tetris.hardDrop(g);                                                          // приземление → спавн → ложь
+  let prev = g.fake, seq = g.fakeSeq;
+  if (!prev) fail('ложь не появилась после спавна при вирусе');
+  for (let i = 0; i < 6; i += 1) {
+    Tetris.tick(g, Tetris.FAKE_MS);
+    if (g.fakeSeq !== seq + 1) fail('смена ' + i + ': номер лжи ' + g.fakeSeq + ', ждали ' + (seq + 1));
+    if (g.fake === prev) fail('смена ' + i + ': ложь повторилась: ' + g.fake);
+    if (g.fake === g.next.kind) fail('смена ' + i + ': ложь совпала с правдой: ' + g.fake);
+    prev = g.fake; seq = g.fakeSeq;
+    g.board.forEach(function (row, y) { if (y < 19) row.fill(0); });         // стопку сносим, вирус на месте
+    g.piece.y = 0;
+  }
+  Tetris.tick(g, Tetris.FAKE_MS / 2);
+  if (g.fakeSeq !== seq) fail('ложь сменилась раньше срока');
+  return 'шесть смен подряд, каждая — новая и не правда';
+});
+
+check('вирус: лечится через пять приземлений, окно снова честное; ряд с вирусом снимается как обычный', function () {
+  const g = withSpecial('T', 'virus', 1, 1, 3);
+  Tetris.hardDrop(g);
+  for (let k = 1; k <= Tetris.VIRUS_LIFE; k += 1) {
+    g.piece = { kind: 'I', shape: [[1], [1], [1], [1]], x: [0, 1, 2, 6, 7][k - 1], y: 0 };
+    Tetris.hardDrop(g);
+    if (k < Tetris.VIRUS_LIFE) {
+      if (Tetris.virusLife(g.board[19][4]) !== Tetris.VIRUS_LIFE - k) fail('после ' + k + ' приземлений: ' + g.board[19][4]);
+      if (!g.fake) fail('ложь пропала раньше срока');
+    }
+  }
+  if (g.board[19][4] !== 'T') fail('вирус не вылечился: ' + g.board[19][4]);
+  if (g.fake !== null || Tetris.infected(g)) fail('после лечения окно всё ещё врёт: ' + g.fake);
+  if (!g.cured || g.cured.length !== 1) fail('лечение не отмечено для картинки');
+  // Ряд с вирусом снимается: вирус — обычная клетка для линий.
+  const h = withSpecial('T', 'virus', 1, 1, 3);
+  for (let x = 0; x < 10; x += 1) if (x < 3 || x > 5) h.board[19][x] = 'J';
+  Tetris.hardDrop(h);
+  if (h.lines !== 1) fail('ряд с вирусом не снялся: ' + h.lines);
+  if (h.fake !== null) fail('вирус ушёл с линией, а окно врёт: ' + h.fake);
+  return 'вылечен на пятом приземлении, окно честное; ряд с вирусом снялся';
+});
+
+check('вирус: два вируса — лечение одного не снимает заражения', function () {
+  const g = Tetris.create(rng(9), { specialChance: 0 });
+  g.board[19][0] = 'virus:J:1';
+  g.board[19][9] = 'virus:J:' + Tetris.VIRUS_LIFE;
+  Tetris.hardDrop(g);                                                          // первый лечится этим приземлением
+  if (g.board[19][0] !== 'J') fail('первый не вылечился: ' + g.board[19][0]);
+  if (!Tetris.infected(g) || !g.fake) fail('второй вирус не держит заражение: ' + g.fake);
+  return 'один вылечен, окно всё ещё врёт из-за второго';
+});
+
 check('розыгрыш: камень выпадает, а полезные — чаще него', function () {
   const g = Tetris.create(rng(21), { specialChance: 1 });
   const seen = {};
@@ -811,6 +880,7 @@ check('розыгрыш: камень выпадает, а полезные — 
     g.board.forEach(function (row) { row.fill(0); });
   }
   if (!seen.stone) fail('камень не выпал: ' + JSON.stringify(seen));
+  if (!seen.virus) fail('вирус не выпал: ' + JSON.stringify(seen));
   // Веса 6 : 3 : 1 : 6 — полезные чаще камня в 1,67 раза; порог 1,3 на четырёхстах
   // розыгрышах — три сигмы, на ста тридцати порог 1,4 краснел от шума (5.58).
   if (!(seen.hole + seen.acid + seen.laser > seen.stone * 1.3)) fail('камень слишком част: ' + JSON.stringify(seen));
