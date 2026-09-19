@@ -651,6 +651,7 @@
   var LANG = readLang();
   var CELL_MAX = 40;        // клетка растёт с высотой окна браузера до этого предела
   var CELL_MIN = 10;
+  var LEGEND_ICON = 24;     // значок легенды спецклеток: 3 px на пиксель рисунка клетки
   var CHROME = 220;         // прикидка на шапку, показатели и кнопки; точно — замером в fitWindow
   var CAP_MAX = 40;         // клавиша-колпачок, px: ужимается, пока ряд не встанет в одну строку
   var CAP_MIN = 28;
@@ -687,6 +688,13 @@
     lines: { ru: 'Линии', en: 'Lines' },
     best: { ru: 'Рекорд', en: 'Best' },
     next: { ru: 'Далее', en: 'Next' },
+    legend: { ru: 'Блоки', en: 'Blocks' },
+    blocks: {   // {span}, {depth}, {life} подставляет blockText из правил ядра
+      hole: { name: { ru: 'чёрная дыра', en: 'black hole' }, text: { ru: 'глотает {span} вокруг себя', en: 'swallows {span} around it' } },
+      acid: { name: { ru: 'кислота', en: 'acid' }, text: { ru: 'прожигает до {depth} клеток вниз', en: 'burns up to {depth} cells down' } },
+      laser: { name: { ru: 'лазер', en: 'laser' }, text: { ru: 'выжигает весь ряд и столбец', en: 'burns its whole row and column' } },
+      stone: { name: { ru: 'камень', en: 'stone' }, text: { ru: 'ряд с ним не снимается — крошится через {life} фигур', en: 'its row will not clear — crumbles after {life} pieces' } },
+    },
     paused: { ru: 'Пауза', en: 'Paused' },
     over: { ru: 'Игра окончена', en: 'Game over' },
     again: { ru: 'R — ещё раз', en: 'R — again' },
@@ -716,6 +724,15 @@
 
   function t(value) {
     return value && typeof value === 'object' ? value[LANG] : value;
+  }
+
+  // Подпись блока в легенде: размеры берутся из правил ядра, а не дублируются.
+  function blockText(type) {
+    var span = 2 * BLAST.hole + 1;
+    return t(TEXT.blocks[type].text)
+      .replace('{span}', span + '×' + span)
+      .replace('{depth}', String(ACID_DEPTH))
+      .replace('{life}', String(STONE_LIFE));
   }
 
   function readLang() {
@@ -874,11 +891,30 @@
       key('drop', '⤓', function () { act('drop'); }, 'space', true),
       key('pause', 'II', function () { act('pause'); }, 'P'),
     ]);
+    // Легенда спецклеток (5.53) под показателями: значки рисует тот же код,
+    // что и стакан, на своих холстах; строка блока, который стоит в «далее»
+    // или уже летит, — акцентом (updateLegend). Владелец выбрал колонку из
+    // трёх мест, показанных макетами на настоящем окне.
+    var legend = {};
+    var legendRows = Object.keys(SPECIALS).map(function (type) {
+      var icon = el('canvas', { class: 'console__legend-icon', 'aria-hidden': 'true' });
+      drawSpecial(sizeCanvas(icon, LEGEND_ICON, LEGEND_ICON), 0, 0, LEGEND_ICON, type, 0);
+      legend[type] = el('div', { class: 'console__legend-row', 'data-type': type }, [
+        icon,
+        el('div', null, [el('b', { text: t(TEXT.blocks[type].name) }), el('span', { text: blockText(type) })]),
+      ]);
+      return legend[type];
+    });
+    var legendBlock = el('div', { class: 'console__stat console__legend' }, [
+      el('span', { text: t(TEXT.legend) }),
+      el('div', { class: 'console__legend-list' }, legendRows),
+    ]);
     var play = el('div', { class: 'console__play', hidden: true }, [
       el('div', { class: 'console__well' }, [field, overlay]),
       el('div', { class: 'console__side' }, [
         el('div', { class: 'console__stat' }, [el('span', { text: t(TEXT.next) }), preview]),
         stat('score'), stat('level'), stat('lines'), stat('best'),
+        legendBlock,
       ]),
       keyRow,
     ]);
@@ -903,7 +939,7 @@
     veil.addEventListener('mousedown', function (event) { if (event.target === veil) close(); });
     document.body.appendChild(veil);
 
-    ui = { veil: veil, dialog: dialog, log: log, play: play, scores: scores, again: again, field: field, preview: preview, stats: stats, overlay: overlay, keys: keys, keyRow: keyRow, closeBtn: closeBtn };
+    ui = { veil: veil, dialog: dialog, log: log, play: play, scores: scores, again: again, field: field, preview: preview, stats: stats, legend: legend, overlay: overlay, keys: keys, keyRow: keyRow, closeBtn: closeBtn };
     return ui;
   }
 
@@ -1024,13 +1060,22 @@
   // влезет и по высоте, и по ширине: на телефоне стакан, показатели и кнопки
   // стоят стопкой, и никакая формула про их высоту не переживёт правку стилей.
   function fitWindow() {
+    ui.dialog.classList.remove('console--bare');
+    if (shrinkToFit()) return;
+    ui.dialog.classList.add('console--bare');   // легенда не влезает ни при какой клетке — без неё (5.53)
+    shrinkToFit();
+  }
+
+  // Клетка от прикидки вниз, пока окно не влезет в экран. Возвращает, влезло ли.
+  function shrinkToFit() {
     applyCell(fitCell());
     var pad = root.getComputedStyle(ui.veil);
     var roomX = root.innerWidth - parseFloat(pad.paddingLeft) - parseFloat(pad.paddingRight);
     var roomY = root.innerHeight - parseFloat(pad.paddingTop) - parseFloat(pad.paddingBottom);
-    while (cell > CELL_MIN) {
+    for (;;) {
       var box = ui.dialog.getBoundingClientRect();
-      if (box.width <= roomX && box.height <= roomY) break;
+      if (box.width <= roomX && box.height <= roomY) return true;
+      if (cell <= CELL_MIN) return false;
       applyCell(cell - 1);
     }
   }
@@ -1067,6 +1112,22 @@
     ui.stats.score.textContent = String(game.score);
     ui.stats.level.textContent = String(game.level);
     ui.stats.lines.textContent = String(game.lines);
+    updateLegend();
+  }
+
+  // Легенда: строки блоков, которые стоят в «далее» или уже летят, — акцентом.
+  // DOM трогается только при смене набора.
+  var legendLive = '';
+  function updateLegend() {
+    var live = {};
+    [game.piece, game.next].forEach(function (p) {
+      if (!p || !p.shape) return;
+      p.shape.forEach(function (row) { row.forEach(function (v) { if (isSpecial(v)) live[v] = true; }); });
+    });
+    var key = Object.keys(live).sort().join(',');
+    if (key === legendLive) return;
+    legendLive = key;
+    Object.keys(ui.legend).forEach(function (type) { ui.legend[type].classList.toggle('is-live', !!live[type]); });
   }
 
   function block(ctx, x, y, size, color, ghost) {

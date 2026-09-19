@@ -1664,6 +1664,7 @@ a:not(.btn):hover { color: var(--text); }
   display: grid;
   gap: 0.7rem;
   align-content: start;
+  min-inline-size: 9rem;   /* пол ширины: при мелкой клетке подписи легенды не сыплются столбиком */
   font-size: var(--step--2);
 }
 
@@ -1683,6 +1684,37 @@ a:not(.btn):hover { color: var(--text); }
 }
 
 .console__next { display: block; margin-block-start: 0.2rem; }
+
+/* Легенда спецклеток под показателями (5.53): значки с того же кода, что и
+   стакан; строка блока, который стоит в «далее» или уже летит, — акцентом.
+   Список не раздвигает колонку (`width: 0; min-width: 100%`, как ряд клавиш):
+   текст переносится. Не влезает по высоте ни при какой клетке — окно прячет
+   легенду (`console--bare`, замер в fitWindow). */
+.console__legend-list {
+  display: grid;
+  gap: 0.55rem;
+  margin-block-start: 0.35rem;
+  width: 0;
+  min-width: 100%;
+  line-height: 1.35;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.console__legend-row {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.55rem;
+  align-items: start;
+}
+
+.console__legend-icon { display: block; opacity: 0.85; }
+.console__legend-row b { display: block; font-size: inherit; color: var(--text); }
+.console__legend-row span { color: var(--muted); }
+.console__legend-row.is-live .console__legend-icon { opacity: 1; }
+.console__legend-row.is-live b { color: var(--accent); }
+.console__legend-row.is-live span { color: var(--text-dim); }
+.console--bare .console__legend { display: none; }
 
 /* Пауза и конец игры — надпись поверх стакана. */
 .console__over {
