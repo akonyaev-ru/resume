@@ -1204,7 +1204,6 @@
     ui.stats.score.textContent = String(game.score);
     ui.stats.level.textContent = String(game.level);
     ui.stats.lines.textContent = String(game.lines);
-    ui.preview.classList.toggle('is-infected', !!game.fake);
     updateLegend();
   }
 
@@ -1349,7 +1348,7 @@
      голубым и малиновым краями (расщепление цвета), между приступами клетка
      целая, изредка мигает зелёная крапина. У каждой клетки своя фаза, чтобы
      несколько вирусов не дёргались хором. В позе покоя (легенда) — разрыв. */
-  var GLITCH = { cyan: '#3df2ff', magenta: '#ff3df2', black: '#05070c', green: '#3dff7a' };
+  var GLITCH = { cyan: '#3df2ff', magenta: '#ff3df2', black: '#05070c' };
   var VIRUS_PERIOD = 900;
   var VIRUS_BURST = 220;
   function tear(ctx, x, y, size, color, py, ph, dx) {
@@ -1370,8 +1369,6 @@
         if (!dx && b === 1 && burst !== true) dx = noise(f, 8, seed) > 0.5 ? 1 : -1;   // хотя бы одна полоса рвётся всегда
         if (dx) tear(ctx, x, y, size, color, 0.5 + b * 1.75, 1.75, dx);
       }
-    } else if (noise(f, 9, seed) > 0.8) {
-      pix(ctx, x, y, size, GLITCH.green, 1 + Math.floor(noise(f, 10, seed) * 6), 1 + Math.floor(noise(f, 11, seed) * 6), 0.6, 0.6);
     }
     bevel(ctx, x, y, size);
   }
@@ -1735,10 +1732,7 @@
       game.crumbled.forEach(function (c) { dust.push({ x: c.x, y: c.y, t0: ms }); });
       game.crumbled = [];
     }
-    if (game.cured && game.cured.length) {   // вирус вылечен: те же искры, но зелёные и вверх
-      game.cured.forEach(function (c) { dust.push({ x: c.x, y: c.y, t0: ms, cure: true }); });
-      game.cured = [];
-    }
+    if (game.cured) game.cured = [];   // лечение вируса — без частиц (5.64)
     var u = size / 8;
     dust = dust.filter(function (d) { return ms - d.t0 < 350; });
     dust.forEach(function (d) {
@@ -1747,8 +1741,8 @@
       for (var k = 0; k < 6; k += 1) {
         var ang = k * Math.PI / 3 + noise(k, 7);
         var r = (0.2 + q * 0.7) * size;
-        ctx.fillStyle = d.cure ? GLITCH.green : (k % 2 ? STONE.light : STONE.dark);
-        ctx.fillRect(Math.round((d.x + 0.5) * size + Math.cos(ang) * r), Math.round((d.y + 0.5) * size + Math.sin(ang) * r - q * u * (d.cure ? 5 : 2)), Math.ceil(u * 0.5), Math.ceil(u * 0.5));
+        ctx.fillStyle = k % 2 ? STONE.light : STONE.dark;
+        ctx.fillRect(Math.round((d.x + 0.5) * size + Math.cos(ang) * r), Math.round((d.y + 0.5) * size + Math.sin(ang) * r - q * u * 2), Math.ceil(u * 0.5), Math.ceil(u * 0.5));
       }
       ctx.globalAlpha = 1;
     });
@@ -1804,9 +1798,9 @@
     drawNext(cell, ms);
   }
 
-  // Окно «далее». При вирусе показывает ложь (`game.fake`): каждая смена лжи —
-  // приступ глитча на всех клетках (FAKE_BURST мс), между сменами по окну
-  // бегает зелёный «снег».
+  // Окно «далее». При вирусе показывает ложь (`game.fake`) глючными клетками:
+  // каждая глючит приступами в своей фазе, а смена лжи — приступ на всех
+  // сразу (FAKE_BURST мс). Ни ободка, ни частиц — решение владельца (5.64).
   var FAKE_BURST = 260;
   var fakeSeen = 0;
   var fakeFlipAt = -1e9;
@@ -1824,20 +1818,10 @@
       for (var nx = 0; nx < shape[ny].length; nx += 1) {
         var nv = shape[ny][nx];
         if (!nv) continue;
-        if (lying) drawVirusCell(nctx, ox + nx, oy + ny, cell, COLORS[kind], ms, nx * 7 + ny * 13 + 5, burst ? true : false);
+        if (lying) drawVirusCell(nctx, ox + nx, oy + ny, cell, COLORS[kind], ms, nx * 7 + ny * 13 + 5, burst ? true : undefined);
         else if (isSpecial(nv)) drawSpecial(nctx, ox + nx, oy + ny, cell, nv, ms, kind);
         else cellBlock(nctx, ox + nx, oy + ny, cell, kind);
       }
-    }
-    if (lying) {   // снег по окну
-      var f = Math.floor(ms / FRAME_MS);
-      var u = cell / 8;
-      nctx.fillStyle = GLITCH.green;
-      for (var k = 0; k < 7; k += 1) {
-        nctx.globalAlpha = 0.35 + noise(f, k + 30) * 0.5;
-        nctx.fillRect(Math.round(noise(f, k + 40) * PREVIEW_W * cell), Math.round(noise(f, k + 50) * PREVIEW_H * cell), Math.ceil(u * 0.6), Math.ceil(u * 0.6));
-      }
-      nctx.globalAlpha = 1;
     }
   }
 

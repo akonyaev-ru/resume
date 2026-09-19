@@ -1683,9 +1683,7 @@ a:not(.btn):hover { color: var(--text); }
   color: var(--text);
 }
 
-.console__next { display: block; margin-block-start: 0.2rem; border-radius: 2px; }
-/* Вирус в стопке (5.63): окно «далее» заражено — зелёный ободок и свечение. */
-.console__next.is-infected { box-shadow: 0 0 0 1px rgba(61, 255, 122, 0.55), 0 0 10px rgba(61, 255, 122, 0.35); }
+.console__next { display: block; margin-block-start: 0.2rem; }
 
 /* Легенда спецклеток под показателями (5.53): значки с того же кода, что и
    стакан; строка блока, который стоит в «далее» или уже летит, — акцентом.
