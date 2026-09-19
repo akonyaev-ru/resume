@@ -1254,10 +1254,20 @@
   var PLATE_INK = { l: INK.plateLight, m: INK.plate, d: INK.plateDark };
   var SOCKET_ROWS = ['.xx.', 'xxxx', 'xxxx', '.xx.'];
   var SKULL_ROWS = ['.xxx.', 'xxxxx', 'x.x.x', 'xxxxx', '.x.x.'];
-  // Лёд (5.60, по канону: куб — синий с светлыми диагональными прожилками, как
-  // в Minecraft; скованная клетка — предмет в прозрачном голубом кубе с белой
-  // кромкой и трещинами, как в match-3). Ниже — доли клетки (⅛).
-  var ICE = { body: '#5f93de', vein: '#dbeeff', white: '#ffffff', dark: '#3d6fbf', film: '#a6dcff', shade: '#1e3c6e', crack: '#2f5fa8' };
+  // Лёд (5.61) — рисунок владельца: шесть кадров 8×8 в пяти цветах, присланы
+  // картинкой и сняты с неё попиксельно. Куб в полёте, в «далее» и в легенде
+  // листает кадры по кругу; скованная клетка — первый кадр с трещинами.
+  var ICE_ART = [
+    ['CWWWWWWW', 'CCCCWCBW', 'MBCCCWCW', 'MBBCCCWW', 'NBBBCCCW', 'NMBBBCCW', 'NMMBBBCW', 'NNNNMMCC'],
+    ['WWWWWWWW', 'WCWCBCBW', 'WBCWCBCW', 'WMBCWCBW', 'WBMBCWCW', 'WMBMBCWW', 'WMMBMBCW', 'WWWWWWWW'],
+    ['WWWWWWWW', 'WWCCWCBW', 'WBWCCWCW', 'WBBWCCWW', 'WWBBWCCW', 'WMWBBWCW', 'WMMWBBWW', 'WWWWWWWW'],
+    ['CWWWWWWW', 'CCWCWCBW', 'MBCWCWCW', 'MMBCWCWW', 'NBMBCWCW', 'NMBMBCWW', 'NMMBMBCW', 'NNNNMMCC'],
+    ['BBBBBBBB', 'NCWCWCBB', 'NBCWCWCB', 'NMBCWCWB', 'NBMBCWCB', 'NMBMBCWB', 'NMMBMBCB', 'NNNNNNNB'],
+    ['WWWWWWWW', 'WWCCWCWW', 'WCWCCWCW', 'WBCWCBWW', 'MCBCWCCC', 'MBBBBBBC', 'MMBBBBMM', 'NNNNNNNM'],
+  ];
+  var ICE_INK = { W: '#fcfafc', C: '#0bc8f3', B: '#2faafc', M: '#2059a4', N: '#0f294d' };
+  var ICE = { body: '#2faafc', white: '#fcfafc', dark: '#0f294d', film: '#2faafc', crack: '#0f294d' };   // для эффектов и трещин
+  var ICE_FRAME_MS = 150;   // шаг кадра куба
   var FREEZE_MS = 360;      // заморозка растекается от куба к соседям
   var THAW_MS = 420;        // корка раскалывается на четвертинки и тает
   var FRAME_MS = 120;       // шаг дискретных движений: мигание, мерцание, пузырьки
@@ -1300,28 +1310,41 @@
     pix(ctx, x, y, size, INK.socket, sx + 0.1, sy + 0.3, 0.6, 0.2);
   }
 
-  // Куб льда — в полёте, в «далее» и в легенде: синее тело, две длинные светлые
-  // прожилки по диагонали, одна короткая белая, тёмная у нижнего правого угла,
-  // искра в верхнем правом углу мерцает (в позе покоя горит).
-  var VEINS = ['.....v.', '....v..', '...v..v', '..v..v.', '.v..v..', 'v..v...', '..v....'];   // 7×7: со сдвигом 0,5 не вылезает за клетку
-  function drawIceCube(ctx, x, y, size, ms, still) {
-    block(ctx, x, y, size, ICE.body);
-    sprite(ctx, x, y, size, VEINS, { v: ICE.vein }, 0.5, 0.5);
-    sprite(ctx, x, y, size, ['...w', '..w.', '.w..'], { w: ICE.white }, 2.4, 3.2);
-    sprite(ctx, x, y, size, ['..d', '.d.', 'd..'], { d: ICE.dark }, 4.6, 5.0);
-    var f = Math.floor((ms || 0) / FRAME_MS);
-    if (still || f % 9 < 6) pix(ctx, x, y, size, ICE.white, 6.0, 0.9, 0.8, 0.8);
+  // Рисунок 8×8 во внутреннем квадрате клетки (без шва, как у обычного блока):
+  // пиксель рисунка = (клетка − 2·шов)/8, края считаются по одной формуле.
+  // inset — на сколько восьмых внутреннего квадрата рисунок отступает от краёв
+  // (лёд тает — уменьшается к центру, вокруг проступает цвет клетки).
+  function art(ctx, x, y, size, rows, pal, inset) {
+    var seam = Math.max(1, Math.round(size / 16));
+    var pad = (inset || 0) * (size - 2 * seam) / 8;
+    var u = (size - 2 * seam - 2 * pad) / 8;
+    var ox = x * size + seam + pad;
+    var oy = y * size + seam + pad;
+    for (var j = 0; j < rows.length; j += 1) {
+      for (var i = 0; i < rows[j].length; i += 1) {
+        var color = pal[rows[j][i]];
+        if (!color) continue;
+        var x0 = Math.round(ox + i * u);
+        var x1 = Math.round(ox + (i + 1) * u);
+        var y0 = Math.round(oy + j * u);
+        var y1 = Math.round(oy + (j + 1) * u);
+        ctx.fillStyle = color;
+        ctx.fillRect(x0, y0, Math.max(1, x1 - x0), Math.max(1, y1 - y0));
+      }
+    }
   }
 
-  // Скованная клетка: цвет фигуры под голубой плёнкой, белая кромка внутри шва,
-  // тень льда снизу и справа, блик по диагонали; трещин тем больше, чем меньше
-  // жизней, на последней — капля. reveal (0…1) — доля корки, уже наросшей
-  // слева направо от источника (для заморозки), 1 — вся.
-  var ICE_CRACKS = [   // 6×6 со сдвигом 1: не дальше кромки
-    ['....c.', '...c..', '..c...', '..c...', '.c....', '......'],
-    ['.c....', '.c....', 'c.c...', '......', '......', '......'],
-    ['......', '......', '......', '...c..', '....c.', '....c.'],
-  ];
+  // Куб льда: кадры владельца по кругу; в позе покоя (легенда) — первый.
+  function drawIceCube(ctx, x, y, size, ms, still) {
+    var frame = still ? 0 : Math.floor((ms || 0) / ICE_FRAME_MS) % ICE_ART.length;
+    art(ctx, x, y, size, ICE_ART[frame], ICE_INK);
+  }
+
+  // Скованная клетка: первый кадр льда поверх цвета фигуры; с каждой потерянной
+  // жизнью лёд отступает к центру на ¾ восьмой, и по краям проступает цвет —
+  // обратный отсчёт виден как таяние; на последней жизни сползает капля.
+  // reveal (0…1) — доля корки, уже наросшей со стороны куба (для заморозки).
+  var ICE_SHRINK = 0.75;
   function drawIce(ctx, x, y, size, kind, life, ms, reveal, fromLeft) {
     block(ctx, x, y, size, COLORS[kind]);
     if (reveal !== undefined && reveal < 1) {
@@ -1331,23 +1354,10 @@
       ctx.rect(fromLeft ? x * size : x * size + size - w, y * size, w, size);
       ctx.clip();
     }
-    ctx.globalAlpha = 0.45;
-    flat(ctx, x, y, size, ICE.film);
-    ctx.globalAlpha = 0.35;
-    pix(ctx, x, y, size, ICE.shade, 1.3, 6.0, 5.4, 0.7);
-    pix(ctx, x, y, size, ICE.shade, 6.0, 1.3, 0.7, 5.4);
-    ctx.globalAlpha = 0.8;
-    pix(ctx, x, y, size, ICE.white, 0.6, 0.6, 6.8, 0.7);
-    pix(ctx, x, y, size, ICE.white, 0.6, 6.7, 6.8, 0.7);
-    pix(ctx, x, y, size, ICE.white, 0.6, 0.6, 0.7, 6.8);
-    pix(ctx, x, y, size, ICE.white, 6.7, 0.6, 0.7, 6.8);
-    sprite(ctx, x, y, size, ['w..', '.w.', '..w'], { w: ICE.white }, 1.6, 1.6);
-    ctx.globalAlpha = 1;
-    var n = Math.max(0, Math.min(ICE_CRACKS.length, ICE_LIFE - life));
-    for (var k = 0; k < n; k += 1) sprite(ctx, x, y, size, ICE_CRACKS[k], { c: ICE.crack }, 1, 1);
+    art(ctx, x, y, size, ICE_ART[0], ICE_INK, Math.max(0, ICE_LIFE - life) * ICE_SHRINK);
     if (life <= 1) {   // тает: капля сползает по кромке
       var drip = (((ms || 0) % 900) / 900) * 4.5;
-      pix(ctx, x, y, size, ICE.dark, 6.7, 1.5 + drip, 0.7, 1);
+      pix(ctx, x, y, size, ICE.white, 6.4, 1.5 + drip, 0.7, 1);
     }
     if (reveal !== undefined && reveal < 1) ctx.restore();
   }
@@ -1771,7 +1781,7 @@
         ctx.restore();
       });
       ctx.globalAlpha = 1 - p;
-      ctx.fillStyle = ICE.vein;
+      ctx.fillStyle = ICE.white;
       for (var k = 0; k < 3; k += 1) {
         var dx = (1.5 + k * 2.5 + noise(k, 9) * 0.8) * u;
         var dy = size * 0.55 + p * p * size * (0.9 + noise(k, 10) * 0.6);
