@@ -802,7 +802,7 @@ check('камень ломается спецклеткой, как обычна
 check('розыгрыш: камень выпадает, а полезные — чаще него', function () {
   const g = Tetris.create(rng(21), { specialChance: 1 });
   const seen = {};
-  for (let i = 0; i < 130; i += 1) {
+  for (let i = 0; i < 400; i += 1) {
     const found = specialsIn(g.piece.shape);
     if (found.length !== 1) fail('в фигуре ' + found.length + ' спецклеток');
     seen[found[0]] = (seen[found[0]] || 0) + 1;
@@ -811,9 +811,10 @@ check('розыгрыш: камень выпадает, а полезные — 
     g.board.forEach(function (row) { row.fill(0); });
   }
   if (!seen.stone) fail('камень не выпал: ' + JSON.stringify(seen));
-  // 5.54: веса 6 : 3 : 1 : 6 — полезные чаще камня в полтора раза (было вдвое при 5).
-  if (!(seen.hole + seen.acid + seen.laser > seen.stone * 1.4)) fail('камень слишком част: ' + JSON.stringify(seen));
-  return 'сто тридцать фигур: ' + JSON.stringify(seen);
+  // Веса 6 : 3 : 1 : 6 — полезные чаще камня в 1,67 раза; порог 1,3 на четырёхстах
+  // розыгрышах — три сигмы, на ста тридцати порог 1,4 краснел от шума (5.58).
+  if (!(seen.hole + seen.acid + seen.laser > seen.stone * 1.3)) fail('камень слишком част: ' + JSON.stringify(seen));
+  return 'четыреста фигур: ' + JSON.stringify(seen);
 });
 
 const failed = results.filter(function (r) { return !r.ok; }).length;
