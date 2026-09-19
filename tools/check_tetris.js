@@ -59,10 +59,10 @@ check('новая игра: пустое поле, фигура сверху п�
   return g.piece.kind + ', далее ' + g.next.kind;
 });
 
-check('мешок из восьми: семь классических по одной плюс одна пентамино, потом новый мешок (5.55)', function () {
+check('мешок из семи: каждая фигура ровно раз, потом новый мешок (5.66: пентамино сняты)', function () {
   const g = Tetris.create(rng(11));
   const seen = [g.piece.kind, g.next.kind];
-  while (seen.length < 24) {
+  while (seen.length < 21) {
     Tetris.hardDrop(g);
     Tetris.tick(g, 2000);   // спецклетка, если выпала, доигрывает эффект — и выходит следующая
     if (g.over) fail('игра кончилась раньше, чем вышли три мешка');
@@ -70,59 +70,12 @@ check('мешок из восьми: семь классических по од
     g.board.forEach(function (row) { row.fill(0); });
     seen.push(g.next.kind);
   }
-  const size = Tetris.ORDER.length + Tetris.EXTRA_PER_BAG;
-  const extras = [];
   for (let b = 0; b < 3; b += 1) {
-    const bag = seen.slice(b * size, (b + 1) * size);
-    const classic = bag.filter(function (k) { return Tetris.ORDER.indexOf(k) >= 0; }).sort().join('');
-    const big = bag.filter(function (k) { return Tetris.EXTRA.indexOf(k) >= 0; });
-    if (classic !== 'IJLOSTZ') fail('мешок ' + b + ' без полного набора классики: ' + bag.join(' '));
-    if (big.length !== Tetris.EXTRA_PER_BAG) fail('мешок ' + b + ': пентамино ' + big.length + ': ' + bag.join(' '));
-    extras.push(big[0]);
+    const bag = seen.slice(b * 7, (b + 1) * 7).sort().join('');
+    if (bag !== 'IJLOSTZ') fail('мешок ' + b + ': ' + seen.slice(b * 7, (b + 1) * 7).join(' '));
   }
-  return seen.join(' ') + ' | пентамино по мешкам: ' + extras.join(' ');
-});
-
-check('пентамино одна — U (5.65): пять клеток в два ряда, возвращается за четыре поворота; T5 и X сняты', function () {
-  if (Tetris.EXTRA.join(',') !== 'U') fail('лишние пентамино: ' + Tetris.EXTRA.join(','));
-  if (Tetris.SHAPES.T5 || Tetris.SHAPES.X) fail('T5 или X остались в формах');
-  const n = Tetris.SHAPES.U.reduce(function (a, row) { return a + row.filter(Boolean).length; }, 0);
-  if (n !== 5 || Tetris.SHAPES.U.length !== 2) fail('U: клеток ' + n + ', рядов ' + Tetris.SHAPES.U.length);
-  const g = scripted(['U', 'O', 'I']);
-  const start = JSON.stringify(g.piece.shape);
-  for (let i = 0; i < 4; i += 1) if (!Tetris.rotate(g)) fail('поворот U ' + i + ' не прошёл');
-  if (JSON.stringify(g.piece.shape) !== start) fail('U после четырёх поворотов другая: ' + JSON.stringify(g.piece.shape));
-  return 'U одна, форма и повороты в порядке';
-});
-
-check('U появляется по центру и ложится чашей вверх', function () {
-  const u = scripted(['U', 'O', 'I']);
-  if (u.piece.x !== 3 || u.piece.y !== 0) fail('U не по центру: ' + u.piece.x + ',' + u.piece.y);
-  Tetris.hardDrop(u);
-  const uc = cellsOf(u).join(' ');
-  if (uc !== '18,3:U 18,5:U 19,3:U 19,4:U 19,5:U') fail('U легла не так: ' + uc);
-  if (u.piece === null) fail('следующая фигура не вышла');
-  return 'U ' + uc;
-});
-
-check('спецклетка ложится и в пентамино: одна на пять клеток; камень в U крошится в клетку U', function () {
-  const g = Tetris.create(rng(5), { specialChance: 1 });
-  let bigSeen = 0;
-  for (let i = 0; i < 40 && bigSeen < 3; i += 1) {
-    const found = specialsIn(g.piece.shape);
-    if (found.length !== 1) fail('в фигуре ' + g.piece.kind + ' спецклеток ' + found.length);
-    if (Tetris.EXTRA.indexOf(g.piece.kind) >= 0) bigSeen += 1;
-    Tetris.hardDrop(g);
-    Tetris.tick(g, 3000);
-    g.board.forEach(function (row) { row.fill(0); });
-  }
-  if (bigSeen < 3) fail('пентамино со спецклеткой встретились лишь ' + bigSeen + ' раз');
-  const u = withSpecial('U', 'stone', 1, 1, 3);   // камень в дне чаши
-  Tetris.hardDrop(u);
-  if (u.board[19][4] !== 'stone:U:' + Tetris.STONE_LIFE) fail('камень не лёг: ' + cellsOf(u).join(' '));
-  for (let i = 0; i < Tetris.STONE_LIFE; i += 1) { Tetris.hardDrop(u); Tetris.tick(u, 3000); }
-  if (u.board[19][4] !== 'U') fail('камень не стал клеткой U: ' + u.board[19][4]);
-  return 'пентамино со спецклеткой: ' + bigSeen + ', камень → U';
+  if (Object.keys(Tetris.SHAPES).sort().join('') !== 'IJLOSTZ') fail('лишние формы: ' + Object.keys(Tetris.SHAPES).join(' '));
+  return seen.join(' ');
 });
 
 check('движение упирается в стенки и не выходит за поле', function () {

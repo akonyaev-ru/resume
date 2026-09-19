@@ -18,12 +18,8 @@
   var COLS = 10;
   var ROWS = 20;
   var ORDER = ['I', 'O', 'T', 'S', 'Z', 'J', 'L'];
-  // Пентамино (5.55): владелец выбрал T5, X и U из двенадцати, показанных на
-  // настоящем стакане; после партии оставил одну — U (5.65: «переборщили с
-  // фигурами»). В каждый мешок к семи классическим кладётся EXTRA_PER_BAG из
-  // EXTRA без повторов — каждая восьмая фигура пятиклеточная.
-  var EXTRA = ['U'];
-  var EXTRA_PER_BAG = 1;
+  // Пентамино были в 5.55–5.65 (T5, X, U; потом одна U) и сняты по итогам
+  // партий владельца (5.66: «уберём новую фигуру») — семь классических.
   var SHAPES = {
     I: [[1, 1, 1, 1]],
     O: [[1, 1], [1, 1]],
@@ -32,9 +28,8 @@
     Z: [[1, 1, 0], [0, 1, 1]],
     J: [[1, 0, 0], [1, 1, 1]],
     L: [[0, 0, 1], [1, 1, 1]],
-    U: [[1, 0, 1], [1, 1, 1]],
   };
-  // Окно «далее» — по самой широкой и самой высокой фигуре (пентамино — три ряда).
+  // Окно «далее» — по самой широкой и самой высокой фигуре.
   var PREVIEW_W = 0;
   var PREVIEW_H = 0;
   Object.keys(SHAPES).forEach(function (k) {
@@ -81,14 +76,9 @@
     return out;
   }
 
-  // Мешок: семь классических по одной плюс EXTRA_PER_BAG пентамино без повторов,
-  // всё в случайном порядке; кончился — новый мешок.
+  // Мешок из семи: все фигуры по одной в случайном порядке, потом новый мешок.
   function shuffledBag(rng) {
     var bag = ORDER.slice();
-    var extra = EXTRA.slice();
-    for (var k = 0; k < EXTRA_PER_BAG && extra.length; k += 1) {
-      bag.push(extra.splice(Math.floor(rng() * extra.length), 1)[0]);
-    }
     for (var i = bag.length - 1; i > 0; i -= 1) {
       var j = Math.floor(rng() * (i + 1));
       var tmp = bag[i];
@@ -161,7 +151,7 @@
   // Новая ложь для «далее»: любая фигура, кроме настоящей следующей и прежней лжи.
   function refreshFake(game) {
     if (!infected(game)) { game.fake = null; game.fakeT = 0; return; }
-    var pool = ORDER.concat(EXTRA).filter(function (k) { return k !== game.next.kind && k !== game.fake; });
+    var pool = ORDER.filter(function (k) { return k !== game.next.kind && k !== game.fake; });
     game.fake = pool[Math.min(pool.length - 1, Math.floor(game.rng() * pool.length))];
     game.fakeSeq += 1;
     game.fakeT = 0;
@@ -567,8 +557,6 @@
     COLS: COLS,
     ROWS: ROWS,
     ORDER: ORDER,
-    EXTRA: EXTRA,
-    EXTRA_PER_BAG: EXTRA_PER_BAG,
     SHAPES: SHAPES,
     LINE_SCORE: LINE_SCORE,
     create: create,
@@ -769,7 +757,7 @@
       hole: { name: { ru: 'чёрная дыра', en: 'black hole' }, text: { ru: 'глотает {span} вокруг себя', en: 'swallows {span} around it' } },
       acid: { name: { ru: 'кислота', en: 'acid' }, text: { ru: 'прожигает до {depth} клеток вниз', en: 'burns up to {depth} cells down' } },
       laser: { name: { ru: 'лазер', en: 'laser' }, text: { ru: 'выжигает весь ряд и столбец', en: 'burns its whole row and column' } },
-      stone: { name: { ru: 'камень', en: 'stone' }, text: { ru: 'ряд с ним не снимается — крошится через {life} фигур', en: 'its row will not clear — crumbles after {life} pieces' } },
+      stone: { name: { ru: 'камень', en: 'stone' }, text: { ru: 'ряд с ним не снимается {life} фигур', en: 'its row will not clear for {life} pieces' } },
       virus: { name: { ru: 'вирус', en: 'virus' }, text: { ru: 'пока он в стопке, окно «далее» врёт', en: 'while it sits in the stack, the “next” box lies' } },
     },
     paused: { ru: 'Пауза', en: 'Paused' },
@@ -797,9 +785,6 @@
   // L — magenta; у страницы нет фиолетового и красного, T и Z добраны в её тоне.
   var COLORS = {
     I: '#00c5cd', O: '#ffb454', T: '#b48cff', S: '#3ddc97', Z: '#ff6b6b', J: '#79c0ff', L: '#ff86c0',
-    // Пентамино — свой цвет (5.56; владелец: «просто других цветов», кольцо
-    // 5.55 снято): бирюзовый темнее соседей по тону. T5 и X сняты в 5.65.
-    U: '#1fa38a',
   };
 
   function t(value) {
