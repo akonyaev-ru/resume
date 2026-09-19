@@ -58,9 +58,8 @@
      сама спецклетка не в счёт; `lines` и уровень растут только от настоящих
      линий. Розыгрыш — по весам, с первого уровня: посетитель играет одну
      партию, и спецклетка должна успеть ему встретиться. */
-  var SPECIALS = { hole: 6, acid: 3, laser: 1, stone: 6, glass: 3 };   // ключ → вес при розыгрыше (5.50: камень — негативная; 5.51: камень 3 → 5; 5.54: 5 → 6; 5.57: стекло 3)
-  var SPECIAL_CHANCE = 0.25;   // доля фигур со спецклеткой (5.39: 0,1; 5.50: 0,18; 5.51: 0,2; 5.54: 0,21; 5.57: 0,25 — полезные те же 13 %, камень 7,9 %, стекло 3,9 %)
-  var GLASS_MS = 420;          // стекло (5.57): осколки и падение клеток врозь; линии — по концу
+  var SPECIALS = { hole: 6, acid: 3, laser: 1, stone: 6 };   // ключ → вес при розыгрыше (5.50: камень — негативная; 5.51: камень 3 → 5; 5.54: 5 → 6)
+  var SPECIAL_CHANCE = 0.21;   // доля фигур со спецклеткой (5.39: 0,1; 5.50: 0,18; 5.51: 0,2; 5.54: 0,21 — камень один на 13 фигур, полезные по-прежнему 13 %)
   var STONE_LIFE = 5;          // камень крошится сам через столько приземлений других фигур
   var SPECIAL_SCORE = 10;      // за сожжённую клетку стопки, × уровень
   var HOLE_MS = 500;           // чёрная дыра: втягивает 3×3 вокруг себя (5.47; 5.41–5.46 было 5×5)
@@ -261,12 +260,10 @@
     game.level = 1 + Math.floor(game.lines / 10);
   }
 
-  // hard — посадка сбросом (пробел): стекло в фигуре от такого разбивается.
-  function lock(game, hard) {
+  function lock(game) {
     var p = game.piece;
     var own = [];          // клетки фигуры в стакане: за них очков не дают
     var special = null;
-    var glass = null;      // стекло (5.57): негативная клетка, живёт только в полёте
     for (var y = 0; y < p.shape.length; y += 1) {
       for (var x = 0; x < p.shape[y].length; x += 1) {
         var v = p.shape[y][x];
@@ -274,34 +271,14 @@
         var ny = p.y + y;
         var nx = p.x + x;
         if (ny < 0) { game.over = true; continue; }
-        if (v === 'glass') {
-          glass = { x: nx, y: ny };
-          if (hard) continue;                 // разбилось — клетки нет
-          game.board[ny][nx] = p.kind;        // село мягко — обычная клетка фигуры
-          own.push({ x: nx, y: ny });
-          continue;
-        }
         game.board[ny][nx] = v === 'stone' ? 'stone:' + p.kind + ':' + STONE_LIFE : (isSpecial(v) ? v : p.kind);
         own.push({ x: nx, y: ny });
         if (isSpecial(v) && v !== 'stone') special = { type: v, x: nx, y: ny };
       }
     }
     ageStones(game, own);
-    game.fall = 0;
-    if (glass && hard && !game.over) {
-      // Стекло разбилось: остальные клетки падают врозь, каждая до упора
-      // (settleOwn), острова — куском; стакан меняется сразу, а линии и
-      // следующая фигура ждут осколков (finishEffect). falls — для картинки.
-      var before = own.map(function (c) { return c.y; });
-      var shatter = { type: 'glass', x: glass.x, y: glass.y, t: 0, dur: GLASS_MS, own: own, burnt: 0, falls: [] };
-      settleOwn(game, shatter);
-      settleAll(game, shatter);
-      own.forEach(function (c, i) { if (c.y !== before[i]) shatter.falls.push({ x: c.x, from: before[i], to: c.y }); });
-      game.effect = shatter;
-      game.piece = null;
-      return;
-    }
     scoreLines(game, clearLines(game));
+    game.fall = 0;
     if (game.over) return;
     // Спецклетка срабатывает всегда (5.52; до того ушедшая с линией молчала —
     // владелец видел это как «анимация пропущена»): уцелевшая съезжает вниз на
@@ -509,7 +486,7 @@
     var fell = 0;
     while (!collides(game, p.shape, p.x, p.y + 1)) { p.y += 1; fell += 1; }
     game.score += fell * 2;
-    lock(game, true);
+    lock(game);
     return fell;
   }
 
@@ -565,7 +542,6 @@
     BLAST: BLAST,
     ACID_STEP: ACID_STEP,
     ACID_DEPTH: ACID_DEPTH,
-    GLASS_MS: GLASS_MS,
     isSpecial: isSpecial,
     isStone: isStone,
     stoneLife: stoneLife,
@@ -740,7 +716,6 @@
       acid: { name: { ru: 'кислота', en: 'acid' }, text: { ru: 'прожигает до {depth} клеток вниз', en: 'burns up to {depth} cells down' } },
       laser: { name: { ru: 'лазер', en: 'laser' }, text: { ru: 'выжигает весь ряд и столбец', en: 'burns its whole row and column' } },
       stone: { name: { ru: 'камень', en: 'stone' }, text: { ru: 'ряд с ним не снимается — крошится через {life} фигур', en: 'its row will not clear — crumbles after {life} pieces' } },
-      glass: { name: { ru: 'стекло', en: 'glass' }, text: { ru: 'сброс пробелом бьёт её: клетки падают врозь', en: 'a hard drop shatters it: the cells fall apart' } },
     },
     paused: { ru: 'Пауза', en: 'Paused' },
     over: { ru: 'Игра окончена', en: 'Game over' },
@@ -1245,7 +1220,6 @@
     screw: '#8a93a3', ledOn: '#ff2e2e', ledOff: '#5a1010', ledCore: '#ffb0b0',
     black: '#05030d', star: '#e7eaf2', starDim: '#9aa3b5',
     fireWhite: '#fff3b0', fireYellow: '#ffd23f', fireOrange: '#ff7a1a', fireDark: '#7a2416',
-    glass: '#cfe9f5', glassDeep: '#7fb3cc', glassShine: '#ffffff',
   };
   var NEBULA = { n: '#2a3f8f', p: '#5a3aa8', m: '#9b5de5', l: '#d8c8ff', k: '#000000' };
   var NEBULA_DIM = { n: '#2a3f8f', p: '#5a3aa8', m: '#9b5de5', l: '#b48cff', k: '#000000' };
@@ -1331,21 +1305,6 @@
       if ((f + 1) % 4 < 2) pix(ctx, x, y, size, INK.starDim, 1, 6.8, 0.5, 0.5);
       if (f % 6 < 3) twinkle(ctx, x, y, size, 6.5, 1.5, 0.5, INK.star, INK.starDim);
       else pix(ctx, x, y, size, INK.star, 6.5, 1.5, 0.5, 0.5);
-    } else if (type === 'glass') {
-      // Стекло (5.57, первая редакция): полупрозрачная пластина — фон виден
-      // сквозь неё, кромка чуть плотнее, блик по диагонали, искра мигает.
-      ctx.globalAlpha = 0.5;
-      block(ctx, x, y, size, INK.glass);
-      ctx.globalAlpha = 0.7;
-      pix(ctx, x, y, size, INK.glassDeep, 0.5, 6.9, 7, 0.6);
-      pix(ctx, x, y, size, INK.glassDeep, 6.9, 0.5, 0.6, 7);
-      ctx.globalAlpha = 0.9;
-      pix(ctx, x, y, size, INK.glassShine, 1.4, 1.4, 1, 1);
-      pix(ctx, x, y, size, INK.glassShine, 2.4, 2.4, 1, 1);
-      pix(ctx, x, y, size, INK.glassShine, 3.4, 3.4, 1, 1);
-      pix(ctx, x, y, size, INK.glassShine, 4.6, 1.2, 1, 0.6);
-      ctx.globalAlpha = 1;
-      if (still || f % 5 < 3) pix(ctx, x, y, size, INK.glassShine, 5.6, 5.4, 0.6, 0.6);
     } else if (type === 'acid') {
       block(ctx, x, y, size, INK.acid);
       var ph = (ms % FLOAT_MS) / FLOAT_MS * Math.PI * 2;
@@ -1699,40 +1658,10 @@
     });
   }
 
-  // Стекло разбилось: вспышка, осколки разлетаются из клетки и падают, а
-  // клетки фигуры, оставшиеся без опоры, летят вниз каждая до своего упора —
-  // в стакане они уже на месте (falls), здесь только дорисовываются в полёте.
-  function drawGlass(ctx, e, size, p, ms) {
-    var u = size / 8;
-    var cx = (e.x + 0.5) * size;
-    var cy = (e.y + 0.5) * size;
-    e.falls.forEach(function (f) {
-      var q = Math.min(1, p / 0.8);
-      cellBlock(ctx, f.x, f.from + (f.to - f.from) * q * q, size, game.board[f.to][f.x]);
-    });
-    if (p < 0.2) {
-      ctx.globalAlpha = 1 - p / 0.2;
-      flat(ctx, e.x, e.y, size, INK.glassShine);
-      ctx.globalAlpha = 1;
-    }
-    for (var k = 0; k < 14; k += 1) {
-      var ang = noise(k, 31) * Math.PI * 2;
-      var speed = (0.7 + noise(k, 32) * 1.4) * size;
-      var sx = cx + Math.cos(ang) * speed * p;
-      var sy = cy + Math.sin(ang) * speed * p * 0.6 + 2.6 * size * p * p;   // гравитация
-      var s = Math.max(1, u * (1.8 - 1.2 * p) * (0.6 + noise(k, 33)));
-      ctx.globalAlpha = Math.max(0, 1 - p * 0.9);
-      ctx.fillStyle = k % 3 ? INK.glass : INK.glassShine;
-      ctx.fillRect(Math.round(sx - s / 2), Math.round(sy - s / 2), Math.round(s), Math.round(s));
-    }
-    ctx.globalAlpha = 1;
-  }
-
   function drawEffect(ctx, e, size, ms) {
     var p = Math.min(1, e.t / e.dur);
     if (e.type === 'laser') fxLaser(ctx, e, size, p, ms);
     else if (e.type === 'hole') drawHole(ctx, e, size, p, ms);
-    else if (e.type === 'glass') drawGlass(ctx, e, size, p, ms);
     else drawAcid(ctx, e, size, ms);
   }
 
@@ -1746,12 +1675,9 @@
     for (var gy = 1; gy < ROWS; gy += 1) ctx.fillRect(0, gy * cell, COLS * cell, 1);
 
     var ms = LESS_MOTION ? 0 : clock;
-    var pulled = {};   // клетки, которые тянет дыра или роняет стекло: их рисует эффект
+    var pulled = {};   // клетки, которые тянет дыра: их рисует эффект
     if (game.effect && game.effect.type === 'hole') {
       game.effect.cells.forEach(function (c) { pulled[c.y * COLS + c.x] = true; });
-    }
-    if (game.effect && game.effect.type === 'glass') {
-      game.effect.falls.forEach(function (f) { pulled[f.to * COLS + f.x] = true; });
     }
     for (var y = 0; y < ROWS; y += 1) {
       for (var x = 0; x < COLS; x += 1) {

@@ -621,48 +621,6 @@ check('лазер в снятой линии бьёт крестом с мест
   return 'линия снята, лазер выжег столбец под собой: +20';
 });
 
-check('стекло: сброс пробелом разбивает фигуру — стекло исчезает, клетки без опоры падают врозь, линии после осколков (5.57)', function () {
-  const g = withSpecial('T', 'glass', 0, 1, 3);      // стекло — верхушка T
-  fillRow(g, 19, 3); g.board[19][5] = 0;             // ряд 19 ждёт столбцов 3 и 5
-  g.board[16][4] = g.board[17][4] = g.board[18][4] = 'J';   // столб под серединой
-  const fell = Tetris.hardDrop(g);                   // T садится на столб: низ на ряду 15, стекло (4,14)
-  if (!g.effect || g.effect.type !== 'glass' || g.effect.x !== 4 || g.effect.y !== 14) fail('стекло не разбилось: ' + JSON.stringify(g.effect));
-  if (g.piece !== null) fail('следующая вышла до осколков');
-  if (g.board[14][4]) fail('клетка стекла осталась: ' + g.board[14][4]);
-  const falls = g.effect.falls.map(function (f) { return f.x + ':' + f.from + '>' + f.to; }).sort().join(' ');
-  if (falls !== '3:15>19 5:15>19') fail('падения не те: ' + falls);
-  if (g.board[15][4] !== 'T' || g.board[19][3] !== 'T' || g.board[19][5] !== 'T' || g.board[15][3] || g.board[15][5]) fail('стакан после разбития: ' + cellsOf(g).join(' '));
-  if (g.lines !== 0) fail('линия снята до осколков');
-  Tetris.tick(g, Tetris.GLASS_MS);
-  if (g.effect || g.piece === null) fail('осколки не кончились');
-  if (g.lines !== 1) fail('линия из упавших клеток не снята: ' + g.lines);
-  if (g.board[16][4] !== 'T' || g.board[17][4] !== 'J' || g.board[19][4] !== 'J') fail('стакан после линии: ' + cellsOf(g).join(' '));
-  if (g.score !== fell * 2 + Tetris.LINE_SCORE[1]) fail('очки ' + g.score);
-  return 'арки упали в столбцы 3 и 5, ряд 19 снят после осколков';
-});
-
-check('стекло: мягкая посадка (шаг вниз и гравитация) — фигура цела, стекло становится клеткой фигуры', function () {
-  const g = withSpecial('T', 'glass', 0, 1, 3);
-  g.board[16][4] = g.board[17][4] = g.board[18][4] = g.board[19][4] = 'J';
-  while (Tetris.softDrop(g)) { /* до упора шагами */ }
-  if (g.effect) fail('мягкая посадка разбила стекло');
-  if (g.board[14][4] !== 'T' || g.board[15][3] !== 'T' || g.board[15][4] !== 'T' || g.board[15][5] !== 'T') fail('T не цела: ' + cellsOf(g).join(' '));
-  if (g.piece === null || g.piece.kind !== 'O') fail('следующая не вышла');
-  const h = withSpecial('I', 'glass', 0, 0, 3);
-  Tetris.tick(h, 20000);                               // гравитация до самого дна: 20 шагов по 800 мс, следующая не успевает лечь
-  if (h.effect || h.board[19][3] !== 'I' || h.board[19][6] !== 'I') fail('гравитация разбила стекло или I не легла: ' + cellsOf(h).join(' '));
-  return 'T цела на столбе, I цела на дне';
-});
-
-check('стекло разбилось на ровной опоре — теряется только клетка стекла, падений нет', function () {
-  const g = withSpecial('I', 'glass', 0, 3, 3);
-  Tetris.hardDrop(g);
-  if (!g.effect || g.effect.falls.length !== 0) fail('падения на ровном месте: ' + JSON.stringify(g.effect && g.effect.falls));
-  Tetris.tick(g, Tetris.GLASS_MS);
-  if (g.board[19].map(function (c) { return c || '.'; }).join('') !== '...III....') fail('ряд 19: ' + g.board[19].join(','));
-  return 'три клетки I на месте, стекла нет';
-});
-
 check('во время эффекта ходов нет: сброс, сдвиг и поворот ничего не делают', function () {
   const g = withSpecial('T', 'laser', 1, 1, 3);
   fillRow(g, 19, 9);
@@ -844,7 +802,7 @@ check('камень ломается спецклеткой, как обычна
 check('розыгрыш: камень выпадает, а полезные — чаще него', function () {
   const g = Tetris.create(rng(21), { specialChance: 1 });
   const seen = {};
-  for (let i = 0; i < 400; i += 1) {
+  for (let i = 0; i < 130; i += 1) {
     const found = specialsIn(g.piece.shape);
     if (found.length !== 1) fail('в фигуре ' + found.length + ' спецклеток');
     seen[found[0]] = (seen[found[0]] || 0) + 1;
@@ -853,11 +811,9 @@ check('розыгрыш: камень выпадает, а полезные — 
     g.board.forEach(function (row) { row.fill(0); });
   }
   if (!seen.stone) fail('камень не выпал: ' + JSON.stringify(seen));
-  if (!seen.glass) fail('стекло не выпало: ' + JSON.stringify(seen));
-  // Веса 6 : 3 : 1 : 6 : 3 — полезные чаще камня в 1,67 раза; порог 1,3 на четырёхстах
-  // розыгрышах — три сигмы, на ста тридцати порог 1,4 краснел от шума (5.57).
-  if (!(seen.hole + seen.acid + seen.laser > seen.stone * 1.3)) fail('камень слишком част: ' + JSON.stringify(seen));
-  return 'четыреста фигур: ' + JSON.stringify(seen);
+  // 5.54: веса 6 : 3 : 1 : 6 — полезные чаще камня в полтора раза (было вдвое при 5).
+  if (!(seen.hole + seen.acid + seen.laser > seen.stone * 1.4)) fail('камень слишком част: ' + JSON.stringify(seen));
+  return 'сто тридцать фигур: ' + JSON.stringify(seen);
 });
 
 const failed = results.filter(function (r) { return !r.ok; }).length;
