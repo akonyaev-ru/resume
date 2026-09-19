@@ -1715,6 +1715,7 @@ a:not(.btn):hover { color: var(--text); }
 .console__legend-row.is-live b { color: var(--accent); }
 .console__legend-row.is-live span { color: var(--text-dim); }
 .console--bare .console__legend { display: none; }
+.console--compact .console__legend-row span { display: none; }   /* сжатая: значок и название (5.55) */
 
 /* Пауза и конец игры — надпись поверх стакана. */
 .console__over {

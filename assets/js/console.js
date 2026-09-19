@@ -18,6 +18,11 @@
   var COLS = 10;
   var ROWS = 20;
   var ORDER = ['I', 'O', 'T', 'S', 'Z', 'J', 'L'];
+  // Пентамино (5.55): владелец выбрал T5, X и U из двенадцати, показанных на
+  // настоящем стакане. В каждый мешок к семи классическим кладётся
+  // EXTRA_PER_BAG из них без повторов — каждая восьмая фигура пятиклеточная.
+  var EXTRA = ['T5', 'X', 'U'];
+  var EXTRA_PER_BAG = 1;
   var SHAPES = {
     I: [[1, 1, 1, 1]],
     O: [[1, 1], [1, 1]],
@@ -26,7 +31,17 @@
     Z: [[1, 1, 0], [0, 1, 1]],
     J: [[1, 0, 0], [1, 1, 1]],
     L: [[0, 0, 1], [1, 1, 1]],
+    T5: [[1, 1, 1], [0, 1, 0], [0, 1, 0]],
+    X: [[0, 1, 0], [1, 1, 1], [0, 1, 0]],
+    U: [[1, 0, 1], [1, 1, 1]],
   };
+  // Окно «далее» — по самой широкой и самой высокой фигуре (пентамино — три ряда).
+  var PREVIEW_W = 0;
+  var PREVIEW_H = 0;
+  Object.keys(SHAPES).forEach(function (k) {
+    PREVIEW_W = Math.max(PREVIEW_W, SHAPES[k][0].length);
+    PREVIEW_H = Math.max(PREVIEW_H, SHAPES[k].length);
+  });
   // Очки за 1–4 линии разом, умножаются на уровень.
   var LINE_SCORE = [0, 100, 300, 500, 800];
   // Сдвиги от стенки при повороте: на месте, влево, вправо, дальше.
@@ -65,9 +80,14 @@
     return out;
   }
 
-  // Мешок из семи: все фигуры по одной в случайном порядке, потом новый мешок.
+  // Мешок: семь классических по одной плюс EXTRA_PER_BAG пентамино без повторов,
+  // всё в случайном порядке; кончился — новый мешок.
   function shuffledBag(rng) {
     var bag = ORDER.slice();
+    var extra = EXTRA.slice();
+    for (var k = 0; k < EXTRA_PER_BAG && extra.length; k += 1) {
+      bag.push(extra.splice(Math.floor(rng() * extra.length), 1)[0]);
+    }
     for (var i = bag.length - 1; i > 0; i -= 1) {
       var j = Math.floor(rng() * (i + 1));
       var tmp = bag[i];
@@ -499,6 +519,8 @@
     COLS: COLS,
     ROWS: ROWS,
     ORDER: ORDER,
+    EXTRA: EXTRA,
+    EXTRA_PER_BAG: EXTRA_PER_BAG,
     SHAPES: SHAPES,
     LINE_SCORE: LINE_SCORE,
     create: create,
@@ -720,7 +742,9 @@
   // L — magenta; у страницы нет фиолетового и красного, T и Z добраны в её тоне.
   var COLORS = {
     I: '#00c5cd', O: '#ffb454', T: '#b48cff', S: '#3ddc97', Z: '#ff6b6b', J: '#79c0ff', L: '#ff86c0',
+    T5: '#b48cff', X: '#ff6b6b', U: '#79c0ff',   // пентамино — цвет родича, кольцо внутри (BIG, 5.55)
   };
+  var BIG = { T5: 1, X: 1, U: 1 };
 
   function t(value) {
     return value && typeof value === 'object' ? value[LANG] : value;
@@ -1037,7 +1061,7 @@
   function applyCell(size) {
     cell = size;
     sizeCanvas(ui.field, COLS * cell, ROWS * cell);
-    sizeCanvas(ui.preview, 4 * cell, 2 * cell);
+    sizeCanvas(ui.preview, PREVIEW_W * cell, PREVIEW_H * cell);
     fitKeys();
   }
 
@@ -1059,11 +1083,22 @@
   // дальше окно измеряется по-настоящему и клетка убавляется, пока оно не
   // влезет и по высоте, и по ширине: на телефоне стакан, показатели и кнопки
   // стоят стопкой, и никакая формула про их высоту не переживёт правку стилей.
+  // Легенда не отнимает у стакана ни клетки (5.55; окно «далее» стало на ряд
+  // выше, и на 720 px колонка начала мельчить клетку с 25 до 20). Мера — клетка
+  // без легенды; берётся первая ступень, которая её не портит: полная легенда,
+  // сжатая (значок и название, без подписей), без легенды.
   function fitWindow() {
-    ui.dialog.classList.remove('console--bare');
-    if (shrinkToFit()) return;
-    ui.dialog.classList.add('console--bare');   // легенда не влезает ни при какой клетке — без неё (5.53)
+    var tiers = ['', 'console--compact', 'console--bare'];
+    var reset = function () { ui.dialog.classList.remove('console--compact', 'console--bare'); };
+    reset();
+    ui.dialog.classList.add('console--bare');
     shrinkToFit();
+    var best = cell;
+    for (var i = 0; i < tiers.length; i += 1) {
+      reset();
+      if (tiers[i]) ui.dialog.classList.add(tiers[i]);
+      if (shrinkToFit() && cell >= best) return;
+    }
   }
 
   // Клетка от прикидки вниз, пока окно не влезет в экран. Возвращает, влезло ли.
@@ -1386,7 +1421,7 @@
       var hit = Math.max(0, Math.min(1, (p - pass) / 0.5));
       var axis = c.y === e.y ? 'y' : 'x';          // в ряду режем на верх/низ, в столбце — на лево/право
       var c2 = cellCanvas(size);
-      block(c2, 0, 0, size, cellColor(v));
+      cellBlock(c2, 0, 0, size, v);
       coverCell(ctx, size, c.x, c.y);
       var sep = hit * hit * size * 0.9;
       ctx.globalAlpha = Math.max(0, 1 - hit * 1.05);
@@ -1443,6 +1478,30 @@
 
   // Цвет клетки стакана для эффектов: у спецклетки — тон её пластины.
   function cellColor(v) { return isStone(v) ? STONE.body : isSpecial(v) ? INK.plate : COLORS[v]; }
+
+  // Кольцо пентамино (5.55): тёмная рамка внутри фаски, от 2/8 до 6/8 клетки,
+  // толщиной ~0,8/8 — «большая фигура» читается и в стакане, и в «далее».
+  function ring(ctx, x, y, size) {
+    var u = size / 8;
+    var t = Math.max(1, Math.round(u * 0.8));
+    var x0 = Math.round(x * size + 2 * u);
+    var x1 = Math.round(x * size + 6 * u);
+    var y0 = Math.round(y * size + 2 * u);
+    var y1 = Math.round(y * size + 6 * u);
+    ctx.fillStyle = 'rgba(0,0,0,0.38)';
+    ctx.fillRect(x0, y0, x1 - x0, t);
+    ctx.fillRect(x0, y1 - t, x1 - x0, t);
+    ctx.fillRect(x0, y0, t, y1 - y0);
+    ctx.fillRect(x1 - t, y0, t, y1 - y0);
+  }
+
+  // Обычная клетка по её значению: цвет фигуры (камень — тело, спецклетка —
+  // пластина), у пентамино поверх — кольцо. Одна точка для стакана, фигуры,
+  // «далее» и служебных холстов эффектов.
+  function cellBlock(ctx, x, y, size, v) {
+    block(ctx, x, y, size, cellColor(v));
+    if (BIG[v]) ring(ctx, x, y, size);
+  }
 
   // Цвет между двумя шестнадцатеричными: t = 0 — первый, 1 — второй.
   function mix(a, b, t) {
@@ -1550,7 +1609,7 @@
     if (burning) {
       var v = game.board[below][e.x];
       var c2 = cellCanvas(size);
-      block(c2, 0, 0, size, isSpecial(v) ? INK.plate : COLORS[v]);
+      cellBlock(c2, 0, 0, size, v);   // 5.55: и камень под кислотой стал своего цвета — раньше COLORS[камень] был undefined
       coverCell(ctx, size, e.x, below);
       for (j = 0; j < 8; j += 1) {
         for (i = 0; i < 8; i += 1) {
@@ -1642,7 +1701,7 @@
         if (!v || pulled[y * COLS + x]) continue;
         if (isSpecial(v)) drawSpecial(ctx, x, y, cell, v, ms);
         else if (isStone(v)) drawStone(ctx, x, y, cell, stoneLife(v), ms);
-        else block(ctx, x, y, cell, COLORS[v]);
+        else cellBlock(ctx, x, y, cell, v);
       }
     }
     if (game.piece && !game.over) {
@@ -1654,7 +1713,7 @@
           if (!pv) continue;
           if (gy2 !== p.y) block(ctx, p.x + px, gy2 + py, cell, COLORS[p.kind], true);
           if (isSpecial(pv)) drawSpecial(ctx, p.x + px, p.y + py, cell, pv, ms);
-          else block(ctx, p.x + px, p.y + py, cell, COLORS[p.kind]);
+          else cellBlock(ctx, p.x + px, p.y + py, cell, p.kind);
         }
       }
     }
@@ -1662,16 +1721,16 @@
     drawDust(ctx, cell, ms);
 
     var nctx = ui.preview.getContext('2d');
-    nctx.clearRect(0, 0, 4 * cell, 2 * cell);
+    nctx.clearRect(0, 0, PREVIEW_W * cell, PREVIEW_H * cell);
     var n = game.next;
-    var ox = Math.floor((4 - n.shape[0].length) / 2);
-    var oy = n.shape.length === 1 ? 0.5 : 0;
+    var ox = Math.floor((PREVIEW_W - n.shape[0].length) / 2);
+    var oy = (PREVIEW_H - n.shape.length) / 2;
     for (var ny = 0; ny < n.shape.length; ny += 1) {
       for (var nx = 0; nx < n.shape[ny].length; nx += 1) {
         var nv = n.shape[ny][nx];
         if (!nv) continue;
         if (isSpecial(nv)) drawSpecial(nctx, ox + nx, oy + ny, cell, nv, ms);
-        else block(nctx, ox + nx, oy + ny, cell, COLORS[n.kind]);
+        else cellBlock(nctx, ox + nx, oy + ny, cell, n.kind);
       }
     }
   }
