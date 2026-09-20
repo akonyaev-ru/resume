@@ -262,6 +262,7 @@
 
   function rotate(game) {
     if (!active(game)) return false;
+    if (infected(game)) return false;   // 5.75: пока вирус в стопке, поворот заедает (владелец: «фигуры нельзя крутить во время работы вируса»)
     var p = game.piece;
     // Квадрат крутится тоже (5.67): форма та же, но спецклетка в нём обходит
     // углы по часовой — иначе её не поставить куда надо.
@@ -829,7 +830,7 @@
       hole: { name: { ru: 'чёрная дыра', en: 'black hole' }, text: { ru: 'глотает {span} вокруг себя', en: 'swallows {span} around it' } },
       acid: { name: { ru: 'кислота', en: 'acid' }, text: { ru: 'разъедает до {width} клеток ряда под собой', en: 'eats up to {width} cells of the row below' } },
       stone: { name: { ru: 'камень', en: 'stone' }, text: { ru: 'ряд с ним не снимается {life} фигур', en: 'its row will not clear for {life} pieces' } },
-      virus: { name: { ru: 'вирус', en: 'virus' }, text: { ru: 'пока он в стопке, окно «далее» врёт', en: 'while it sits in the stack, the “next” box lies' } },
+      virus: { name: { ru: 'вирус', en: 'virus' }, text: { ru: 'пока он в стопке, фигуры не крутятся, а «далее» врёт', en: 'while it sits in the stack, pieces will not turn and “next” lies' } },
       rainbow: { name: { ru: 'радуга', en: 'rainbow' }, text: { ru: 'снимает все клетки цвета своей фигуры', en: 'removes every cell of its piece’s colour' } },
     },
     paused: { ru: 'Пауза', en: 'Paused' },
@@ -904,6 +905,8 @@
   var raf = 0;
   var lastFrame = 0;
   var clock = 0;        // мс от начала партии — часы анимаций спецклеток
+  var jamAt = -1;       // 5.75: когда игрок нажал поворот при вирусе — фигура глючит приступом JAM_MS
+  var JAM_MS = 240;
   var phase = 'closed'; // closed | boot | play | scores
   var nick = '';        // ник партии: выдан консолью, закреплён в хранилище
   var waiting = false;  // ник напечатан, игра начнётся по таймеру: клавиши ничего не значат
@@ -1261,6 +1264,7 @@
     ui.stats.level.textContent = String(game.level);
     ui.stats.lines.textContent = String(game.lines);
     updateLegend();
+    ui.keys.rotate.classList.toggle('is-locked', infected(game));   // 5.75: при вирусе ↻ приглушена
   }
 
   // Легенда: строки блоков, которые стоят в «далее» или уже летят, — акцентом.
@@ -1819,6 +1823,7 @@
           if (!pv) continue;
           if (gy2 !== p.y) block(ctx, p.x + px, gy2 + py, cell, COLORS[p.kind], true);
           if (isSpecial(pv)) drawSpecial(ctx, p.x + px, p.y + py, cell, pv, ms, p.kind);
+          else if (jamAt >= 0 && ms - jamAt < JAM_MS) drawVirusCell(ctx, p.x + px, p.y + py, cell, COLORS[p.kind], ms, px * 7 + py * 13, true);   // поворот заело: фигура глючит
           else cellBlock(ctx, p.x + px, p.y + py, cell, p.kind);
         }
       }
@@ -1966,7 +1971,10 @@
     if (game.over || game.paused) return;
     if (name === 'left') move(game, -1);
     else if (name === 'right') move(game, 1);
-    else if (name === 'rotate') rotate(game);
+    else if (name === 'rotate') {
+      if (infected(game)) { jamAt = clock; ui.keys.rotate.classList.add('is-jammed'); root.setTimeout(function () { ui.keys.rotate.classList.remove('is-jammed'); }, JAM_MS); }
+      rotate(game);
+    }
     else if (name === 'down') softDrop(game);
     else if (name === 'drop') hardDrop(game);
     updateStats();

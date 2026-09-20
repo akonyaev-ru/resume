@@ -1770,6 +1770,11 @@ a:not(.btn):hover { color: var(--text); }
 }
 
 .console__key--wide { width: calc(var(--cap) * 2.2); }
+
+/* Вирус (5.75): пока он в стопке, поворот заедает — ↻ приглушена, а на нажатие
+   мигает глитчем: голубая и малиновая тени врозь. */
+.console__key.is-locked { color: var(--muted); border-style: dashed; }
+.console__key.is-jammed { color: #3df2ff; text-shadow: 2px 0 #ff3df2, -2px 0 #3df2ff; transform: translateX(-1px); }
 /* Кнопка словом в той же отделке — на третьем экране, «R — ещё раз».
    Правило ниже колпачка: при равной специфичности ширину берёт последнее. */
 .console__key--text {

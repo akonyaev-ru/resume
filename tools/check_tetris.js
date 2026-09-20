@@ -827,6 +827,21 @@ check('вирус: лечится через пять приземлений, о
   return 'вылечен на пятом приземлении, окно честное; ряд с вирусом снялся';
 });
 
+check('вирус (5.75): пока он в стопке, фигуры не крутятся — сдвиг и падение работают; после лечения поворот возвращается', function () {
+  const g = Tetris.create(rng(5), { specialChance: 0 });
+  g.board[19][0] = 'virus:J:2';
+  g.piece = { kind: 'T', shape: [[0, 1, 0], [1, 1, 1]], x: 3, y: 0 };
+  const before = JSON.stringify(g.piece.shape);
+  if (Tetris.rotate(g) || JSON.stringify(g.piece.shape) !== before) fail('повернулась при вирусе');
+  if (!Tetris.move(g, 1) || !Tetris.softDrop(g)) fail('сдвиг и шаг вниз должны работать');
+  Tetris.hardDrop(g);                                                          // первое приземление: жизней 2 → 1
+  if (!Tetris.infected(g) || Tetris.rotate(g)) fail('после первого приземления вирус должен жить, а поворот — молчать');
+  Tetris.hardDrop(g);                                                          // второе: вылечен
+  if (Tetris.infected(g)) fail('не вылечился: ' + cellsOf(g).join(' '));
+  if (!Tetris.rotate(g)) fail('после лечения не крутится: ' + g.piece.kind);
+  return 'при вирусе поворот молчит, сдвиг и падение работают; через два приземления крутится';
+});
+
 check('вирус: два вируса — лечение одного не снимает заражения', function () {
   const g = Tetris.create(rng(9), { specialChance: 0 });
   g.board[19][0] = 'virus:J:1';
