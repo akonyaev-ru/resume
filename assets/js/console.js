@@ -52,8 +52,8 @@
      сама спецклетка не в счёт; `lines` и уровень растут только от настоящих
      линий. Розыгрыш — по весам, с первого уровня: посетитель играет одну
      партию, и спецклетка должна успеть ему встретиться. */
-  var SPECIALS = { hole: 4, acid: 3, laser: 3, rainbow: 2, stone: 6, virus: 3 };   // ключ → вес при розыгрыше (5.50: камень; 5.54: камень 6; 5.63: вирус 3; 5.68: радуга 2; 5.70: дыра 5, лазер 2; 5.71: дыра 4, лазер 3 — лазер стал слабее, ряд вместо креста, и «подешевле»: как кислота)
-  var SPECIAL_CHANCE = 0.27;   // доля фигур со спецклеткой (5.63: 0,25; 5.68: 0,27 — полезные 15,4 %, камень 7,7 %, вирус 3,9 %; 5.71: дыра 5,1 %, лазер и кислота по 3,9 %, радуга 2,6 %)
+  var SPECIALS = { hole: 5, acid: 3, rainbow: 3, stone: 6, virus: 3 };   // ключ → вес при розыгрыше (5.50: камень; 5.54: камень 6; 5.63: вирус 3; 5.68: радуга 2; 5.70–5.71: лазер 2 → 3; 5.73: лазер снят — «смысла не вижу», радуга 3 — «ни разу не увидел»)
+  var SPECIAL_CHANCE = 0.27;   // доля фигур со спецклеткой (5.63: 0,25; 5.68: 0,27; 5.73: дыра 6,75 %, кислота и радуга по 4,05 %, камень 8,1 %, вирус 4,05 % — полезные 14,9 %, помехи 12,2 %)
   // Радуга (5.69, «Лучи» — выбор владельца из четырёх анимаций на настоящем
   // стакане): пульс, затем к каждой клетке своего цвета по очереди летит луч
   // (между стартами step, но вся очередь не дольше queue — иначе двадцать
@@ -65,7 +65,6 @@
   var FAKE_MS = 1000;          // пока вирус в стопке, «далее» врёт и меняет ложь раз в столько мс
   var SPECIAL_SCORE = 10;      // за сожжённую клетку стопки, × уровень
   var HOLE_MS = 500;           // чёрная дыра: втягивает 3×3 вокруг себя (5.47; 5.41–5.46 было 5×5)
-  var LASER_MS = 560;          // лазер: выжигает весь свой ряд (5.71; 5.47–5.70 — и столбец: рыл колодцы; 5.49: было 500 — «чуть медленнее»)
   var BLAST = { hole: 1 };     // радиус в клетках: 3×3
   var ACID_STEP = 220;         // кислота: мс на клетку вниз (5.39: было 180)
   var ACID_REACH = 2;          // кислота-лужа (5.72): клеток в каждую сторону по ряду под собой (5.38–5.71 — ACID_DEPTH 4 вниз)
@@ -360,13 +359,7 @@
 
   function startEffect(game, special, own) {
     var effect = { type: special.type, x: special.x, y: special.y, t: 0, own: own, burnt: 0 };
-    if (effect.type === 'laser') {
-      effect.dur = LASER_MS;
-      effect.cells = [];
-      // Только свой ряд (5.71; крест до того рыл колодец в столбце — владелец:
-      // «игра стала кривой из-за вертикальных эффектов», замер ботом подтвердил).
-      for (var lx = 0; lx < COLS; lx += 1) effect.cells.push({ x: lx, y: special.y });
-    } else if (effect.type === 'rainbow') {
+    if (effect.type === 'rainbow') {
       // Радуга (5.68): все клетки стакана цвета своей фигуры — и свои, и чужие
       // (свои без очков), и заражённые вирусом того же цвета; камень — не цвет.
       effect.cells = [{ x: special.x, y: special.y }];   // сама радуга уходит первой
@@ -559,7 +552,7 @@
     if (effect.t >= effect.dur) finishEffect(game);
   }
 
-  // Эффект доиграл: лазер выжигает свой ряд, дыра — 3×3, столбцы оседают; потом
+  // Эффект доиграл: дыра выжигает 3×3, радуга — свой цвет, столбцы оседают; потом
   // обычная чистка линий — и только теперь следующая фигура.
   function finishEffect(game) {
     var effect = game.effect;
@@ -652,7 +645,6 @@
     SPECIAL_CHANCE: SPECIAL_CHANCE,
     SPECIAL_SCORE: SPECIAL_SCORE,
     HOLE_MS: HOLE_MS,
-    LASER_MS: LASER_MS,
     RAINBOW_T: RAINBOW_T,
     rainbowPlan: rainbowPlan,
     BLAST: BLAST,
@@ -836,7 +828,6 @@
     blocks: {   // {span}, {depth}, {life} подставляет blockText из правил ядра
       hole: { name: { ru: 'чёрная дыра', en: 'black hole' }, text: { ru: 'глотает {span} вокруг себя', en: 'swallows {span} around it' } },
       acid: { name: { ru: 'кислота', en: 'acid' }, text: { ru: 'разъедает до {width} клеток ряда под собой', en: 'eats up to {width} cells of the row below' } },
-      laser: { name: { ru: 'лазер', en: 'laser' }, text: { ru: 'выжигает весь свой ряд', en: 'burns its whole row' } },
       stone: { name: { ru: 'камень', en: 'stone' }, text: { ru: 'ряд с ним не снимается {life} фигур', en: 'its row will not clear for {life} pieces' } },
       virus: { name: { ru: 'вирус', en: 'virus' }, text: { ru: 'пока он в стопке, окно «далее» врёт', en: 'while it sits in the stack, the “next” box lies' } },
       rainbow: { name: { ru: 'радуга', en: 'rainbow' }, text: { ru: 'снимает все клетки цвета своей фигуры', en: 'removes every cell of its piece’s colour' } },
@@ -1484,8 +1475,6 @@
       drawRainbowCell(ctx, x, y, size, still ? 0 : Math.floor(ms / 160));
     } else if (type === 'stone') {
       drawStone(ctx, x, y, size, STONE_LIFE, ms);
-    } else if (type === 'laser') {
-      drawLaserCell(ctx, x, y, size, ms);
     } else if (type === 'hole') {
       flat(ctx, x, y, size, INK.black);
       sprite(ctx, x, y, size, NEBULA_ROWS, f % 8 < 4 ? NEBULA : NEBULA_DIM, 0.5, 0.5);
@@ -1517,166 +1506,6 @@
   function noise(a, b, c) {
     var n = Math.sin(a * 12.9898 + b * 78.233 + (c || 0) * 37.719) * 43758.5453;
     return n - Math.floor(n);
-  }
-
-  var LZ = { body: '#1a0a12', slate: '#2c313d', beam: '#ff2e4a', core: '#ffffff', halo: 'rgba(255,46,74,0.35)', halo2: 'rgba(255,46,74,0.16)' };
-
-  // Четверть блока: мини-блок со своей фаской в отведённом прямоугольнике (в единицах).
-  function quarter(ctx, x, y, size, ux, uy, uw, uh, color) {
-    var u = size / 8;
-    var px0 = Math.round(x * size + ux * u);
-    var py0 = Math.round(y * size + uy * u);
-    var pw = Math.round(uw * u);
-    var ph = Math.round(uh * u);
-    var edge = Math.max(1, Math.round(size / 16));
-    ctx.fillStyle = color;
-    ctx.fillRect(px0, py0, pw, ph);
-    ctx.fillStyle = 'rgba(255,255,255,0.2)';
-    ctx.fillRect(px0, py0, pw, edge);
-    ctx.fillRect(px0, py0, edge, ph);
-    ctx.fillStyle = 'rgba(0,0,0,0.3)';
-    ctx.fillRect(px0, py0 + ph - edge, pw, edge);
-    ctx.fillRect(px0 + pw - edge, py0, edge, ph);
-  }
-
-  // Крест из шва: ореол в две ступени, красная линия, белая сердцевина.
-  function cross(ctx, x, y, size, gap, glow, coreOn) {
-    var seam = Math.max(1, Math.round(size / 16));
-    var inner = size - 2 * seam;
-    ctx.save();
-    ctx.beginPath();
-    ctx.rect(x * size + seam, y * size + seam, inner, inner);
-    ctx.clip();
-    ctx.globalAlpha = glow;
-    pix(ctx, x, y, size, LZ.halo2, 0.6, 4 - gap / 2 - 1.2, 6.8, gap + 2.4);
-    pix(ctx, x, y, size, LZ.halo2, 4 - gap / 2 - 1.2, 0.6, gap + 2.4, 6.8);
-    pix(ctx, x, y, size, LZ.halo, 0.6, 4 - gap / 2 - 0.5, 6.8, gap + 1);
-    pix(ctx, x, y, size, LZ.halo, 4 - gap / 2 - 0.5, 0.6, gap + 1, 6.8);
-    ctx.globalAlpha = 1;
-    pix(ctx, x, y, size, LZ.beam, 0.6, 4 - gap / 2, 6.8, gap);
-    pix(ctx, x, y, size, LZ.beam, 4 - gap / 2, 0.6, gap, 6.8);
-    if (coreOn) pix(ctx, x, y, size, LZ.core, 4 - gap / 2 - 0.2, 4 - gap / 2 - 0.2, gap + 0.4, gap + 0.4);
-    ctx.restore();
-  }
-
-  function quarters(ctx, x, y, size, gap, color, spread) {
-    var half = 3.4 - gap / 2 - spread;
-    var seam = 0.6 + spread;
-    quarter(ctx, x, y, size, seam, seam, half, half, color);
-    quarter(ctx, x, y, size, 4 + gap / 2, seam, half, half, color);
-    quarter(ctx, x, y, size, seam, 4 + gap / 2, half, half, color);
-    quarter(ctx, x, y, size, 4 + gap / 2, 4 + gap / 2, half, half, color);
-  }
-
-  // Клетка лазера (5.47, владелец выбрал из показов): четыре серых мини-блока,
-  // рассечённых светящимся красным крестом; шов дышит, белая сердцевина
-  // изредка гаснет.
-  function drawLaserCell(ctx, x, y, size, ms) {
-    block(ctx, x, y, size, LZ.body);
-    var glow = 0.6 + 0.4 * (0.5 + 0.5 * Math.sin(ms / 300));
-    cross(ctx, x, y, size, 0.9, glow, (ms % 900) > 100);
-    quarters(ctx, x, y, size, 0.9, LZ.slate, 0);
-  }
-
-  // Половина клетки (верх/низ или лево/право) со служебного холста со сдвигом.
-  function half(ctx, size, x, y, axis, which, dx, dy) {
-    var dpr = root.devicePixelRatio || 1;
-    var w = axis === 'y' ? size : size / 2;
-    var h = axis === 'y' ? size / 2 : size;
-    var sx = axis === 'y' ? 0 : which * size / 2;
-    var sy = axis === 'y' ? which * size / 2 : 0;
-    ctx.drawImage(scratch, Math.round(sx * dpr), Math.round(sy * dpr), Math.round(w * dpr), Math.round(h * dpr), Math.round(x * size + sx + dx), Math.round(y * size + sy + dy), Math.round(w), Math.round(h));
-  }
-
-  /* Лазер, «Разрез» (5.71 — выбор владельца из трёх анимаций на настоящем
-     стакане; 5.47–5.70 бил крестом и резал клетки столбца тоже). Заряд —
-     клетка белеет, вдоль ряда тянется нить прицела; выстрел — вспышка по
-     всему ряду и луч от стенки до стенки (белая сердцевина в красном
-     ореоле); каждую клетку ряда луч режет пополам, половины расходятся
-     вверх и вниз и тают, из разреза бьют искры. Четвертинки самой клетки
-     разъезжаются по диагоналям, крест тает в луче, потом гаснет луч. */
-  var LZT = { charge: 160, flash: 40, cut: 280, hold: 360, fade: 520 };   // мс; LASER_MS 560
-  function fxLaser(ctx, e, size, ms) {
-    var u = size / 8;
-    var t = e.t;
-    var cx = (e.x + 0.5) * size;
-    var cy = (e.y + 0.5) * size;
-    if (t < LZT.charge) {
-      var q = t / LZT.charge;
-      ctx.globalAlpha = 0.18 * q;
-      ctx.fillStyle = LZ.beam;
-      ctx.fillRect(0, Math.round(cy - 1), COLS * size, 2);
-      ctx.globalAlpha = 1;
-      coverCell(ctx, size, e.x, e.y);
-      drawLaserCell(ctx, e.x, e.y, size, ms);
-      ctx.globalAlpha = 0.65 * q;
-      flat(ctx, e.x, e.y, size, LZ.core);
-      ctx.globalAlpha = 1;
-      return;
-    }
-    var s = t - LZT.charge;                              // мс с выстрела
-    var hit = Math.min(1, s / LZT.cut);
-    e.cells.forEach(function (c) {
-      var v = game.board[c.y][c.x];
-      if (!v || (c.x === e.x && c.y === e.y)) return;
-      var c2 = cellCanvas(size);
-      cellBlock(c2, 0, 0, size, v);
-      coverCell(ctx, size, c.x, c.y);
-      if (hit < 1) {                                     // половины расходятся вверх и вниз
-        var sep = hit * size * 0.9;
-        ctx.globalAlpha = 1 - hit;
-        half(ctx, size, c.x, c.y, 'y', 0, 0, -sep);
-        half(ctx, size, c.x, c.y, 'y', 1, 0, sep);
-        ctx.globalAlpha = 1;
-      }
-      if (hit < 0.3) {                                   // белая черта разреза
-        ctx.globalAlpha = 1 - hit / 0.3;
-        pix(ctx, c.x, c.y, size, LZ.core, 0, 3.7, 8, 0.6);
-        ctx.globalAlpha = 1;
-      }
-      if (s < 200) {                                     // искры из разреза
-        for (var k = 0; k < 3; k += 1) {
-          var dir = k % 2 ? -1 : 1;
-          var sp = noise(c.x, c.y, k);
-          ctx.globalAlpha = 1 - s / 200;
-          pix(ctx, c.x, c.y, size, k === 1 ? LZ.core : LZ.beam, 1 + sp * 6, 3.7 + dir * (s / 40) * (0.8 + sp), 0.6, 0.6);
-          ctx.globalAlpha = 1;
-        }
-      }
-    });
-    if (s < LZT.flash) {                                 // вспышка по всему ряду
-      ctx.globalAlpha = 0.35;
-      ctx.fillStyle = LZ.core;
-      ctx.fillRect(0, e.y * size, COLS * size, size);
-      ctx.globalAlpha = 1;
-    }
-    var fade = t < LZT.hold ? 1 : Math.max(0, 1 - (t - LZT.hold) / (LZT.fade - LZT.hold));
-    if (fade > 0) {                                      // луч от стенки до стенки
-      ctx.globalAlpha = 0.45 * fade;
-      ctx.strokeStyle = LZ.beam;
-      ctx.lineWidth = u * 2.2;
-      ctx.beginPath(); ctx.moveTo(0, cy); ctx.lineTo(COLS * size, cy); ctx.stroke();
-      ctx.globalAlpha = fade;
-      ctx.strokeStyle = LZ.core;
-      ctx.lineWidth = Math.max(1, u * 0.7);
-      ctx.beginPath(); ctx.moveTo(0, cy); ctx.lineTo(COLS * size, cy); ctx.stroke();
-      ctx.globalAlpha = 1;
-    }
-    // Сама клетка: вспышка, потом четвертинки разъезжаются по диагоналям, крест тает.
-    coverCell(ctx, size, e.x, e.y);
-    if (s < LZT.flash) { flat(ctx, e.x, e.y, size, LZ.core); return; }
-    var fly = Math.min(1, (s - LZT.flash) / 320);
-    ctx.globalAlpha = Math.max(0, 1 - Math.max(0, fly - 0.5) * 2);
-    cross(ctx, e.x, e.y, size, 0.9, 1, true);
-    ctx.globalAlpha = 1;
-    [[-1, -1], [1, -1], [-1, 1], [1, 1]].forEach(function (q) {
-      ctx.save();
-      ctx.globalAlpha = Math.max(0, 1 - fly * 1.05);
-      ctx.translate(cx + q[0] * (1.7 * u + fly * fly * size * 0.9), cy + q[1] * (1.7 * u + fly * fly * size * 0.9));
-      quarter(ctx, 0, 0, size, -1.45, -1.45, 2.9, 2.9, LZ.slate);
-      ctx.restore();
-    });
-    ctx.globalAlpha = 1;
   }
 
   // Цвет клетки стакана для эффектов: у спецклетки — тон её пластины.
@@ -1953,7 +1782,6 @@
   function drawEffect(ctx, e, size, ms) {
     var p = Math.min(1, e.t / e.dur);
     if (e.type === 'rainbow') drawRainbow(ctx, e, size, ms);
-    else if (e.type === 'laser') fxLaser(ctx, e, size, ms);
     else if (e.type === 'hole') drawHole(ctx, e, size, p, ms);
     else drawAcid(ctx, e, size, ms);
   }
