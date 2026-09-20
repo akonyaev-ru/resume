@@ -492,40 +492,51 @@ check('лазер (5.71): выжигает только свой ряд — ст
   return 'свой ряд — ноль очков, столбец цел; ряд с пятью чужими — +50';
 });
 
-check('кислота: прожигает четыре клетки под собой по шагу времени, столбец тонет, потом растворяется', function () {
+check('кислота-лужа (5.72): проедает клетку под собой, растекается по её ряду на две в стороны по шагу времени, испаряется', function () {
   const g = withSpecial('I', 'acid', 0, 3, 0);
   Tetris.rotate(g);                                            // палка вертикально, кислота внизу
   if (g.piece.shape[3][0] !== 'acid') fail('кислота не внизу: ' + JSON.stringify(g.piece.shape));
-  for (let y = 13; y < 20; y += 1) g.board[y][0] = 'J';        // семь клеток стопки под ней
+  for (let y = 13; y < 20; y += 1) for (let x = 0; x < 4; x += 1) g.board[y][x] = 'J';   // глыба 4×7: под кислотой столб, в её ряду три клетки вправо — лужа достаёт две
   const fell = Tetris.hardDrop(g);
   if (!g.effect || g.effect.type !== 'acid' || g.board[12][0] !== 'acid') fail('кислота не легла: ' + JSON.stringify(g.effect));
-  Tetris.tick(g, Tetris.ACID_STEP);
-  if (g.board[13][0] !== 'acid' || g.board[12][0] !== 'I') fail('после шага кислота не съехала: ' + cellsOf(g).join(' '));
+  Tetris.tick(g, Tetris.ACID_STEP);                            // шаг 0: клетка под ней
+  if (g.board[13][0] !== 'acid' || g.board[12][0] !== 'I') fail('после шага кислота не опустилась в проеденное: ' + cellsOf(g).join(' '));
   if (g.score !== fell * 2 + 10) fail('за первую клетку очки ' + g.score);
-  Tetris.tick(g, Tetris.ACID_STEP * 3);
-  if (g.board[16][0] !== 'acid' || g.effect.burnt !== 4) fail('после четырёх шагов: ' + cellsOf(g).join(' '));
-  if (g.piece !== null) fail('фигура вышла до растворения');
-  Tetris.tick(g, Tetris.ACID_STEP);
-  if (g.effect || g.piece === null) fail('кислота не растворилась');
+  Tetris.tick(g, Tetris.ACID_STEP);                            // шаг 1: соседи по ряду
+  if (g.board[13][1] || g.board[13][2] !== 'J') fail('первый сосед не съеден или второй задет рано: ' + cellsOf(g).join(' '));
+  Tetris.tick(g, Tetris.ACID_STEP);                            // шаг 2: через одну
+  if (g.board[13][2] || g.board[13][3] !== 'J') fail('вторая клетка не съедена или третья задета: ' + cellsOf(g).join(' '));
+  if (g.piece !== null || !g.effect) fail('фигура вышла до испарения');
+  Tetris.tick(g, Tetris.ACID_STEP);                            // шаг 3: испарение
+  if (g.effect || g.piece === null) fail('кислота не испарилась');
   const col = [];
   for (let y = 0; y < 20; y += 1) col.push(g.board[y][0] || '.');
-  if (col.join('') !== '..............IIIJJJ') fail('столбец: ' + col.join(''));
-  if (g.score !== fell * 2 + 40) fail('очки ' + g.score + ', ожидалось ' + (fell * 2 + 40));
-  return 'четыре клетки по ' + Tetris.ACID_STEP + ' мс, +40, палка села на остаток';
+  if (col.join('') !== '...........IIIJJJJJJ') fail('столбец 0: ' + col.join(''));   // столб под кислотой цел, палка села
+  if (g.score !== fell * 2 + 30) fail('очки ' + g.score + ', ожидалось ' + (fell * 2 + 30));
+  return 'клетка под собой и две вправо, столб цел, +30, четыре шага по ' + Tetris.ACID_STEP + ' мс';
 });
 
-check('кислота останавливается, когда под ней пусто', function () {
-  const g = withSpecial('I', 'acid', 0, 3, 0);
-  Tetris.rotate(g);
-  g.board[17][0] = 'J'; g.board[18][0] = 'J';                  // две клетки, под ними дыра
-  g.board[17][1] = 'J'; g.board[18][1] = 'J'; g.board[19][1] = 'J';   // опора рядом: остров не образуется (5.49)
-  Tetris.hardDrop(g);
-  Tetris.tick(g, Tetris.ACID_STEP * 2);
-  if (g.effect.burnt !== 2 || g.board[18][0] !== 'acid') fail('две клетки не сгорели: ' + cellsOf(g).join(' '));
+check('кислота-лужа не течёт через пустоту и дальше двух клеток; под ней дно — испаряется сразу', function () {
+  const g = withSpecial('I', 'acid', 0, 3, 3);
+  Tetris.rotate(g);                                            // кислота внизу палки, столбец 3
+  [1, 3, 4, 5, 6].forEach(function (x) { g.board[19][x] = 'J'; });   // слева от цели пусто, справа три подряд
+  const fell = Tetris.hardDrop(g);                             // кислота (3,18) на клетке (3,19)
+  Tetris.tick(g, Tetris.ACID_STEP * 3);                        // клетка под собой, потом (4,19), потом (5,19)
+  if (g.board[19][1] !== 'J') fail('лужа перепрыгнула пустоту: ' + cellsOf(g).join(' '));
+  if (g.board[19][4] || g.board[19][5]) fail('вправо не съела две: ' + cellsOf(g).join(' '));
+  if (g.board[19][6] !== 'J') fail('дальше двух клеток: ' + cellsOf(g).join(' '));
   Tetris.tick(g, Tetris.ACID_STEP);
-  if (g.effect || g.board[16][0]) fail('кислота не растворилась над пустотой: ' + cellsOf(g).join(' '));
-  if (g.board[17][0] !== 'I' || g.board[19][0] !== 'I') fail('остаток палки не сел на дно: ' + cellsOf(g).join(' '));
-  return 'две сгорели, воздух — стоп, растворилась, остаток сел на дно';
+  if (g.effect || g.piece === null) fail('не испарилась');
+  if (g.score !== fell * 2 + 30) fail('очки ' + g.score + ', ожидалось ' + (fell * 2 + 30));
+  // Дно: кислота легла на пустой пол — есть нечего, испаряется одним шагом.
+  const h = withSpecial('I', 'acid', 0, 3, 0);
+  Tetris.rotate(h);
+  const fell2 = Tetris.hardDrop(h);                            // кислота (0,19)
+  if (!h.effect || h.effect.y !== 19) fail('кислота не на дне: ' + JSON.stringify(h.effect));
+  Tetris.tick(h, Tetris.ACID_STEP);
+  if (h.effect || h.piece === null || h.score !== fell2 * 2) fail('на дне не испарилась одним шагом: ' + JSON.stringify(h.effect) + ' очки ' + h.score);
+  if (h.board[19][0] !== 'I' || h.board[17][0] !== 'I') fail('остаток палки не сел: ' + cellsOf(h).join(' '));
+  return 'пустота слева — стоп, справа ровно две, +30; на дне — сразу пар';
 });
 
 check('спецклетка в снятой линии всё равно срабатывает — на месте, куда съехал ряд (5.52)', function () {
@@ -563,9 +574,10 @@ check('кислота в снятой линии получает тело в п
   if (g.effect.y !== 16 || g.board[16][0] !== 'acid') fail('тело кислоты не там: ' + JSON.stringify(g.effect) + ' ' + cellsOf(g).join(' '));
   Tetris.tick(g, Tetris.ACID_STEP * 5);
   if (g.effect) fail('кислота не доиграла');
-  for (let y = 0; y < 20; y += 1) if (g.board[y][0]) fail('столбец 0 не выжжен: ' + cellsOf(g).join(' '));
+  // Лужа (5.72): съела одну клетку остатка под собой — свою, без очков; по бокам пусто — испарилась.
+  if (g.board[17][0] || g.board[18][0] !== 'I' || g.board[19][0] !== 'I') fail('остаток палки: ' + cellsOf(g).join(' '));
   if (g.score !== fell * 2 + Tetris.LINE_SCORE[1]) fail('за свои клетки начислено: ' + g.score);
-  return 'линия снята, кислота встала над остатком и съела его без очков';
+  return 'линия снята, кислота встала над остатком, съела одну свою клетку без очков и испарилась';
 });
 
 check('лазер в снятой линии бьёт по ряду с места, куда съехал ряд', function () {
@@ -674,11 +686,12 @@ check('остаток фигуры после кислоты не висит: б
   Tetris.tick(g, Tetris.ACID_STEP);
   if (floating(g, 'T').length) fail('после первого шага висят: ' + floating(g, 'T').join(' '));
   Tetris.tick(g, Tetris.ACID_STEP * 3);
-  if (g.effect || g.piece === null) fail('кислота не растворилась над дном');
+  if (g.effect || g.piece === null) fail('кислота не испарилась');
   if (floating(g, 'T').length) fail('в конце висят: ' + floating(g, 'T').join(' '));
-  if (g.board[19][3] !== 'T' || g.board[19][4] !== 'T' || g.board[19][5] !== 'T') fail('остаток T не на дне: ' + cellsOf(g).join(' '));
-  if (g.score !== fell * 2 + 30) fail('очки ' + g.score + ', ожидалось ' + (fell * 2 + 30));
-  return 'пик съеден, три клетки T сели на дно, +30';
+  // Лужа (5.72): съедена верхушка пика, по бокам пусто; боковые клетки T упали на дно, верхушка T села на остаток пика.
+  if (g.board[19][3] !== 'T' || g.board[19][5] !== 'T' || g.board[17][4] !== 'T' || g.board[18][4] !== 'J') fail('остаток T не там: ' + cellsOf(g).join(' '));
+  if (g.score !== fell * 2 + 10) fail('очки ' + g.score + ', ожидалось ' + (fell * 2 + 10));
+  return 'верх пика съеден, боковые клетки T на дне, верхушка на остатке пика, +10';
 });
 
 check('остаток фигуры после дыры не висит: палка, лежавшая концом на пике, падает', function () {

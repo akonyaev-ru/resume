@@ -68,7 +68,7 @@
   var LASER_MS = 560;          // лазер: выжигает весь свой ряд (5.71; 5.47–5.70 — и столбец: рыл колодцы; 5.49: было 500 — «чуть медленнее»)
   var BLAST = { hole: 1 };     // радиус в клетках: 3×3
   var ACID_STEP = 220;         // кислота: мс на клетку вниз (5.39: было 180)
-  var ACID_DEPTH = 4;          // кислота: клеток вниз, потом растворяется сама
+  var ACID_REACH = 2;          // кислота-лужа (5.72): клеток в каждую сторону по ряду под собой (5.38–5.71 — ACID_DEPTH 4 вниз)
 
   function rotateShape(shape) {
     var h = shape.length;
@@ -395,7 +395,10 @@
         }
       }
     } else {
-      effect.dur = ACID_STEP * (ACID_DEPTH + 1);   // прикидка для окна; шаги считает acidStep
+      effect.dur = ACID_STEP * (ACID_REACH + 2);   // прикидка для окна; шаги считает acidStep
+      effect.stage = 0;
+      effect.open = { left: true, right: true };
+      effect.puddle = [];
     }
     return effect;
   }
@@ -485,14 +488,55 @@
     dropAbove(game, effect, x, y);
   }
 
-  // Кислота: клетка строго под ней сгорает, столбец оседает — кислота съезжает
-  // на её место; под ней пусто, дно или предел глубины — растворяется сама.
+  /* Кислота-лужа (5.72; 5.38–5.71 жгла столбом вниз до четырёх клеток и рыла
+     колодец — владелец: «игра стала кривой из-за вертикальных эффектов», бот
+     подтвердил; из трёх механик на настоящем стакане выбрана лужа). Шаг 0 —
+     проедает клетку под собой и опускается в неё (под ней пусто — просто
+     стекает; дно — испаряется сразу); шаги 1..ACID_REACH — растекается по этому
+     ряду на клетку в обе стороны, пока есть что есть: пустая клетка со стороны
+     — туда лужа уже не течёт; потом испаряется. Каждый шаг — ACID_STEP. */
+  function acidTargets(game, effect) {
+    var out = [];
+    if (effect.stage === 0) {
+      if (effect.y + 1 < ROWS && game.board[effect.y + 1][effect.x]) out.push({ x: effect.x, y: effect.y + 1, from: 'top' });
+      return out;
+    }
+    var d = effect.stage;
+    if (d > ACID_REACH) return out;
+    if (effect.open.left && effect.x - d >= 0 && game.board[effect.y][effect.x - d]) out.push({ x: effect.x - d, y: effect.y, from: 'right' });
+    if (effect.open.right && effect.x + d < COLS && game.board[effect.y][effect.x + d]) out.push({ x: effect.x + d, y: effect.y, from: 'left' });
+    return out;
+  }
+
+  // Этот шаг последний: когда он кончится, кислота испарится.
+  function acidDying(game, effect) {
+    if (effect.stage === 0) return effect.y + 1 >= ROWS;
+    return !acidTargets(game, effect).length;
+  }
+
   function acidStep(game, effect) {
-    var below = effect.y + 1;
-    if (effect.burnt < ACID_DEPTH && below < ROWS && game.board[below][effect.x]) {
-      burnCell(game, effect, effect.x, below);
-      effect.y = below;
-      effect.burnt += 1;
+    if (!acidDying(game, effect)) {
+      var targets = acidTargets(game, effect);
+      if (effect.stage === 0) {
+        var below = effect.y + 1;
+        if (targets.length) burnCell(game, effect, effect.x, below);   // столбец оседает — кислота съезжает в проеденное
+        else {                                                          // под ней пусто — стекает
+          game.board[below][effect.x] = 'acid';
+          game.board[effect.y][effect.x] = 0;
+          effect.own.forEach(function (c) { if (c.x === effect.x && c.y === effect.y) c.y = below; });
+        }
+        effect.y = below;
+        effect.open = { left: true, right: true };
+      } else {
+        effect.open.left = targets.some(function (c) { return c.x < effect.x; });
+        effect.open.right = targets.some(function (c) { return c.x > effect.x; });
+        targets.forEach(function (c) {
+          burnCell(game, effect, c.x, c.y);
+          effect.puddle.push({ x: c.x, y: c.y, stage: effect.stage });   // плёнка лужи для картинки
+        });
+      }
+      effect.burnt += targets.length;
+      effect.stage += 1;
       settleOwn(game, effect);
       settleAll(game, effect);
       return;
@@ -613,7 +657,7 @@
     rainbowPlan: rainbowPlan,
     BLAST: BLAST,
     ACID_STEP: ACID_STEP,
-    ACID_DEPTH: ACID_DEPTH,
+    ACID_REACH: ACID_REACH,
     isSpecial: isSpecial,
     isStone: isStone,
     stoneLife: stoneLife,
@@ -791,7 +835,7 @@
     legend: { ru: 'Блоки', en: 'Blocks' },
     blocks: {   // {span}, {depth}, {life} подставляет blockText из правил ядра
       hole: { name: { ru: 'чёрная дыра', en: 'black hole' }, text: { ru: 'глотает {span} вокруг себя', en: 'swallows {span} around it' } },
-      acid: { name: { ru: 'кислота', en: 'acid' }, text: { ru: 'прожигает до {depth} клеток вниз', en: 'burns up to {depth} cells down' } },
+      acid: { name: { ru: 'кислота', en: 'acid' }, text: { ru: 'разъедает до {width} клеток ряда под собой', en: 'eats up to {width} cells of the row below' } },
       laser: { name: { ru: 'лазер', en: 'laser' }, text: { ru: 'выжигает весь свой ряд', en: 'burns its whole row' } },
       stone: { name: { ru: 'камень', en: 'stone' }, text: { ru: 'ряд с ним не снимается {life} фигур', en: 'its row will not clear for {life} pieces' } },
       virus: { name: { ru: 'вирус', en: 'virus' }, text: { ru: 'пока он в стопке, окно «далее» врёт', en: 'while it sits in the stack, the “next” box lies' } },
@@ -833,7 +877,7 @@
     var span = 2 * BLAST.hole + 1;
     return t(TEXT.blocks[type].text)
       .replace('{span}', span + '×' + span)
-      .replace('{depth}', String(ACID_DEPTH))
+      .replace('{width}', String(2 * ACID_REACH + 1))
       .replace('{life}', String(STONE_LIFE));
   }
 
@@ -1737,59 +1781,72 @@
     ctx.fillRect(x * size, y * size, size, 1);
   }
 
-  /* Кислота (5.45, владелец: «с ядом тоже что-нибудь придумаем»). Пока горит:
-     клетка под ней разъедается по пикселям — верх первым, но неровно; пиксель
-     сперва зеленеет, потом отваливается каплей вниз и гаснет; над разъеденным
-     всплывают пузырьки. На последнем шаге сама кислота испаряется: пиксели
-     черепа снизу вверх отрываются, уходят вверх и тают. */
+  /* Кислота-лужа (5.72; вид разъедания — 5.45). Клетка, которую лужа ест на
+     этом шаге, разъедается по пикселям с той стороны, откуда пришла кислота:
+     сверху — под ней, сбоку — в её ряду; пиксель сперва зеленеет, потом
+     отваливается каплей вниз и гаснет, над разъеденным всплывают пузырьки. На
+     съеденных клетках ряда остаётся плёнка лужи и тает. На последнем шаге
+     сама кислота испаряется: пиксели черепа снизу вверх отрываются, уходят
+     вверх и тают. */
   function drawAcid(ctx, e, size, ms) {
     var u = size / 8;
     var q = Math.min(1, e.t / ACID_STEP);
-    var below = e.y + 1;
-    var burning = e.burnt < ACID_DEPTH && below < ROWS && game.board[below][e.x];
     var i, j, n, k;
-    if (burning) {
-      var v = game.board[below][e.x];
-      var c2 = cellCanvas(size);
-      cellBlock(c2, 0, 0, size, v);   // 5.55: и камень под кислотой стал своего цвета — раньше COLORS[камень] был undefined
-      coverCell(ctx, size, e.x, below);
-      for (j = 0; j < 8; j += 1) {
-        for (i = 0; i < 8; i += 1) {
-          n = 0.1 + 0.5 * noise(i, j, e.burnt) + 0.35 * j / 8;   // порог: когда пиксель разъедается
-          if (q < n) { chunk(ctx, size, e.x, below, i, j, 0); continue; }
-          k = (q - n) / (1 - n);
-          if (k < 0.3) {
-            chunk(ctx, size, e.x, below, i, j, 0);
-            ctx.globalAlpha = 0.9 * k / 0.3;
-            pix(ctx, e.x, below, size, INK.acid, i, j, 1, 1);
-            ctx.globalAlpha = 1;
-          } else {
-            var d = (k - 0.3) / 0.7;
-            ctx.globalAlpha = 1 - d;
-            pix(ctx, e.x, below, size, mix(INK.acid, INK.acidDark, d), i, j + d * d * 12, 1, 1);
-            ctx.globalAlpha = 1;
+    (e.puddle || []).forEach(function (p) {   // плёнка на съеденных клетках, пока там пусто
+      if (game.board[p.y][p.x]) return;
+      var age = (e.stage - p.stage - 1) * ACID_STEP + e.t;
+      var a = Math.max(0, 1 - age / 400);
+      if (a <= 0) return;
+      ctx.globalAlpha = a;
+      pix(ctx, p.x, p.y, size, INK.acid, 0.5, 6.6, 7, 0.9);
+      pix(ctx, p.x, p.y, size, INK.acidDark, 0.5, 7.1, 7, 0.4);
+      ctx.globalAlpha = 1;
+    });
+    if (!acidDying(game, e)) {
+      acidTargets(game, e).forEach(function (c) {
+        var v = game.board[c.y][c.x];
+        var c2 = cellCanvas(size);
+        cellBlock(c2, 0, 0, size, v);   // 5.55: и камень под кислотой стал своего цвета — раньше COLORS[камень] был undefined
+        coverCell(ctx, size, c.x, c.y);
+        for (j = 0; j < 8; j += 1) {
+          for (i = 0; i < 8; i += 1) {
+            var side = c.from === 'top' ? j / 8 : c.from === 'left' ? i / 8 : (7 - i) / 8;
+            n = 0.1 + 0.5 * noise(i, j, c.x * 3 + c.y) + 0.35 * side;   // порог: когда пиксель разъедается
+            if (q < n) { chunk(ctx, size, c.x, c.y, i, j, 0); continue; }
+            k = (q - n) / (1 - n);
+            if (k < 0.3) {
+              chunk(ctx, size, c.x, c.y, i, j, 0);
+              ctx.globalAlpha = 0.9 * k / 0.3;
+              pix(ctx, c.x, c.y, size, INK.acid, i, j, 1, 1);
+              ctx.globalAlpha = 1;
+            } else {
+              var d = (k - 0.3) / 0.7;
+              ctx.globalAlpha = 1 - d;
+              pix(ctx, c.x, c.y, size, mix(INK.acid, INK.acidDark, d), i, j + d * d * 12, 1, 1);
+              ctx.globalAlpha = 1;
+            }
           }
         }
-      }
-      ctx.fillStyle = INK.acidDark;
-      for (k = 0; k < 3; k += 1) {
-        var by = (below + 0.9) * size - ((ms / 45 + k * 29) % (size * 0.9));
-        if (by < below * size + u * (1 - q) * 6) continue;   // пузырьки только в разъеденной части
-        ctx.fillRect(Math.round(e.x * size + (0.8 + noise(k, e.burnt) * 5.6) * u), Math.round(by), Math.ceil(u * 0.5), Math.ceil(u * 0.5));
-      }
-    } else {
-      var c3 = cellCanvas(size);
-      drawSpecial(c3, 0, 0, size, 'acid', ms);
-      coverCell(ctx, size, e.x, e.y);
-      for (j = 0; j < 8; j += 1) {
-        for (i = 0; i < 8; i += 1) {
-          n = 0.05 + 0.55 * noise(i, j, 99) + 0.35 * (7 - j) / 8;   // низ испаряется первым
-          if (q < n) { chunk(ctx, size, e.x, e.y, i, j, 0); continue; }
-          k = (q - n) / (1 - n);
-          ctx.globalAlpha = Math.max(0, 1 - k * 1.2);
-          chunk(ctx, size, e.x, e.y, i, j, -k * k * size * 1.3);
-          ctx.globalAlpha = 1;
+        ctx.fillStyle = INK.acidDark;
+        for (k = 0; k < 3; k += 1) {
+          var by = (c.y + 0.9) * size - ((ms / 45 + k * 29) % (size * 0.9));
+          if (c.from === 'top' && by < c.y * size + u * (1 - q) * 6) continue;   // сверху: пузырьки только в разъеденной части
+          ctx.fillRect(Math.round(c.x * size + (0.8 + noise(k, c.x + c.y) * 5.6) * u), Math.round(by), Math.ceil(u * 0.5), Math.ceil(u * 0.5));
         }
+      });
+      return;
+    }
+    var c3 = cellCanvas(size);
+    drawSpecial(c3, 0, 0, size, 'acid', ms);
+    coverCell(ctx, size, e.x, e.y);
+    for (j = 0; j < 8; j += 1) {
+      for (i = 0; i < 8; i += 1) {
+        n = 0.05 + 0.55 * noise(i, j, 99) + 0.35 * (7 - j) / 8;   // низ испаряется первым
+        if (q < n) { chunk(ctx, size, e.x, e.y, i, j, 0); continue; }
+        k = (q - n) / (1 - n);
+        ctx.globalAlpha = Math.max(0, 1 - k * 1.2);
+        chunk(ctx, size, e.x, e.y, i, j, -k * k * size * 1.3);
+        ctx.globalAlpha = 1;
       }
     }
   }
