@@ -395,8 +395,7 @@ check('спецклетка: шанс 0 — ни одной за сорок фи
     all.board.forEach(function (row) { row.fill(0); });
   }
   Object.keys(Tetris.SPECIALS).forEach(function (key) { if (!seen[key]) fail('за сто фигур не выпала ' + key); });
-  // Порядок весов сторожит проверка весов; здесь — что полезных (12 из 21) больше помех (9) и на ста розыгрышах.
-  if (!(seen.hole + seen.acid + seen.rainbow > seen.stone + seen.virus)) fail('полезных меньше помех: ' + JSON.stringify(seen));
+  // Порядок весов сторожит проверка весов, долю — четыреста розыгрышей ниже; здесь — что каждая выпадает.
   return 'сто фигур: ' + JSON.stringify(seen);
 });
 
@@ -838,16 +837,16 @@ check('вирус: два вируса — лечение одного не сн
   return 'один вылечен, окно всё ещё врёт из-за второго';
 });
 
-check('веса (5.73): лазера нет, дыра 5, радуга 3 — радуга не реже кислоты, полезных 11 из 20, шанс 0,27', function () {
+check('веса (5.74): камень 7 — чуть чаще; лазера нет, радуга не реже кислоты, полезных 11 из 21, шанс 0,27', function () {
   const w = Tetris.SPECIALS;
   if (w.laser !== undefined || Tetris.LASER_MS !== undefined) fail('лазер ещё в игре');
-  const want = { hole: 5, acid: 3, rainbow: 3, stone: 6, virus: 3 };
+  const want = { hole: 5, acid: 3, rainbow: 3, stone: 7, virus: 3 };
   Object.keys(want).forEach(function (k) { if (w[k] !== want[k]) fail(k + ': вес ' + w[k] + ', ожидался ' + want[k]); });
   if (Object.keys(w).join(',') !== Object.keys(want).join(',')) fail('состав или порядок легенды: ' + Object.keys(w).join(','));
   if (w.rainbow < w.acid) fail('радуга реже кислоты');
-  if (w.hole + w.acid + w.rainbow !== 11 || w.stone + w.virus !== 9) fail('доли полезных и помех сдвинулись');
+  if (w.hole + w.acid + w.rainbow !== 11 || w.stone + w.virus !== 10) fail('доли полезных и помех сдвинулись');
   if (Tetris.SPECIAL_CHANCE !== 0.27) fail('шанс ' + Tetris.SPECIAL_CHANCE);
-  return 'радуга одна на ' + Math.round(20 / (3 * 0.27)) + ' фигур, дыра одна на ' + Math.round(20 / (5 * 0.27));
+  return 'камень один на ' + Math.round(21 / (7 * 0.27)) + ' фигур, радуга одна на ' + Math.round(21 / (3 * 0.27));
 });
 
 check('розыгрыш: камень выпадает, а полезные — чаще него', function () {
@@ -864,7 +863,7 @@ check('розыгрыш: камень выпадает, а полезные — 
   if (!seen.stone) fail('камень не выпал: ' + JSON.stringify(seen));
   if (!seen.virus) fail('вирус не выпал: ' + JSON.stringify(seen));
   if (!seen.rainbow) fail('радуга не выпала: ' + JSON.stringify(seen));
-  // Веса 5 : 3 : 3 : 6 — полезные чаще камня в 1,83 раза; порог 1,3 на четырёхстах
+  // Веса 5 : 3 : 3 : 7 — полезные чаще камня в 1,57 раза; порог 1,3 на четырёхстах
   // розыгрышах — три сигмы, на ста тридцати порог 1,4 краснел от шума (5.58).
   if (!(seen.hole + seen.acid + seen.rainbow > seen.stone * 1.3)) fail('камень слишком част: ' + JSON.stringify(seen));
   return 'четыреста фигур: ' + JSON.stringify(seen);
