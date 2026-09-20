@@ -395,8 +395,8 @@ check('спецклетка: шанс 0 — ни одной за сорок фи
     all.board.forEach(function (row) { row.fill(0); });
   }
   Object.keys(Tetris.SPECIALS).forEach(function (key) { if (!seen[key]) fail('за сто фигур не выпала ' + key); });
-  if (!(seen.hole > seen.acid && seen.acid > seen.laser)) fail('веса 5:3:2 не соблюдены: ' + JSON.stringify(seen));
-  if (!(seen.hole > seen.laser * 1.5)) fail('дыра должна выпадать заметно чаще лазера (5 : 2; до 5.70 было 6 : 1): ' + JSON.stringify(seen));
+  // Порядок весов сторожит проверка весов; здесь — что полезных (12 из 21) больше помех (9) и на ста розыгрышах.
+  if (!(seen.hole + seen.acid + seen.laser + seen.rainbow > seen.stone + seen.virus)) fail('полезных меньше помех: ' + JSON.stringify(seen));
   return 'сто фигур: ' + JSON.stringify(seen);
 });
 
@@ -466,23 +466,30 @@ check('оседание: что выше кратера, опускается; �
   return 'две клетки палки спустились на башню, просвет закрыт остатком';
 });
 
-check('лазер: выжигает весь ряд и весь столбец, очки за чужие клетки, соседние ряды целы', function () {
+check('лазер (5.71): выжигает только свой ряд — столбец и соседние ряды целы, очки за чужие клетки ряда', function () {
+  // Свой ряд пуст, кроме своих клеток: очков ноль, столбец под лазером цел, верхушка садится на его место.
   const g = withSpecial('T', 'laser', 1, 1, 4);
   fillRow(g, 17, 9); fillRow(g, 18, 9); fillRow(g, 19, 9);
-  g.board[3][5] = 'S';                                         // высоко в столбце лазера — тоже сгорит
-  const fell = Tetris.hardDrop(g);                             // T на ряду 17: низ 16, лазер (5,16)
-  if (!g.effect || g.effect.type !== 'laser' || g.effect.cells.length !== Tetris.COLS + Tetris.ROWS - 1) fail('эффект не начался: ' + JSON.stringify(g.effect));
+  const fell = Tetris.hardDrop(g);                             // T: низ 16 (4–6), лазер (5,16), верхушка (5,15)
+  if (!g.effect || g.effect.type !== 'laser' || g.effect.cells.length !== Tetris.COLS) fail('эффект не по ряду: ' + JSON.stringify(g.effect && g.effect.cells.length));
   Tetris.tick(g, Tetris.LASER_MS - 1);
   if (g.piece !== null) fail('фигура вышла раньше срока');
   Tetris.tick(g, 2);
   if (g.piece === null || g.effect) fail('лазер не кончился');
-  // Ряд 16: только свои. Столбец 5: S наверху и три чужие в рядах 17–19 → четыре по 10.
-  if (g.score !== fell * 2 + 40) fail('очки ' + g.score + ', ожидалось ' + (fell * 2 + 40));
+  if (g.score !== fell * 2) fail('очки за свои: ' + g.score + ', ожидалось ' + fell * 2);
   if (g.lines !== 0) fail('лазер посчитан линией');
-  for (let y = 0; y < 20; y += 1) if (g.board[y][5]) fail('столбец 5 не пуст в ряду ' + y);
-  if (g.board[16][4] || g.board[16][6]) fail('ряд 16 не выгорел');
-  if (g.board[17][4] !== 'J' || g.board[19][9]) fail('соседние ряды задеты');
-  return 'ряд и столбец пусты, +40, следующая через ' + Tetris.LASER_MS + ' мс';
+  for (let y = 17; y < 20; y += 1) if (g.board[y][5] !== 'J') fail('столбец под лазером задет в ряду ' + y);
+  if (g.board[16][4] || g.board[16][6] || g.board[16][5] !== 'T') fail('ряд 16 после лазера: ' + g.board[16].map(function (v) { return v || '.'; }).join(''));
+  // Ряд с чужими клетками: сгорают все, по 10 за каждую; ряды под ним целы.
+  const h = withSpecial('T', 'laser', 1, 1, 3);
+  fillRow(h, 18, 9); fillRow(h, 19, 9);
+  [0, 1, 2, 7, 8].forEach(function (x) { h.board[17][x] = 'J'; });
+  const fell2 = Tetris.hardDrop(h);                            // T: низ 17 (3–5), лазер (4,17), верхушка (4,16)
+  Tetris.tick(h, Tetris.LASER_MS);
+  if (h.score !== fell2 * 2 + 50) fail('очки за пять чужих: ' + h.score + ', ожидалось ' + (fell2 * 2 + 50));
+  if (h.board[17].filter(Boolean).length !== 1 || h.board[17][4] !== 'T') fail('ряд 17 после лазера: ' + h.board[17].map(function (v) { return v || '.'; }).join(''));
+  if (h.board[18].filter(Boolean).length !== 9 || h.board[19].filter(Boolean).length !== 9) fail('ряды под лазером задеты');
+  return 'свой ряд — ноль очков, столбец цел; ряд с пятью чужими — +50';
 });
 
 check('кислота: прожигает четыре клетки под собой по шагу времени, столбец тонет, потом растворяется', function () {
@@ -561,7 +568,7 @@ check('кислота в снятой линии получает тело в п
   return 'линия снята, кислота встала над остатком и съела его без очков';
 });
 
-check('лазер в снятой линии бьёт крестом с места, куда съехал ряд', function () {
+check('лазер в снятой линии бьёт по ряду с места, куда съехал ряд', function () {
   const g = withSpecial('T', 'laser', 1, 1, 3);
   for (let x = 0; x < 10; x += 1) if (x < 3 || x > 5) g.board[17][x] = 'J';
   fillRow(g, 18, 9); fillRow(g, 19, 9);
@@ -570,11 +577,11 @@ check('лазер в снятой линии бьёт крестом с мест
   if (!g.effect || g.effect.type !== 'laser' || g.effect.x !== 4 || g.effect.y !== 17) fail('лазер из снятой линии не сработал: ' + JSON.stringify(g.effect));
   Tetris.tick(g, Tetris.LASER_MS);
   if (g.effect || g.piece === null) fail('лазер не кончился');
-  if (g.board[18][4] || g.board[19][4]) fail('столбец 4 не выжжен: ' + cellsOf(g).join(' '));
-  if (g.board[18][3] !== 'J' || g.board[19][5] !== 'J') fail('соседние столбцы задеты: ' + cellsOf(g).join(' '));
-  // Ряд 17 после съезда — только верхушка T (своя), столбец 4 — две чужие клетки.
-  if (g.score !== fell * 2 + Tetris.LINE_SCORE[1] + 20) fail('очки ' + g.score + ', ожидалось ' + (fell * 2 + Tetris.LINE_SCORE[1] + 20));
-  return 'линия снята, лазер выжег столбец под собой: +20';
+  // Ряд 17 после съезда — только верхушка T (своя): сгорает без очков; столбец и ряды 18–19 целы.
+  if (g.board[17].some(Boolean)) fail('ряд 17 не пуст: ' + g.board[17].map(function (v) { return v || '.'; }).join(''));
+  if (g.board[18][4] !== 'J' || g.board[19][4] !== 'J') fail('столбец под лазером задет: ' + cellsOf(g).join(' '));
+  if (g.score !== fell * 2 + Tetris.LINE_SCORE[1]) fail('очки ' + g.score + ', ожидалось ' + (fell * 2 + Tetris.LINE_SCORE[1]));
+  return 'линия снята, лазер выжег съехавшую верхушку, столбец цел';
 });
 
 check('радуга (5.68): снимает все клетки цвета своей фигуры — чужие с очками, свои без, вирус того же цвета тоже, камень и другие цвета целы', function () {
@@ -717,18 +724,21 @@ function islands(g) {
   return out;
 }
 
-check('острова после лазера падают: шляпка гриба без столба садится на дно единым куском', function () {
-  const g = withSpecial('T', 'laser', 1, 1, 3);
-  for (let y = 15; y < 20; y += 1) g.board[y][4] = 'J';          // столб
-  [2, 3, 4, 5, 6].forEach(function (x) { g.board[14][x] = 'S'; }); // шляпка на нём
-  Tetris.hardDrop(g);                                              // T на шляпке: низ 13, лазер (4,13)
-  if (!g.effect || g.effect.type !== 'laser' || g.effect.y !== 13) fail('лазер не лёг: ' + JSON.stringify(g.effect));
+check('острова после лазера падают: подрезанное основание столба с навесом садится единым куском', function () {
+  const g = withSpecial('T', 'laser', 1, 1, 1);
+  for (let y = 15; y < 20; y += 1) g.board[y][0] = 'J';            // столб у левой стенки
+  [1, 2, 3].forEach(function (x) { g.board[15][x] = 'S'; });         // навес от его верхушки
+  g.piece.y = 17;                                                    // T заведена под навес рукой: сброс сверху под него не пройдёт
+  const fell = Tetris.hardDrop(g);                                   // низ 19 (1–3), лазер (2,19), верхушка (2,18)
+  if (!g.effect || g.effect.type !== 'laser' || g.effect.y !== 19) fail('лазер не лёг: ' + JSON.stringify(g.effect));
   Tetris.tick(g, Tetris.LASER_MS);
   if (g.effect || g.piece === null) fail('лазер не кончился');
   if (islands(g).length) fail('висят острова: ' + islands(g).join(' '));
-  if (g.board[19][2] !== 'S' || g.board[19][3] !== 'S' || g.board[19][5] !== 'S' || g.board[19][6] !== 'S') fail('шляпка не села на дно: ' + cellsOf(g).join(' '));
-  if (g.board[19][4]) fail('столбец лазера не пуст: ' + cellsOf(g).join(' '));   // верхушка T тоже в столбце — сгорела
-  return 'столб сгорел, шляпка из четырёх клеток села на дно куском';
+  if (g.board[19][0] !== 'J' || g.board[16][0] !== 'J' || g.board[15][0]) fail('столб не опустился на одну: ' + cellsOf(g).join(' '));
+  if (g.board[16][1] !== 'S' || g.board[16][3] !== 'S') fail('навес не опустился со столбом: ' + cellsOf(g).join(' '));
+  if (g.board[19][2] !== 'T' || g.board[19][1] || g.board[19][3]) fail('верхушка T не села на место лазера: ' + cellsOf(g).join(' '));
+  if (g.score !== fell * 2 + 10) fail('очки за основание столба: ' + g.score);
+  return 'основание сгорело, столб с навесом опустился на одну единым куском, верхушка села';
 });
 
 check('острова после дыры падают, а связанный с дном навес остаётся', function () {
@@ -795,13 +805,15 @@ check('камень ломается спецклеткой, как обычна
   Tetris.hardDrop(g);                                                          // T: низ 18, камень в (4,18), верх (4,17)
   if (!Tetris.isStone(g.board[18][4])) fail('камня нет: ' + cellsOf(g).join(' '));
   const before = g.score;
-  g.piece = { kind: 'T', shape: [[0, 1, 0], [1, 'laser', 1]], x: 3, y: 0 };
-  const fell = Tetris.hardDrop(g);                                             // лазер в (4,16), столбец 4 сгорает
+  g.piece = { kind: 'I', shape: [['laser', 1, 1, 1]], x: 6, y: 0 };
+  const fell = Tetris.hardDrop(g);                                             // палка ложится на ряд 18 справа от T: лазер (6,18)
+  if (!g.effect || g.effect.y !== 18) fail('лазер не в ряду камня: ' + JSON.stringify(g.effect));
   Tetris.tick(g, Tetris.LASER_MS);
-  if (Tetris.isStone(g.board[18][4]) || g.board[18][4]) fail('камень уцелел: ' + cellsOf(g).join(' '));
-  // Столбец 4: верхушка прежней T (17), камень (18) и J (19) — три чужие по 10; ряд 16 — свои.
-  if (g.score - before !== fell * 2 + 30) fail('очки за камень: ' + (g.score - before));
-  return 'лазер сжёг камень, +10 за него как за клетку стопки';
+  if (g.board[18].some(function (v) { return Tetris.isStone(v); })) fail('камень уцелел: ' + cellsOf(g).join(' '));
+  // Ряд 18: две клетки прежней T и камень — три чужие по 10; свои четыре — ноль; столбец под лазером цел.
+  if (g.score - before !== fell * 2 + 30) fail('очки за ряд с камнем: ' + (g.score - before));
+  if (g.board[19][6] !== 'J') fail('столбец под лазером задет');
+  return 'лазер сжёг камень в своём ряду, +10 за него как за клетку стопки';
 });
 
 /* --- вирус (5.63) ------------------------------------------------------------ */
@@ -873,15 +885,15 @@ check('вирус: два вируса — лечение одного не сн
   return 'один вылечен, окно всё ещё врёт из-за второго';
 });
 
-check('веса (5.70): дыра 5, лазер 2 — лазер не реже радуги, полезных 12 из 21, шанс 0,27', function () {
+check('веса (5.71): дыра 4, лазер 3 — лазер не реже кислоты, полезных 12 из 21, шанс 0,27', function () {
   const w = Tetris.SPECIALS;
-  const want = { hole: 5, acid: 3, laser: 2, rainbow: 2, stone: 6, virus: 3 };
+  const want = { hole: 4, acid: 3, laser: 3, rainbow: 2, stone: 6, virus: 3 };
   Object.keys(want).forEach(function (k) { if (w[k] !== want[k]) fail(k + ': вес ' + w[k] + ', ожидался ' + want[k]); });
   if (Object.keys(w).join(',') !== Object.keys(want).join(',')) fail('состав или порядок легенды: ' + Object.keys(w).join(','));
-  if (w.laser < w.rainbow) fail('лазер реже радуги');
+  if (w.laser < w.acid) fail('лазер реже кислоты');
   if (w.hole + w.acid + w.laser + w.rainbow !== 12 || w.stone + w.virus !== 9) fail('доли полезных и помех сдвинулись');
   if (Tetris.SPECIAL_CHANCE !== 0.27) fail('шанс ' + Tetris.SPECIAL_CHANCE);
-  return 'лазер один на ' + Math.round(21 / (2 * 0.27)) + ' фигур, дыра один на ' + Math.round(21 / (5 * 0.27));
+  return 'лазер один на ' + Math.round(21 / (3 * 0.27)) + ' фигур, дыра один на ' + Math.round(21 / (4 * 0.27));
 });
 
 check('розыгрыш: камень выпадает, а полезные — чаще него', function () {
@@ -898,7 +910,7 @@ check('розыгрыш: камень выпадает, а полезные — 
   if (!seen.stone) fail('камень не выпал: ' + JSON.stringify(seen));
   if (!seen.virus) fail('вирус не выпал: ' + JSON.stringify(seen));
   if (!seen.rainbow) fail('радуга не выпала: ' + JSON.stringify(seen));
-  // Веса 5 : 3 : 2 (+ радуга 2) : 6 — полезные чаще камня в 1,67 раза; порог 1,3 на четырёхстах
+  // Веса 4 : 3 : 3 (+ радуга 2) : 6 — полезные чаще камня в 1,67 раза; порог 1,3 на четырёхстах
   // розыгрышах — три сигмы, на ста тридцати порог 1,4 краснел от шума (5.58).
   if (!(seen.hole + seen.acid + seen.laser > seen.stone * 1.3)) fail('камень слишком част: ' + JSON.stringify(seen));
   return 'четыреста фигур: ' + JSON.stringify(seen);
