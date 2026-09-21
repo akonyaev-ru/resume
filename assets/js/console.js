@@ -821,8 +821,6 @@
     login: 'login: ',
     welcome: { ru: 'добро пожаловать, ', en: 'welcome, ' },
     score: { ru: 'Счёт', en: 'Score' },
-    level: { ru: 'Уровень', en: 'Level' },
-    lines: { ru: 'Линии', en: 'Lines' },
     best: { ru: 'Рекорд', en: 'Best' },
     next: { ru: 'Далее', en: 'Next' },
     legend: { ru: 'Блоки', en: 'Blocks' },
@@ -997,10 +995,10 @@
     if (ui) return ui;
     var field = el('canvas', { class: 'console__field', 'aria-label': 'Tetris' });
     var preview = el('canvas', { class: 'console__next', 'aria-hidden': 'true' });
+    // Уровень и линии не показываются (5.76 — «не знаю, зачем они»): без них
+    // полная легенда влезает на экраны до 720 px высоты при той же клетке.
     var stats = {
       score: el('b', { text: '0' }),
-      level: el('b', { text: '1' }),
-      lines: el('b', { text: '0' }),
       best: el('b', { text: bestLabel() }),
     };
     function stat(key) {
@@ -1053,7 +1051,7 @@
       el('div', { class: 'console__well' }, [field, overlay]),
       el('div', { class: 'console__side' }, [
         el('div', { class: 'console__stat' }, [el('span', { text: t(TEXT.next) }), preview]),
-        stat('score'), stat('level'), stat('lines'), stat('best'),
+        stat('score'), stat('best'),
         legendBlock,
       ]),
       keyRow,
@@ -1261,8 +1259,6 @@
 
   function updateStats() {
     ui.stats.score.textContent = String(game.score);
-    ui.stats.level.textContent = String(game.level);
-    ui.stats.lines.textContent = String(game.lines);
     updateLegend();
     ui.keys.rotate.classList.toggle('is-locked', infected(game));   // 5.75: при вирусе ↻ приглушена
   }
