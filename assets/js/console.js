@@ -293,7 +293,10 @@
   }
 
   function scoreLines(game, cleared) {
-    game.score += LINE_SCORE[cleared] * game.level;
+    // Пять линий и больше бывает: камень на последней жизни крошится в том же
+    // приземлении, что закрывает тетрис. Цены за них в таблице нет — берётся
+    // тетрис (до 5.80 счёт становился NaN до конца партии).
+    game.score += LINE_SCORE[Math.min(cleared, LINE_SCORE.length - 1)] * game.level;
     game.lines += cleared;
     game.level = 1 + Math.floor(game.lines / 10);
   }
@@ -903,7 +906,7 @@
   var timers = [];
   var raf = 0;
   var lastFrame = 0;
-  var clock = 0;        // мс от начала партии — часы анимаций спецклеток
+  var clock = 0;        // метка кадра (rAF, мс) — часы анимаций и сроков эффектов
   var jamAt = -1;       // 5.75: когда игрок нажал поворот при вирусе — фигура глючит приступом JAM_MS
   var JAM_MS = 240;
   var phase = 'closed'; // closed | boot | play | scores
@@ -1247,14 +1250,23 @@
     phase = 'play';
     game = create();
     waiting = false;
+    jamAt = -1;           // приступ заедания и пыль прошлой партии сюда не переходят
+    dust = [];
     ui.log.hidden = true;
     ui.scores.hidden = true;
     ui.play.hidden = false;
     ui.overlay.hidden = true;
     fitWindow();
+    // «Ещё раз» с третьего экрана прячется вместе с ним — фокус не должен
+    // остаться на спрятанной кнопке или выпасть на страницу под окном.
+    var active = document.activeElement;
+    if (!ui.dialog.contains(active) || (active !== ui.dialog && active.offsetParent === null)) ui.dialog.focus();
     ui.stats.best.textContent = bestLabel();
     updateStats();
     lastFrame = 0;
+    // R посреди партии: прежняя цепочка кадров ещё ждёт своего кадра, её надо
+    // снять — иначе каждое R добавляло цепочку, и стакан рисовался вдвое, втрое…
+    root.cancelAnimationFrame(raf);
     loop(0);
   }
 
@@ -1682,17 +1694,20 @@
   }
 
   // Крошка: камень рассыпался — шесть серых пылинок разлетаются и гаснут за 350 мс.
+  // Сроки — по часам кадра, а не по `ms` рисунка: в тихом режиме `ms` застывает
+  // на нуле, и до 5.80 пылинки оставались на стакане навсегда, даже в новой
+  // партии. В тихом режиме пыли нет вовсе — это движение.
   var dust = [];
-  function drawDust(ctx, size, ms) {
+  function drawDust(ctx, size) {
     if (game.crumbled && game.crumbled.length) {
-      game.crumbled.forEach(function (c) { dust.push({ x: c.x, y: c.y, t0: ms }); });
+      if (!LESS_MOTION) game.crumbled.forEach(function (c) { dust.push({ x: c.x, y: c.y, t0: clock }); });
       game.crumbled = [];
     }
     if (game.cured) game.cured = [];   // лечение вируса — без частиц (5.64)
     var u = size / 8;
-    dust = dust.filter(function (d) { return ms - d.t0 < 350; });
+    dust = dust.filter(function (d) { return clock - d.t0 < 350; });
     dust.forEach(function (d) {
-      var q = (ms - d.t0) / 350;
+      var q = (clock - d.t0) / 350;
       ctx.globalAlpha = 1 - q;
       for (var k = 0; k < 6; k += 1) {
         var ang = k * Math.PI / 3 + noise(k, 7);
@@ -1820,13 +1835,15 @@
           if (!pv) continue;
           if (gy2 !== p.y) block(ctx, p.x + px, gy2 + py, cell, COLORS[p.kind], true);
           if (isSpecial(pv)) drawSpecial(ctx, p.x + px, p.y + py, cell, pv, ms, p.kind);
-          else if (jamAt >= 0 && ms - jamAt < JAM_MS) drawVirusCell(ctx, p.x + px, p.y + py, cell, COLORS[p.kind], ms, px * 7 + py * 13, true);   // поворот заело: фигура глючит
+          // Поворот заело: фигура глючит JAM_MS по часам кадра. По `ms` было нельзя:
+          // в тихом режиме он застывает на нуле, и до 5.80 фигуры глючили вечно.
+          else if (jamAt >= 0 && clock - jamAt < JAM_MS) drawVirusCell(ctx, p.x + px, p.y + py, cell, COLORS[p.kind], ms, px * 7 + py * 13, true);
           else cellBlock(ctx, p.x + px, p.y + py, cell, p.kind);
         }
       }
     }
     if (game.effect) drawEffect(ctx, game.effect, cell, ms);
-    drawDust(ctx, cell, ms);
+    drawDust(ctx, cell);
 
     drawNext(cell, ms);
   }
@@ -1986,10 +2003,19 @@
     r: 'restart', R: 'restart', к: 'restart', К: 'restart',
   };
 
+  /* Окну — только простые нажатия. С Ctrl, Cmd или Alt — сочетания браузера и
+     системы, их окно не трогает: до 5.80 Ctrl+R начинал партию заново вместо
+     перезагрузки, Ctrl+P ставил паузу вместо печати, Alt+← двигал фигуру
+     вместо «назад», Ctrl+Tab не переключал вкладку. Enter и пробел на «×» и на
+     «ещё раз» — нажатие самой кнопки: прежде перехват в фазе захвата отменял
+     его, и «×» с клавиатуры не закрывал окно. Экранные клавиши игры под это
+     правило не попадают: щёлкнул ↻ мышью, нажал пробел — фигура сброшена. */
   function onKey(event) {
     if (phase === 'closed') return;
     if (event.key === 'Escape') { event.preventDefault(); close(); return; }
+    if (event.ctrlKey || event.metaKey || event.altKey) return;
     if (event.key === 'Tab') { trapTab(event); return; }
+    if ((event.key === 'Enter' || event.key === ' ') && (event.target === ui.closeBtn || event.target === ui.again)) return;
     if (phase === 'scores') {
       if (event.key === 'Enter' || event.key === ' ' || KEYS[event.key] === 'restart') {
         event.preventDefault();
@@ -1999,7 +2025,9 @@
     }
     if (phase === 'boot') {
       // Пока ждём начала игры с напечатанным ником — клавиши ничего не значат;
-      // раньше того любая доматывает загрузку.
+      // раньше того загрузку доматывает знак, Enter или стрелка. F5, одиночный
+      // Shift и прочие служебные — браузеру: до 5.80 глушилось всё подряд.
+      if (!(event.key.length === 1 || event.key === 'Enter' || event.key.indexOf('Arrow') === 0)) return;
       event.preventDefault();
       if (!waiting) act('skip');
       return;
@@ -2010,20 +2038,21 @@
     act(name);
   }
 
-  // Tab ходит по кнопкам окна и не уходит на страницу под ним.
+  // Tab ходит по видимым кнопкам окна по кругу и не уходит на страницу под ним.
+  // Ход считается от кнопки в фокусе; если фокус не на ней (на самом окне, на
+  // спрятанной кнопке, снаружи) — к первой или, с Shift, к последней. До 5.80
+  // заворачивали только с краёв списка, и после «ещё раз», спрятанной вместе
+  // с третьим экраном, Tab уводил на ссылки страницы под подложкой.
   function trapTab(event) {
+    event.preventDefault();
     var focusable = Array.prototype.slice.call(ui.dialog.querySelectorAll('button:not([disabled])'))
       .filter(function (node) { return node.offsetParent !== null; });
-    if (!focusable.length) { event.preventDefault(); return; }
-    var first = focusable[0];
-    var last = focusable[focusable.length - 1];
-    if (event.shiftKey && (document.activeElement === first || document.activeElement === ui.dialog)) {
-      event.preventDefault();
-      last.focus();
-    } else if (!event.shiftKey && document.activeElement === last) {
-      event.preventDefault();
-      first.focus();
-    }
+    if (!focusable.length) { ui.dialog.focus(); return; }
+    var at = focusable.indexOf(document.activeElement);
+    var step = event.shiftKey ? -1 : 1;
+    var to = at === -1 ? (event.shiftKey ? focusable.length - 1 : 0)
+      : (at + step + focusable.length) % focusable.length;
+    focusable[to].focus();
   }
 
   function onResize() {

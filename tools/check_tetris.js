@@ -884,6 +884,30 @@ check('розыгрыш: камень выпадает, а полезные — 
   return 'четыреста фигур: ' + JSON.stringify(seen);
 });
 
+check('пять линий за ход (камень рассыпался вместе с тетрисом): счёт — число, как за тетрис (5.80)', function () {
+  // Нижний ряд полон, но в нём камень на последней жизни: сам по себе ряд не
+  // снимается. Над ним четыре ряда с колодцем, палка закрывает их — и в том же
+  // приземлении камень крошится, так что снимаются все пять. До 5.80 цены за
+  // пять линий в таблице не было: счёт становился NaN до конца партии.
+  const g = scripted(['I', 'O', 'T']);
+  fillRow(g, 19, -1);
+  g.board[19][5] = 'stone:L:1';
+  for (let y = 15; y <= 18; y += 1) fillRow(g, y, 0);
+  g.piece.shape = Tetris.rotateShape(g.piece.shape);
+  g.piece.x = 0; g.piece.y = 0;
+  const fell = Tetris.hardDrop(g);
+  if (g.cleared.length !== 5) fail('снято линий: ' + g.cleared.length);
+  if (!Number.isFinite(g.score)) fail('счёт ' + g.score);
+  const expected = Tetris.LINE_SCORE[4] * 1 + fell * 2;
+  if (g.score !== expected) fail('счёт ' + g.score + ', ожидалось ' + expected);
+  // И дальше счёт считается как обычно.
+  fillRow(g, 19, 4);
+  g.piece = { kind: 'I', shape: Tetris.rotateShape(Tetris.SHAPES.I.map(function (r) { return r.slice(); })), x: 4 - 2, y: 0 };
+  Tetris.hardDrop(g);
+  if (!Number.isFinite(g.score)) fail('следующий ход: счёт ' + g.score);
+  return 'снято 5, счёт ' + expected + ' — как за тетрис и сброс';
+});
+
 const failed = results.filter(function (r) { return !r.ok; }).length;
 console.log('\nИтог: ' + results.length + ' проверок, ' + (failed ? failed + ' упало' : 'все зелёные'));
 process.exit(failed ? 1 : 0);
