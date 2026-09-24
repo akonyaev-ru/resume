@@ -7,6 +7,7 @@
 
 from __future__ import annotations
 
+import http.client
 import json
 import os
 import re
@@ -43,16 +44,22 @@ def ask(url: str, quiet_404: bool = False) -> dict | None:
 
     try:
         with urllib.request.urlopen(request, timeout=TIMEOUT) as response:
-            return json.load(response)
+            payload = json.load(response)
     except urllib.error.HTTPError as error:
         # 404 у выпусков — обычное дело: у проекта их может не быть вовсе.
         if error.code == 404 and quiet_404:
             return None
         print(f"{url}: не удалось получить данные — {error}", file=sys.stderr)
         return None
-    except (urllib.error.URLError, TimeoutError, json.JSONDecodeError) as error:
-        print(f"{url}: не удалось получить данные — {error}", file=sys.stderr)
+    # Не только URLError и таймаут: обрыв без ответа (RemoteDisconnected — OSError)
+    # и недокачанный ответ (IncompleteRead) до 5.79 роняли выкладку всей страницы.
+    except (OSError, http.client.HTTPException, ValueError) as error:
+        print(f"{url}: не удалось получить данные — {error!r}", file=sys.stderr)
         return None
+    if not isinstance(payload, dict):
+        print(f"{url}: ответ не объект — {type(payload).__name__}", file=sys.stderr)
+        return None
+    return payload
 
 
 def repo_stats(repo: str) -> dict | None:

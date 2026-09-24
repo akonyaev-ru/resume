@@ -10,16 +10,22 @@
 консоль (слово из её же списка и две цифры), а счёт — целое от 1 до
 SCORE_MAX: всё остальное в таблицу может положить кто угодно, и оно
 отбрасывается молча. На ник — лучший счёт, при равных — более ранний.
+
+Сбой не должен ни ронять выкладку, ни стирать десятку (5.79). Сеть не
+ответила, ответ оборван, пришла пустота — снимок остаётся прежним, код 0.
+Пришла страница вместо таблицы или в таблице ни одной годной строки при
+непустом снимке — снимок тоже прежний, но код 1: что-то поменялось в самой
+таблице, и это надо увидеть. Выкладку код 1 не держит — шаг в CI
+необязательный, а красным прогон делает итоговая проверка после выкладки.
 """
 
 from __future__ import annotations
 
-import csv
-import io
+import http.client
 import json
+import os
 import re
 import sys
-import urllib.error
 import urllib.request
 from datetime import datetime, timezone
 from pathlib import Path
@@ -51,18 +57,26 @@ def nick_words(source: str) -> set[str]:
 
 
 def parse(text: str, words: set[str]) -> list[tuple[str, int]]:
-    """Годные пары (ник, счёт) из TSV в порядке ответов; заголовок — по именам столбцов."""
-    reader = csv.reader(io.StringIO(text), delimiter="\t")
-    try:
-        header = [cell.strip().lower() for cell in next(reader)]
-    except StopIteration:
+    """Годные пары (ник, счёт) из TSV в порядке ответов; заголовок — по именам столбцов.
+
+    Разбор построчно, без кавычек csv. У годной строки в нике и счёте ни
+    кавычек, ни табуляций, ни переносов не бывает, а с кавычками по правилам
+    csv ник из одной `"` открывал поле и проглатывал все следующие ответы, а
+    длинный хвост за ней ронял разбор пределом поля в 131 072 знака (до 5.79).
+    Обрывки чужих многострочных ответов проходят ту же проверку, что и всё
+    остальное: годным обрывок стать может, но ровно таким же годным ответом
+    форму может заполнить кто угодно и напрямую.
+    """
+    lines = text.splitlines()
+    if not lines:
         return []
+    header = [cell.strip().lower() for cell in lines[0].split("\t")]
     if "nick" not in header or "score" not in header:
-        raise ValueError(f"в таблице нет столбцов nick и score: {header}")
+        raise ValueError(f"в таблице нет столбцов nick и score: {header[:6]}")
     nick_at, score_at = header.index("nick"), header.index("score")
 
     rows: list[tuple[str, int]] = []
-    for cells in reader:
+    for cells in (line.split("\t") for line in lines[1:]):
         if len(cells) <= max(nick_at, score_at):
             continue
         nick = cells[nick_at].strip().lower()
@@ -90,13 +104,23 @@ def top(rows: list[tuple[str, int]]) -> list[dict]:
 
 
 def fetch(url: str) -> str | None:
+    """Текст таблицы или None при любом сбое по дороге. Ловить только
+    URLError и таймаут было мало: обрыв без ответа (RemoteDisconnected из
+    getresponse — это OSError, а не URLError) и недокачанный ответ
+    (IncompleteRead) проходили насквозь и роняли выкладку всей страницы."""
     request = urllib.request.Request(url, headers={"User-Agent": "akonyaev-ru-cv"})
     try:
         with urllib.request.urlopen(request, timeout=TIMEOUT) as response:
             return response.read().decode("utf-8")
-    except (urllib.error.URLError, TimeoutError, UnicodeDecodeError) as error:
-        print(f"{url[:60]}…: не удалось получить таблицу — {error}", file=sys.stderr)
+    except (OSError, http.client.HTTPException, ValueError) as error:
+        print(f"{url[:60]}…: не удалось получить таблицу — {error!r}", file=sys.stderr)
         return None
+
+
+def loud(message: str) -> None:
+    """Отказ, который надо увидеть: в раннере — аннотацией к прогону."""
+    prefix = "::error::" if os.environ.get("GITHUB_ACTIONS") == "true" else "ОТКАЗ: "
+    print(prefix + message)
 
 
 def current(path: Path) -> list[dict] | None:
@@ -122,9 +146,23 @@ def main() -> int:
     if text is None:
         print("Таблица недоступна — снимок оставлен прежним")
         return 0
+    if not text.strip():
+        print("Таблица ответила пустотой — снимок оставлен прежним")
+        return 0
 
-    rows = top(parse(text, nick_words(SOURCE.read_text(encoding="utf-8"))))
-    if rows == current(OUT):
+    try:
+        found = parse(text, nick_words(SOURCE.read_text(encoding="utf-8")))
+    except ValueError as error:
+        loud(f"таблица рекордов не разобрана ({error}) — снимок оставлен прежним")
+        return 1
+
+    rows = top(found)
+    before = current(OUT)
+    if not rows and before:
+        loud(f"в таблице ни одной годной строки, а в снимке {len(before)} — снимок оставлен "
+             "прежним; если таблицу очистили нарочно, очистите и data/records.js")
+        return 1
+    if rows == before:
         print(f"Десятка не изменилась: {len(rows)} строк")
         return 0
 

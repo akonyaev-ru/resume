@@ -1,7 +1,7 @@
 name: Deploy
 
 # Публикует страницу на GitHub Pages: при пуше в main, раз в сутки
-# (чтобы обновились счётчики звёзд) и по кнопке.
+# (чтобы обновились счётчики звёзд и таблица рекордов) и по кнопке.
 
 "on":
   push:
@@ -26,22 +26,38 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
-      - uses: actions/checkout@v4
+      # Версии actions — на Node 24: сверено по тегам и action.yml 2026-09-24.
+      # Прежние checkout@v4, setup-python@v5, configure-pages@v5 и
+      # deploy-pages@v4 были на Node 20, который GitHub снимает с раннеров.
+      - uses: actions/checkout@v7
+
+      # Проверки идут тем Node, на котором их пишут и гоняют локально (v24),
+      # а не тем, что окажется в образе раннера.
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "24"
 
       # Существ глазами не проверить: в панели предпросмотра кадры не считаются
       # вовсе, а ветка `prefers-reduced-motion` в обычном режиме не исполняется —
       # там уже жил дефект, из-за которого Оливия не появлялась совсем. Прогон
       # крутит `pet.js` вхолостую под заглушками браузера, `--selftest` следом
       # проверяет саму проверку. Красный прогон останавливает выкладку.
-      - name: Прогнать существ
+      - name: Прогнать существ и тетрис
         run: |
           node tools/check_pet.js
           node tools/check_pet.js --selftest
           node tools/check_tetris.js
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
+
+      # Сборщики без внешней сети: разбор таблицы рекордов и её сбои, звёзды
+      # при сбоях GitHub, метка выпуска, папка сайта. Красный — выкладки нет.
+      - name: Проверить сборщики
+        run: |
+          python tools/check_records.py
+          python tools/check_publish.py
 
       # Общая десятка рекордов тетриса — снимок опубликованной таблицы ответов
       # Google-формы. В отличие от звёзд, снимок коммитится: меняется он редко,
@@ -50,9 +66,14 @@ jobs:
       # этот же прогон выложит страницу со свежим файлом. Не прошёл пуш
       # (кто-то запушил раньше) — файл всё равно уедет на сайт, коммит
       # повторится следующим прогоном.
+      # Шаг необязательный (с 5.79): сбой Google или чужая строка в открытой
+      # форме не держат выкладку правок резюме. Сеть не ответила — код 0 и
+      # вчерашняя десятка; таблица поменяла вид — код 1, и прогон покраснеет
+      # последним шагом, уже после выкладки.
       - name: Обновить таблицу рекордов
+        id: records
+        continue-on-error: true
         run: |
-          python tools/check_records.py
           python scripts/fetch_records.py
           if git diff --quiet -- data/records.js; then
             echo "Таблица рекордов не изменилась"
@@ -65,8 +86,11 @@ jobs:
           fi
 
       # Счётчики звёзд подставляются на лету — в репозитории они не хранятся,
-      # поэтому история не засоряется коммитами бота.
+      # поэтому история не засоряется коммитами бота. Шаг необязательный по
+      # той же причине: без GitHub API страница просто не покажет счётчиков.
       - name: Обновить счётчики проектов
+        id: stats
+        continue-on-error: true
         run: python scripts/fetch_stats.py
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -85,11 +109,26 @@ jobs:
       - name: Собрать однофайловую версию
         run: python tools/build_single.py
 
-      - uses: actions/configure-pages@v5
+      # На сайт уходит только папка сайта: страницы, assets/, data/ и
+      # однофайловая версия. До 5.79 публиковался весь репозиторий — со
+      # спецификацией, README, инструментами и .pyc. Битая локальная ссылка в
+      # собранной папке — красный, выкладки нет.
+      - name: Собрать папку сайта
+        run: python tools/build_site.py
 
-      - uses: actions/upload-pages-artifact@v3
+      - uses: actions/configure-pages@v6
+
+      - uses: actions/upload-pages-artifact@v5
         with:
-          path: "."
+          path: _site
 
       - id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v5
+
+      # Сайт уже выложен. Если рекорды или счётчики не обновились по причине,
+      # которую надо увидеть, прогон заканчивается красным — бейдж скажет.
+      - name: Данные обновились
+        if: steps.records.outcome == 'failure' || steps.stats.outcome == 'failure'
+        run: |
+          echo "::error::Сайт выложен, но данные не обновились: рекорды — ${{ steps.records.outcome }}, звёзды — ${{ steps.stats.outcome }}"
+          exit 1
