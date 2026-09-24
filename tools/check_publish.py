@@ -269,6 +269,38 @@ def single_file_self_contained():
     return "одиночная копия со ссылкой на файл рядом — отказ"
 
 
+# --- рисовалка кадров ------------------------------------------------------------
+
+def draw_pet_idempotent():
+    """tools/draw_pet.py переписывает рисованные кадры в pet.js на месте. До 5.81
+    его блок тянулся до «сборки кадров» и накрывал рукописные таблицы — торшер,
+    принтер, камеру, стол, компьютер, шрифт и табло: прогон стирал их (сцена
+    падала с ReferenceError) и возвращал снятые часы. Теперь блок кончается своим
+    маркером, и прогон по свежему pet.js не меняет в нём ни байта."""
+    work = Path(tempfile.mkdtemp())
+    try:
+        (work / "assets" / "js").mkdir(parents=True)
+        (work / "tools").mkdir()
+        shutil.copy(ROOT / "tools" / "draw_pet.py", work / "tools" / "draw_pet.py")
+        before = (ROOT / "assets" / "js" / "pet.js").read_bytes()
+        (work / "assets" / "js" / "pet.js").write_bytes(before)
+        dp = load("draw_pet_copy", work / "tools" / "draw_pet.py")
+        with contextlib.redirect_stdout(io.StringIO()):
+            dp.main()
+        after = (work / "assets" / "js" / "pet.js").read_bytes()
+    finally:
+        shutil.rmtree(work)
+    old = before.replace(b"\r\n", b"\n").decode("utf-8").split("\n")
+    new = after.replace(b"\r\n", b"\n").decode("utf-8").split("\n")
+    if old != new:
+        at = next((i for i, (a, b) in enumerate(zip(old, new)) if a != b), min(len(old), len(new)))
+        gone = [n for n in ("LAMP", "PRINTER", "CAMERA_TILTS", "DESK", "COMPUTER_BODY", "FONT", "TICKER_W")
+                if f"var {n} " in "\n".join(old) and f"var {n} " not in "\n".join(new)]
+        fail(f"прогон меняет pet.js со строки {at + 1}: было «{old[at][:50] if at < len(old) else ''}», "
+             f"стало «{new[at][:50] if at < len(new) else ''}»" + (f"; стёрты {', '.join(gone)}" if gone else ""))
+    return f"повторный прогон не меняет pet.js ({len(old)} строк)"
+
+
 check("звёзды: сбои GitHub не роняют выкладку", stats_failures)
 check("звёзды: нормальный ответ записан", stats_normal)
 check("звёзды: у проекта нет выпусков", stats_no_release)
@@ -277,6 +309,7 @@ check("папка сайта: только страницы и их файлы",
 check("папка сайта: битая ссылка из скрипта — отказ", site_missing_reference)
 check("папка сайта: нет страницы — отказ", site_missing_page)
 check("папка сайта: одиночная копия ни на что не ссылается", single_file_self_contained)
+check("рисовалка кадров: повторный прогон не меняет pet.js", draw_pet_idempotent)
 
 failed = results.count(False)
 print(f"\nИтог: {len(results)} проверок, " + (f"{failed} упало" if failed else "все зелёные"))

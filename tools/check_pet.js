@@ -120,7 +120,8 @@ function open(options) {
       // Ширину тоже помним: по ней проверка отличает толстый провод от тонкого.
       fillRect: function (x, y, w, h) { paint.push({ x: x, y: y, w: w, h: h, c: this.fillStyle }); },
       // Кадр начинается с очистки — значит в `layers` всегда текущий кадр.
-      clearRect: function () { layers.length = 0; },
+      // Очистки считаем: по ним видно, перерисовывается ли холст впустую (5.81).
+      clearRect: function () { el.clears += 1; layers.length = 0; },
       drawImage: function (image, dx, dy) {
         layers.push({ id: image.id, dx: dx, dy: dy });
       },
@@ -128,6 +129,7 @@ function open(options) {
 
     const el = {
       id: ids++,
+      clears: 0,
       width: 0,
       height: 0,
       className: '',
@@ -241,9 +243,11 @@ function open(options) {
     doc: function (type, ev) {
       (docHandlers[type] || []).forEach(function (fn) { fn(ev); });
     },
-    resize: function (width) {
+    // Высота — по желанию: окно становится ниже, и висящее не должно уйти за верх.
+    resize: function (width, height) {
       opt.width = width;
       win.innerWidth = width;
+      if (height) { opt.height = height; win.innerHeight = height; }
       world.win('resize', {});
     },
     hide: function (flag) { opt.petsHidden = flag; },
@@ -1851,6 +1855,266 @@ check('окно сузили', function () {
   return 'оба в пределах окна 560 px';
 });
 
+/* --- 5.81: щелчок — не бросок, размер окна, тихий режим и палец ---------- */
+
+/* Щелчок с дрожью руки — не бросок. Рука при щелчке почти всегда уходит на
+   пиксель-другой; до 5.81 существо от этого приподнималось, падало и считалось
+   брошенным — второе бежало утешать. Дрожь вверх: вбок щелчок до беды не
+   доходил, «тычок» перебивал полёт раньше первого кадра. */
+check('щелчок с дрожью руки — не бросок', function () {
+  const world = open({ seed: 3 });
+  world.step(2000);
+  const her = world.olivia;
+  const box = her.getBoundingClientRect();
+  const x = box.left + 20;
+  const y = box.bottom - 8;
+  her.fire('mousedown', event(x, y));
+  world.step(FRAME_MS);
+  world.win('mousemove', event(x, y - 2));
+  world.step(FRAME_MS);
+  world.win('mouseup', event(x, y - 2));
+  her.fire('click', event(x, y - 2));
+
+  let rose = 0;
+  let bubble = false;
+  world.step(10000, function (t, pets) {
+    rose = Math.max(rose, pets[1].y);
+    if (pets[0].bubble || pets[1].bubble) bubble = true;
+  });
+  if (rose > 0) fail('от щелчка Оливия поднялась на ' + rose + ' px');
+  if (bubble) fail('после щелчка всплыл пузырь — её сочли брошенной');
+  return 'не взлетела, никто не прибежал утешать';
+});
+
+// Правая и средняя кнопка — не захват: до 5.81 существо висело на курсоре, а
+// щелчка для них браузер не шлёт — выходил бросок с утешением.
+check('правой кнопкой существо не взять', function () {
+  const world = open({ seed: 3 });
+  world.step(2000);
+  const her = world.olivia;
+  const box = her.getBoundingClientRect();
+  her.fire('mousedown', { clientX: box.left + 20, clientY: box.bottom - 8, button: 2, preventDefault: function () {} });
+  world.step(FRAME_MS);
+  world.win('mousemove', event(box.left + 220, box.top - 150));
+  world.step(FRAME_MS * 5);
+  const held = look(her);
+  world.win('mouseup', event(box.left + 220, box.top - 150));
+  if (held.y > 0) fail('правая кнопка подняла её на ' + held.y + ' px');
+  return 'не поехала за курсором';
+});
+
+/* Окно сузили, пока существо шло к месту за новым краем. До 5.81 оно упиралось
+   в край и шагало на месте до следующей встречи — до 25 с. Снаружи это видно
+   так: стоит у края, а кадры тела — шаги (их узнаём по прогулке до сужения). */
+check('окно сузили посреди прогулки — никто не шагает на месте у края', function () {
+  let worst = 0;
+  let where = '';
+  [1, 2, 3, 4, 5, 6, 7, 8].forEach(function (seed) {
+    const world = open({ width: 1600, seed: seed });
+    const steps = new Set();
+    let prev = null;
+    world.step(4000 + seed * 900, function (t, pets) {
+      if (prev) {
+        pets.forEach(function (p, i) {
+          if (p.y === 0 && prev[i].y === 0 && p.x !== prev[i].x && p.body !== null) steps.add(p.body);
+        });
+      }
+      prev = pets;
+    });
+
+    world.resize(900);
+    const limit = world.limit();
+    const since = [null, null];
+    world.step(30000, function (t, pets) {
+      pets.forEach(function (p, i) {
+        const stuck = Math.abs(p.x - limit) <= 1 && p.y === 0 && steps.has(p.body);
+        if (!stuck) { since[i] = null; return; }
+        if (since[i] === null) since[i] = t;
+        if (t - since[i] > worst) { worst = t - since[i]; where = 'зерно ' + seed + ', ' + (i ? 'Оливия' : 'Отто'); }
+      });
+    });
+  });
+  if (worst > 2000) fail('шагает на месте у края ' + sec(worst) + ' (' + where + ')');
+  return 'восемь сужений, дольше ' + sec(worst) + ' у края никто не топчется';
+});
+
+/* Окно расширили — нетронутая мебель встаёт туда же, где стоит при загрузке на
+   этой ширине. До 5.81 на смене размера переставлялось только привязанное к
+   соседям, а стоящее само по себе оставалось где было — на 1280 → 1920 торшер,
+   диван и растение оказывались посреди текста. */
+check('окно расширили — нетронутая мебель на своих местах', function () {
+  const world = open({ width: 1280, seed: 4 });
+  world.step(1000);
+  world.resize(1920);
+  world.step(1000);
+  const fresh = open({ width: 1920, seed: 4 });
+  fresh.step(1000);
+
+  const off = [];
+  world.things.forEach(function (t, i) {
+    const a = t.spot().x;
+    const b = fresh.things[i].spot().x;
+    if (Math.abs(a - b) > 1) off.push(t.title.replace('Подвинуть ', '') + ' ' + a + ' вместо ' + b);
+  });
+  if (off.length) fail('после расширения не на своих местах: ' + off.join(', '));
+  return 'все ' + world.things.length + ' предметов там же, где при загрузке на 1920';
+});
+
+// Окно стало ниже — повешенное под потолок не уходит за верхний край.
+check('окно стало ниже — доска не уходит за верх', function () {
+  const world = open({ seed: 2 });
+  world.step(500);
+  const board = world.things.filter(function (one) { return one.title === 'Перевесить доску'; })[0];
+  if (!board) fail('доски в обстановке нет');
+  const box = board.getBoundingClientRect();
+  board.fire('mousedown', event(box.left + 10, box.top + 5));
+  world.step(FRAME_MS);
+  world.win('mousemove', event(box.left + 60, 40));
+  world.step(FRAME_MS);
+  world.win('mousemove', event(box.left + 60, 30));
+  world.step(FRAME_MS);
+  world.win('mouseup', event(box.left + 60, 30));
+  world.step(500);
+  const high = board.getBoundingClientRect().top;
+
+  world.resize(world.wide(), 500);
+  world.step(500);
+  const after = board.getBoundingClientRect();
+  if (after.top < 0) fail('доска ушла за верх: её верх на ' + after.top + ' px в окне высотой 500');
+  return 'висела на ' + high + ' px от верха, в окне 500 px — на ' + after.top;
+});
+
+/* Тот же кадр не рисуется заново. До 5.81 оба существа стирались и рисовались
+   каждый кадр, хотя кадр меняется от силы несколько раз в секунду: девять
+   перерисовок из десяти повторяли прошлую. */
+check('существо не перерисовывается, когда кадр тот же', function () {
+  const world = open({ seed: 6 });
+  world.step(2000);
+  const c0 = world.otto.clears + world.olivia.clears;
+  const f0 = world.frames();
+  world.step(20000);
+  const frames = world.frames() - f0;
+  const redraws = (world.otto.clears + world.olivia.clears - c0) / 2;
+  if (redraws > frames * 0.5) fail('перерисовок ' + redraws + ' на ' + frames + ' кадров');
+  return 'перерисовок ' + Math.round(redraws) + ' на ' + frames + ' кадров (' + Math.round(redraws / frames * 100) + ' %)';
+});
+
+/* Компьютер нажимают и в тихом режиме, и пальцем. Холсты по умолчанию прозрачны
+   для щелчков, ловить их их включает курсор над предметом. До 5.81 курсор
+   слушали только после ветки тихого режима и только у точной мыши: в тихом
+   режиме мышью консоль не открывалась, на сенсорном экране палец шёл насквозь. */
+check('в тихом режиме компьютер открывается мышью и не приподнимается', function () {
+  const world = open({ seed: 5, lessMotion: true });
+  world.step(200);
+  const pc = world.things.filter(function (one) { return one.title === 'Включить компьютер'; })[0];
+  const box = pc.getBoundingClientRect();
+  world.win('mousemove', event(box.left + 10, box.top + 10));
+  if (pc.style.pointerEvents !== 'auto') fail('курсор над компьютером, а щелчки идут насквозь (' + pc.style.pointerEvents + ')');
+  if (pc.getBoundingClientRect().top !== box.top) fail('в тихом режиме компьютер приподнялся под курсором');
+  pc.fire('click', event(box.left + 10, box.top + 10));
+  if (world.opens() !== 1) fail('щелчок не открыл консоль');
+
+  // Мебель в тихом режиме не берут — и щелчков у страницы под собой она не отнимает.
+  const sofa = world.things.filter(function (one) { return one.title.indexOf('диван') >= 0; })[0];
+  const seat = sofa.getBoundingClientRect();
+  world.win('mousemove', event(seat.left + 10, seat.bottom - 10));
+  if (sofa.style.pointerEvents === 'auto') fail('в тихом режиме диван ловит щелчки, а взять его нельзя');
+  return 'щелчки ловит, консоль открыл, на месте; диван щелчков не отнимает';
+});
+
+check('пальцем компьютер открывается, касание мимо — насквозь', function () {
+  const world = open({ seed: 5, finePointer: false });
+  world.step(200);
+  const pc = world.things.filter(function (one) { return one.title === 'Включить компьютер'; })[0];
+  const box = pc.getBoundingClientRect();
+  const touch = function (x, y) {
+    return { clientX: x, clientY: y, pointerType: 'touch', preventDefault: function () {} };
+  };
+  world.win('pointerdown', touch(box.left + 10, box.top + 10));
+  if (pc.style.pointerEvents !== 'auto') fail('касание компьютера, а щелчки идут насквозь (' + pc.style.pointerEvents + ')');
+  pc.fire('click', event(box.left + 10, box.top + 10));
+  if (world.opens() !== 1) fail('касание не открыло консоль');
+  world.win('pointerdown', touch(5, 5));
+  if (pc.style.pointerEvents === 'auto') fail('коснулись мимо, а компьютер всё ещё ловит щелчки');
+  return 'касание открыло консоль, мимо — насквозь';
+});
+
+/* Тихий режим тоже слушает смену размера окна. До 5.81 слушатель стоял после
+   его ветки: сцена там неподвижна, но окно сузили — и мебель у правого края
+   вместе с табло оставалась за ним. */
+check('в тихом режиме окно сузили — всё на виду', function () {
+  const world = open({ width: 1600, seed: 5, lessMotion: true });
+  world.step(200);
+  world.resize(900);
+  world.step(200);
+
+  const out = [];
+  world.pets.concat(world.things).forEach(function (el) {
+    const box = el.getBoundingClientRect();
+    if (box.right > world.wide()) out.push(el.title + ' до ' + box.right);
+  });
+  if (out.length) fail('за правым краем окна 900 px: ' + out.join(', '));
+  return 'все ' + (world.pets.length + world.things.length) + ' холстов в окне 900 px';
+});
+
+/* Щелчок по сидящему на диване его не сгоняет. До 5.81 захват снимал с
+   сиденья сразу, и щелчок ронял его на пол как брошенного; с мёртвой зоной
+   щелчок звал бы подскок — а подскок с сиденья тоже кончается падением. */
+check('щелчок по сидящему не сгоняет его с дивана', function () {
+  const world = open({ seed: 3 });
+  const couch = world.things.filter(function (t) { return t.title.indexOf('диван') >= 0; })[0];
+  const top = couch.spot().y + NUM.SEAT_UP;
+
+  let sitter = null;
+  for (let i = 0; i < 240 && sitter === null; i++) {
+    world.step(1000, function (t, pets) {
+      if (sitter !== null) return;
+      pets.forEach(function (p, k) { if (p.y === top) sitter = k; });
+    });
+  }
+  if (sitter === null) fail('за четыре минуты никто не сел — проверять нечего');
+
+  const el = world.pets[sitter];
+  const box = el.getBoundingClientRect();
+  el.fire('mousedown', event(box.left + 20, box.bottom - 8));
+  world.step(FRAME_MS);
+  world.win('mouseup', event(box.left + 20, box.bottom - 8));
+  el.fire('click', event(box.left + 20, box.bottom - 8));
+
+  let low = top;
+  world.step(1500, function (t, pets) { low = Math.min(low, pets[sitter].y); });
+  if (low < top) fail('после щелчка слетел с сиденья: был на ' + top + ', опустился до ' + low);
+  return 'сидит на ' + top + ' px и после щелчка';
+});
+
+/* Летящего ловят нажатием, без сдвига руки: мёртвая зона щелчка (5.81) — для
+   стоящего. Иначе нажатие на падающего ничего бы не давало, пока рука не
+   дрогнет, и он выскальзывал бы из-под пальцев. */
+check('летящего ловят нажатием', function () {
+  const world = open({ seed: 3 });
+  world.step(2000);
+  const her = world.olivia;
+  const box = her.getBoundingClientRect();
+  toss(world, her, [{ x: box.left + 20, y: box.top - 60 }, { x: box.left + 24, y: box.top - 140 }]);
+  world.step(100);
+  const flying = look(her);
+  if (flying.y <= 0) fail('бросок не поднял её в воздух');
+
+  const at = her.getBoundingClientRect();
+  her.fire('mousedown', event(at.left + 20, at.bottom - 8));
+  world.step(300);
+  const held = look(her);
+  world.win('mouseup', event(at.left + 20, at.bottom - 8));
+  if (Math.abs(held.y - flying.y) > 1) {
+    fail('нажатие не поймало: за 0.3 с она ушла с ' + flying.y + ' на ' + held.y + ' px');
+  }
+
+  let landed = null;
+  world.step(6000, function (t, pets) { if (landed === null && pets[1].y === 0) landed = t; });
+  if (landed === null) fail('отпустили — и не приземлилась');
+  return 'поймана на ' + flying.y + ' px, отпущена — приземлилась';
+});
+
 /* --- кто проверяет проверку --------------------------------------------- */
 
 /* Зелёный прогон стоит ровно столько, сколько эта проверка ловит. Поэтому
@@ -1946,7 +2210,7 @@ const BREAKS = [
     name: 'предмет под курсором не приподнимается',
     red: 'предмет под курсором приподнимается',
     parts: [[
-      '      var lift = on && !me.torn ? PIXEL : 0;',
+      '      var lift = on && !me.torn && !still ? PIXEL : 0;',
       '      var lift = 0;',
     ]],
   },
@@ -2124,6 +2388,120 @@ const BREAKS = [
     parts: [[
       '      return Math.max(EDGE, document.documentElement.clientWidth - canvas.width - EDGE);',
       '      return document.documentElement.clientWidth;',
+    ]],
+  },
+  // --- 5.81 ---
+  {
+    name: 'дрожь руки поднимает существо',
+    red: 'щелчок с дрожью руки — не бросок',
+    parts: [[
+      '          Math.abs(event.clientY - me.grab.y0) < CLICK_SLOP) return;\n        lift();',
+      '          Math.abs(event.clientY - me.grab.y0) < 0) return;\n        lift();',
+    ]],
+  },
+  // Стоящего такой «бросок» с пола кончает в том же кадре — виден он на сидящем.
+  {
+    name: 'щелчок без сдвига считается броском',
+    red: 'щелчок по сидящему не сгоняет его с дивана',
+    parts: [[
+      '      if (!me.dragged) { me.grab = null; return; }',
+      '      void 0;',
+    ]],
+  },
+  {
+    name: 'правая кнопка берёт существо',
+    red: 'правой кнопкой существо не взять',
+    parts: [[
+      '      if (LESS_MOTION || me.hidden || event.button) return;',
+      '      if (LESS_MOTION || me.hidden) return;',
+    ]],
+  },
+  {
+    name: 'щелчок сгоняет сидящего подскоком',
+    red: 'щелчок по сидящему не сгоняет его с дивана',
+    parts: [[
+      "      if (me.state === 'sit' || me.state === 'climb') return;",
+      '      void 0;',
+    ]],
+  },
+  {
+    name: 'летящий выскальзывает из-под нажатия',
+    red: 'летящего ловят нажатием',
+    parts: [[
+      "      if (me.state === 'fly') lift();",
+      '      void 0;',
+    ]],
+  },
+  {
+    name: 'упёршийся в край шагает на месте',
+    red: 'окно сузили посреди прогулки — никто не шагает на месте у края',
+    parts: [[
+      '        } else if ((me.dir > 0 && me.x >= limit()) || (me.dir < 0 && me.x <= EDGE)) {',
+      '        } else if (false) {',
+    ]],
+  },
+  {
+    name: 'нетронутая мебель не переставляется на смене ширины',
+    red: 'окно расширили — нетронутая мебель на своих местах',
+    parts: [[
+      '    arrange();\n    // Окно могли',
+      '    things.forEach(function (t) { if (leans(t) && !t.moved) setSpot(t); });\n    // Окно могли',
+    ]],
+  },
+  {
+    name: 'висящее уходит за верх низкого окна',
+    red: 'окно стало ниже — доска не уходит за верх',
+    parts: [[
+      '      if (t.wall && t.y > top) t.y = top;',
+      '      void 0;',
+    ]],
+  },
+  {
+    name: 'существо рисуется каждый кадр',
+    red: 'существо не перерисовывается, когда кадр тот же',
+    parts: [[
+      '      if (shown && shown.body === body && shown.lap === lap && shown.swear === swear) return;',
+      '      void 0;',
+    ]],
+  },
+  {
+    name: 'в тихом режиме курсор не слушают',
+    red: 'в тихом режиме компьютер открывается мышью и не приподнимается',
+    parts: [[
+      '  if (FINE_POINTER) {\n    window.addEventListener(\'mousemove\', function (event) {\n      if (!LESS_MOTION) {',
+      '  if (FINE_POINTER && !LESS_MOTION) {\n    window.addEventListener(\'mousemove\', function (event) {\n      if (!LESS_MOTION) {',
+    ]],
+  },
+  {
+    name: 'в тихом режиме компьютер приподнимается',
+    red: 'в тихом режиме компьютер открывается мышью и не приподнимается',
+    parts: [[
+      '      var lift = on && !me.torn && !still ? PIXEL : 0;',
+      '      var lift = on && !me.torn ? PIXEL : 0;',
+    ]],
+  },
+  {
+    name: 'в тихом режиме мебель ловит щелчки',
+    red: 'в тихом режиме компьютер открывается мышью и не приподнимается',
+    parts: [[
+      '      if (still && !spec.click) return;',
+      '      void 0;',
+    ]],
+  },
+  {
+    name: 'касание пальцем не слушают',
+    red: 'пальцем компьютер открывается, касание мимо — насквозь',
+    parts: [[
+      "    if (event.pointerType === 'mouse') return;",
+      '    return;',
+    ]],
+  },
+  {
+    name: 'в тихом режиме смену окна не слушают',
+    red: 'в тихом режиме окно сузили — всё на виду',
+    parts: [[
+      "  window.addEventListener('resize', function () {\n    pets.forEach",
+      "  if (!LESS_MOTION) window.addEventListener('resize', function () {\n    pets.forEach",
     ]],
   },
 ];

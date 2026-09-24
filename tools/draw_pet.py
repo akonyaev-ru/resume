@@ -447,49 +447,6 @@ def board():
     return g
 
 
-# Настенные часы: круглый циферблат в раме, четыре метки и две стрелки.
-# Одиннадцать клеток на одиннадцать — меньше доски, как и положено часам рядом
-# с доской. Стрелки стоят на трёх часах: одна вверх, другая вправо. Косых
-# стрелок нет намеренно — линия в одну клетку наискось на этом размере
-# рассыпается в отдельные точки, это уже проверено на трубке и на кривых доски.
-CLOCK_W = 11
-CLOCK_H = 11
-CLOCK_C = 5                      # центр циферблата
-
-
-# Стрелка на этом размере читается только прямой, поэтому положений у неё
-# четыре: вверх, вправо, вниз, влево. Кадров, стало быть, шестнадцать — по
-# положению часовой и минутной. Часы показывают настоящее время, огрублённое до
-# четверти: минутная переставляется четырежды в час, часовая — четырежды за
-# половину суток.
-CLOCK_WAYS = ((0, -1), (1, 0), (0, 1), (-1, 0))     # вверх, вправо, вниз, влево
-
-
-def clock_hand(g, way, length):
-    dx, dy = CLOCK_WAYS[way]
-    for i in range(length + 1):
-        g[CLOCK_C + dy * i][CLOCK_C + dx * i] = 'h'
-
-
-def clock(hour_way=1, minute_way=0):
-    g = [['.'] * CLOCK_W for _ in range(CLOCK_H)]
-
-    # Круг без тригонометрии: сравниваем квадрат расстояния до центра.
-    for y in range(CLOCK_H):
-        for x in range(CLOCK_W):
-            far = (x - CLOCK_C) ** 2 + (y - CLOCK_C) ** 2
-            if far <= 27:
-                g[y][x] = 'f' if far > 17 else 'w'
-
-    for x, y in ((CLOCK_C, 1), (CLOCK_C, 9), (1, CLOCK_C), (9, CLOCK_C)):
-        g[y][x] = 'm'            # метки 12, 6, 9 и 3
-
-    clock_hand(g, hour_way, 2)       # часовая короче
-    clock_hand(g, minute_way, 3)     # минутная длиннее
-
-    return g
-
-
 # Фикус: деревце — тонкий ствол и густая крона. Силуэт нарочно не такой, как у
 # первого растения: то куст из отдельных листьев на стеблях, этот сплошная
 # крона. Свет падает слева, как у существ, поэтому правая треть кроны темнее.
@@ -682,11 +639,13 @@ SHELF_FRAME = shelf()
 PLANT_FRAME = plant()
 SOFA_FRAME = sofa()
 BOARD_FRAME = board()
-CLOCK_FRAMES = [clock(h, m) for h in range(4) for m in range(4)]
 FICUS_FRAME = ficus()
 
 HEAD = '  /* --- кадры ------------------------------------------------------------- */'
-TAIL = '  /* --- сборка кадров ----------------------------------------------------- */'
+# Конец рисованного блока — свой маркер, а не «сборка кадров» (5.81): между
+# ними в pet.js живут рукописные таблицы — торшер, принтер, камера, стол,
+# компьютер, шрифт и табло. Пока блок тянулся до «сборки», прогон их стирал.
+END = '  /* --- конец кадров из tools/draw_pet.py; ниже — рисованное руками ------- */'
 
 NOTE = (
     '  /* Точка — пусто, буква — цвет из палитры. Кадры тела одни на двоих:\n'
@@ -742,9 +701,6 @@ def art() -> str:
             + '  var SOFA = ' + grid_js(SOFA_FRAME) + ';\n\n'
             + '  // Доска на стене: полотно, две кривые и полочка.\n'
             + '  var BOARD = ' + grid_js(BOARD_FRAME) + ';\n\n'
-            + '  // Настенные часы: шестнадцать кадров — по четыре положения\n'
-            + '  // часовой и минутной стрелки. Кадр выбирается по времени.\n'
-            + '  var CLOCK = [\n    ' + table(CLOCK_FRAMES) + ',\n  ];\n\n'
             + '  // Фикус: деревце со стволом и густой кроной.\n'
             + '  var FICUS = ' + grid_js(FICUS_FRAME) + ';\n\n')
 
@@ -757,18 +713,17 @@ def main() -> int:
     path = Path(__file__).resolve().parent.parent / 'assets' / 'js' / 'pet.js'
     text = path.read_text(encoding='utf-8')
 
-    if HEAD not in text or TAIL not in text:
+    if HEAD not in text or END not in text:
         raise SystemExit('В pet.js не нашлось блока кадров — разметка файла изменилась')
 
     start = text.index(HEAD)
-    end = text.index(TAIL)
+    end = text.index(END)
     path.write_text(text[:start] + art() + text[end:], encoding='utf-8', newline='\n')
 
     print(f'{path.name}: кадры перерисованы, существо {BODY_W}x{H}, '
           f'предмет {PROP_W}x{H}, полка {SHELF_W}x{SHELF_H}, '
           f'растение {PLANT_W}x{PLANT_H}, диван {SOFA_W}x{SOFA_H}, '
-          f'фикус {FICUS_W}x{FICUS_H}, доска {BOARD_W}x{BOARD_H}, '
-          f'часы {CLOCK_W}x{CLOCK_H}')
+          f'фикус {FICUS_W}x{FICUS_H}, доска {BOARD_W}x{BOARD_H}')
     return 0
 
 

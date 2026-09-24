@@ -49,7 +49,6 @@
   var RUB = 0.72;            // и сколько от горизонтальной после того же удара
   var STICK = 130;           // ниже этой скорости отскок прекращается, px/с
   var THROW_MAX = 1200;      // предел скорости броска, px/с
-  var DRAG_PX = 3;           // с какого сдвига считаем, что это перетаскивание
   /* Мебель падает иначе, чем существо: строго вниз, тяжелее и с одним коротким
      отскоком. Тяжесть — своя гравитация, вдвое с лишним больше: с той же высоты
      полка падает за 0.4 с вместо 0.53. Отскок подрезан сверху, иначе с высоты в
@@ -955,6 +954,75 @@
         'fff........fff',
       ];
 
+  // Растение в кадке: четыре листа на стеблях. Кадр тоже один.
+  var PLANT = [
+        '....hll......',
+        '...hllll.....',
+        '....lll.hmm..',
+        '.hmm.s.hmmmm.',
+        'hmmmms..mmm..',
+        '.mmm..s.s....',
+        '....s.ss.hll.',
+        '.....ssshllll',
+        '......ssslll.',
+        '.rnnnnnnnnnr.',
+        '..wpppppppp..',
+        '..wpppppppp..',
+        '...ppppppp...',
+      ];
+
+  // Диван: низкий и широкий, с подушками и подлокотниками.
+  var SOFA = [
+        '.....hhhhhhhhhhhhhhhh.....',
+        '....fccccccccdcccccccf....',
+        '....fccccccccdcccccccf....',
+        '....fcccdccccdcccdcccf....',
+        'qqqqfccccccccdcccccccfhhh.',
+        'ppqpfccccccccdcccccccfdfff',
+        'ppqpfccccccccdcccccccfdfff',
+        'fpppffffffffffffffffffdfff',
+        'fpppcccccccccdccccccccdfff',
+        'fpfqcccccccccdccccccccdfff',
+        'ffffddddddddddddddddddffff',
+        '.kk....................kk.',
+      ];
+
+  // Доска на стене: полотно, две кривые и полочка.
+  var BOARD = [
+        'rrrrrrrrrrrrrrrr',
+        'rwwwwwwwwwwwwwwr',
+        'rwwwwwwwwwwggwwr',
+        'rwwwwggwwwwggwwr',
+        'rwwwwggwwwwggwwr',
+        'rwggwggwwwwggwwr',
+        'rwggwggweewggwwr',
+        'rwggwggweewggwwr',
+        'rrrrrrrrrrrrrrrr',
+        '.....rrrrrr.....',
+      ];
+
+  // Фикус: деревце со стволом и густой кроной.
+  var FICUS = [
+        '.....llmm....',
+        '....llllmmm..',
+        '..llmlllmmmm.',
+        '.lllllllmmm..',
+        '..llllmlmmmm.',
+        '..lmllllmmmm.',
+        '..lllllmmm...',
+        '....mmmmmm...',
+        '....mmmmm....',
+        '......bs.....',
+        '......bs.....',
+        '......bs.....',
+        '..rnnnnnnnr..',
+        '...wpppppp...',
+        '...wpppppp...',
+        '...ppppppp...',
+      ];
+
+  /* --- конец кадров из tools/draw_pet.py; ниже — рисованное руками ------- */
+
   // Торшер: абажур-трапеция со светлым нижним ободом, стойка в две клетки с
   // выключателем, круглое основание. Восемь клеток на семнадцать — выше
   // существа (13), ниже полки (18): по линейке масштаба. Стоит у дивана и даёт
@@ -1260,73 +1328,6 @@
   var TICKER_TEXT = tickerText(topRecord());
   var TICKER = tickerFrames(TICKER_TEXT);
 
-  // Растение в кадке: четыре листа на стеблях. Кадр тоже один.
-  var PLANT = [
-        '....hll......',
-        '...hllll.....',
-        '....lll.hmm..',
-        '.hmm.s.hmmmm.',
-        'hmmmms..mmm..',
-        '.mmm..s.s....',
-        '....s.ss.hll.',
-        '.....ssshllll',
-        '......ssslll.',
-        '.rnnnnnnnnnr.',
-        '..wpppppppp..',
-        '..wpppppppp..',
-        '...ppppppp...',
-      ];
-
-  // Диван: низкий и широкий, с подушками и подлокотниками.
-  var SOFA = [
-        '.....hhhhhhhhhhhhhhhh.....',
-        '....fccccccccdcccccccf....',
-        '....fccccccccdcccccccf....',
-        '....fcccdccccdcccdcccf....',
-        'qqqqfccccccccdcccccccfhhh.',
-        'ppqpfccccccccdcccccccfdfff',
-        'ppqpfccccccccdcccccccfdfff',
-        'fpppffffffffffffffffffdfff',
-        'fpppcccccccccdccccccccdfff',
-        'fpfqcccccccccdccccccccdfff',
-        'ffffddddddddddddddddddffff',
-        '.kk....................kk.',
-      ];
-
-  // Доска на стене: полотно, две кривые и полочка.
-  var BOARD = [
-        'rrrrrrrrrrrrrrrr',
-        'rwwwwwwwwwwwwwwr',
-        'rwwwwwwwwwwggwwr',
-        'rwwwwggwwwwggwwr',
-        'rwwwwggwwwwggwwr',
-        'rwggwggwwwwggwwr',
-        'rwggwggweewggwwr',
-        'rwggwggweewggwwr',
-        'rrrrrrrrrrrrrrrr',
-        '.....rrrrrr.....',
-      ];
-
-  // Фикус: деревце со стволом и густой кроной.
-  var FICUS = [
-        '.....llmm....',
-        '....llllmmm..',
-        '..llmlllmmmm.',
-        '.lllllllmmm..',
-        '..llllmlmmmm.',
-        '..lmllllmmmm.',
-        '..lllllmmm...',
-        '....mmmmmm...',
-        '....mmmmm....',
-        '......bs.....',
-        '......bs.....',
-        '......bs.....',
-        '..rnnnnnnnr..',
-        '...wpppppp...',
-        '...wpppppp...',
-        '...ppppppp...',
-      ];
-
   /* --- сборка кадров ----------------------------------------------------- */
 
   // Размеры берутся из самих кадров, чтобы не разъезжаться с рисовалкой.
@@ -1505,19 +1506,28 @@
        у Оливии — рисуется вторым слоем справа и всегда в одну сторону, пузырь
        ругани — третьим, поверх всего. Само
        существо стоит не у верхнего края холста, а ниже на высоту пузыря: холст
-       прижат к низу окна, и запас сверху ничего не сдвигает. */
+       прижат к низу окна, и запас сверху ничего не сдвигает.
+
+       Кадр, который уже на холсте, заново не рисуется: зовут эту функцию
+       каждый кадр, а меняется рисунок от силы несколько раз в секунду. До 5.81
+       девять перерисовок из десяти повторяли прошлую. */
+    var shown = null;
+
     function draw(name, index, lap) {
       var now = performance.now();
       var set = sprites[name][index % sprites[name].length];
+      var body = me.dir < 0 ? set.left : set.right;
+      var swear = me.swearUntil > now && me.state !== 'held' && me.state !== 'fly';
       var top = BUBBLE_H * PIXEL;
 
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      ctx.drawImage(me.dir < 0 ? set.left : set.right, 0, top);
-      if (lap) ctx.drawImage(lap, BODY_W * PIXEL, top);
+      lap = lap || null;
+      if (shown && shown.body === body && shown.lap === lap && shown.swear === swear) return;
+      shown = { body: body, lap: lap, swear: swear };
 
-      if (me.swearUntil > now && me.state !== 'held' && me.state !== 'fly') {
-        ctx.drawImage(bubble, BUBBLE_X * PIXEL, 0);
-      }
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(body, 0, top);
+      if (lap) ctx.drawImage(lap, BODY_W * PIXEL, top);
+      if (swear) ctx.drawImage(bubble, BUBBLE_X * PIXEL, 0);
     }
 
     function enter(state, now, until) {
@@ -1742,6 +1752,13 @@
         me.x += me.dir * (me.hurry ? RUN_SPEED : SPEED) * (step / 1000);
         if ((me.dir > 0 && me.x >= me.target) || (me.dir < 0 && me.x <= me.target)) {
           me.x = me.target;
+          arrive(now);
+        } else if ((me.dir > 0 && me.x >= limit()) || (me.dir < 0 && me.x <= EDGE)) {
+          // Цель за краем: окно сузили, пока он шёл. Дальше края не пройти —
+          // значит, пришёл. До 5.81 он упирался в край и шагал на месте до
+          // следующей встречи, до 25 с.
+          me.x = me.dir > 0 ? limit() : EDGE;
+          me.target = me.x;
           arrive(now);
         }
         me.x = Math.min(limit(), Math.max(EDGE, me.x));
@@ -2031,15 +2048,23 @@
     function poke() {
       // После броска браузер шлёт ещё и click — прыгать в ответ на него не надо.
       if (me.dragged) { me.dragged = false; return; }
+      // Сидящего на диване щелчок с места не сгоняет: сгонял до 5.81 — захват
+      // снимал с сиденья, и падение считалось броском.
+      if (me.state === 'sit' || me.state === 'climb') return;
 
+      me.pot = null;                // подпрыгнул — полив бросил
       enter('hop', performance.now(), performance.now() + HOP_MS);
       wake();
     }
 
     /* Каждого можно взять и потаскать. Пока держат, он висит на курсоре; при
-       отпускании получает скорость последнего движения руки и летит. */
+       отпускании получает скорость последнего движения руки и летит. Взятым он
+       становится, только когда рука ушла от места нажатия дальше CLICK_SLOP, —
+       как мебель (5.81). До того щелчок с дрожью руки в пиксель-другой
+       приподнимал его, ронял и считался броском: второй бежал утешать. Правая
+       и средняя кнопка не берут вовсе — щелчка для них браузер не шлёт. */
     function take(event) {
-      if (LESS_MOTION || me.hidden) return;
+      if (LESS_MOTION || me.hidden || event.button) return;
       event.preventDefault();
 
       var box = canvas.getBoundingClientRect();
@@ -2048,14 +2073,23 @@
         dy: event.clientY - box.top,
         x: event.clientX,
         y: event.clientY,
+        x0: event.clientX,             // откуда взяли: по этому отличаем щелчок
+        y0: event.clientY,
         at: performance.now(),
         vx: 0,
         vy: 0,
       };
+      me.dragged = false;
+      // Летящего ловят сразу: пока ждали бы сдвига руки, он падал бы дальше.
+      if (me.state === 'fly') lift();
+    }
 
+    // Рука ушла дальше CLICK_SLOP — это захват: с дивана и от кадки снимаем,
+    // встречу рвём, дальше он висит на курсоре.
+    function lift() {
+      me.dragged = true;
       me.seat = null;               // сняли с дивана — больше он там не сидит
       me.pot = null;                // и полив бросил
-      me.dragged = false;
       me.errand = null;             // на встречу его больше никто не ждёт
       canvas.classList.add('is-held');
       enter('held', performance.now());
@@ -2064,6 +2098,17 @@
 
     function haul(event) {
       if (!me.grab) return;
+
+      // Мёртвая зона: пока рука не ушла дальше CLICK_SLOP от места нажатия,
+      // это ещё щелчок, и существо стоит где стояло. Сдвиг — в любую сторону,
+      // не только вбок: поднятый строго вверх Отто когда-то числился
+      // нетронутым, щелчок после броска шёл за тычок, и прыжок обрывал полёт —
+      // Отто оставался висеть в воздухе.
+      if (!me.dragged) {
+        if (Math.abs(event.clientX - me.grab.x0) < CLICK_SLOP &&
+          Math.abs(event.clientY - me.grab.y0) < CLICK_SLOP) return;
+        lift();
+      }
 
       var now = performance.now();
       var dt = Math.max(16, now - me.grab.at) / 1000;
@@ -2076,22 +2121,16 @@
       me.grab.y = event.clientY;
       me.grab.at = now;
 
-      var x = clamp(event.clientX - me.grab.dx, EDGE, limit());
-      var y = clamp(window.innerHeight - (event.clientY - me.grab.dy) - canvas.height,
+      me.x = clamp(event.clientX - me.grab.dx, EDGE, limit());
+      me.y = clamp(window.innerHeight - (event.clientY - me.grab.dy) - canvas.height,
         0, ceiling());
-
-      // Считать перетаскиванием только сдвиг вбок было ошибкой: поднятый строго
-      // вверх Отто числился нетронутым, щелчок после броска шёл за тычок, и
-      // прыжок обрывал полёт — Отто оставался висеть в воздухе.
-      if (Math.abs(x - me.x) > DRAG_PX || Math.abs(y - me.y) > DRAG_PX) me.dragged = true;
-
-      me.x = x;
-      me.y = y;
       place();
     }
 
     function toss() {
       if (!me.grab) return;
+      // Руку не сдвинули — это был щелчок: ни броска, ни утешения, дальше click.
+      if (!me.dragged) { me.grab = null; return; }
 
       // Экранный Y растёт вниз, наш — вверх, поэтому вертикальная меняет знак.
       me.vx = clamp(me.grab.vx, -THROW_MAX, THROW_MAX);
@@ -2387,9 +2426,12 @@
     }
 
     // Холст прозрачен для щелчков, пока курсор не на самой полке: иначе она
-    // съедала бы нажатия по странице под собой.
-    function hover(x, y) {
+    // съедала бы нажатия по странице под собой. `still` — тихий режим или
+    // палец: мебель тогда не берут, щелчки ловит только то, что нажимают
+    // (компьютер), и ничто не приподнимается.
+    function hover(x, y, still) {
       if (me.grab || spec.fixed) return;   // неподвижное не берётся и не приподнимается
+      if (still && !spec.click) return;
 
       var box = canvas.getBoundingClientRect();
       var on = x > box.left && x < box.right && y > box.top && y < box.bottom;
@@ -2399,12 +2441,13 @@
       // Под курсором предмет приподнимается на клетку рисунка — его можно
       // взять. Ушёл курсор — опустился. Сорванной камере на проводе не до того.
       me.near = on;
-      var lift = on && !me.torn ? PIXEL : 0;
+      var lift = on && !me.torn && !still ? PIXEL : 0;
       if (lift !== me.lift) { me.lift = lift; place(); }
     }
 
     function take(event) {
       if (LESS_MOTION || me.hidden || spec.fixed) return;
+      if (event.button) return;        // правой и средней не берут: щелчка для них не будет
       event.preventDefault();
 
       var box = canvas.getBoundingClientRect();
@@ -2948,7 +2991,12 @@
     var base = thingNamed(t.on);
     if (base) return base.x;
 
-    return EDGE + (t.limit() - EDGE) * t.at;
+    /* Доля — от ширины окна вместе с ползунком прокрутки, а не от видимой:
+       при разборе страницы ползунка ещё нет, после сборки он есть, и доля от
+       видимой ширины ставила бы правую мебель при загрузке в одно место, а
+       после смены окна — на ширину ползунка левее. За видимый край предмет
+       всё равно не уйдёт: `setSpot` прижимает его к `limit()`. */
+    return EDGE + (window.innerWidth - t.canvas.width - 2 * EDGE) * t.at;
   }
 
   // Место плюс доводка: пара пикселей, которых не выразить долей окна.
@@ -2967,13 +3015,11 @@
 
   /* Расставить обстановку двумя проходами: сперва те, кто стоит сам по себе,
      потом висящие над промежутком между ними. Порядок обязателен: иначе проём
-     считается по нерасставленным предметам, и часы уезжают к краю. `depsOnly`
-     — для смены ширины: стоящие сами по себе остаются где стояли, а
-     привязанные к ним идут следом. Взятое рукой не трогаем никогда. */
-  function arrange(depsOnly) {
+     считается по нерасставленным предметам, и часы уезжают к краю. Взятое
+     рукой не трогаем никогда. */
+  function arrange() {
     things.forEach(function (t) {
-      if (t.moved || leans(t)) return;
-      if (!depsOnly) setSpot(t);
+      if (!t.moved && !leans(t)) setSpot(t);
     });
 
     things.forEach(function (t) {
@@ -2981,14 +3027,14 @@
     });
   }
 
-  arrange(false);
+  arrange();
 
   /* Планку меню строит app.js по DOMContentLoaded, а сцена собирается раньше,
      при разборе страницы: потолка в этот момент ещё нет, и висящее под ним
-     встало бы за планкой. Когда разметка готова — зависимое расставляется
-     заново, тем же путём, что и на смене размера окна. */
+     встало бы за планкой. Когда разметка готова — обстановка расставляется
+     заново, тем же путём, что и на смене окна. */
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', function () { arrange(true); });
+    document.addEventListener('DOMContentLoaded', function () { arrange(); });
   }
 
   // Новый рекорд из консоли (`console.js`): табло собирает кадры заново —
@@ -3021,6 +3067,55 @@
   olivia.x = clamp(otto.x + SPAN + 96, EDGE, olivia.limit());
   pets.forEach(function (p) { p.place(); });
 
+  /* Курсор и палец. Холсты прозрачны для щелчков, пока над предметом нет
+     курсора (`hover`). До 5.81 курсор слушали только после ветки тихого
+     режима и только у точной мыши: в тихом режиме компьютер мышью не
+     нажимался, на планшете палец шёл насквозь. Под пальцем курсора нет —
+     касание само говорит, куда пришлось, а щелчок браузер шлёт уже после
+     касания, на включившийся холст. Тихий режим и палец мебель не берут и не
+     приподнимают, а существа в них курсора не замечают. */
+  if (FINE_POINTER) {
+    window.addEventListener('mousemove', function (event) {
+      if (!LESS_MOTION) {
+        pets.forEach(function (p) {
+          p.watch(event.clientX, event.clientY);
+          p.hover(event.clientX, event.clientY);
+        });
+      }
+      things.forEach(function (t) { t.hover(event.clientX, event.clientY, LESS_MOTION); });
+    }, { passive: true });
+  }
+
+  window.addEventListener('pointerdown', function (event) {
+    if (event.pointerType === 'mouse') return;
+    things.forEach(function (t) { t.hover(event.clientX, event.clientY, true); });
+  }, { passive: true });
+
+  /* Смена размера окна. Нетронутая мебель встаёт туда же, где стояла бы при
+     загрузке на этой ширине: до 5.81 переставлялось только привязанное к
+     соседям, и на 1280 → 1920 торшер, диван и растение оказывались посреди
+     текста. Тронутое рукой остаётся где было, только не за краем; окно стало
+     ниже — повешенное опускается, чтобы не уйти за верх. Слушается и в тихом
+     режиме: сцена там стоит, но за край уходить ей тоже нельзя. */
+  window.addEventListener('resize', function () {
+    pets.forEach(function (p) {
+      p.checkHidden();
+      p.x = Math.min(p.limit(), p.x);
+      p.place();
+    });
+    things.forEach(function (t) {
+      t.checkHidden();
+      t.x = Math.min(t.limit(), t.x);
+      var top = Math.max(0, window.innerHeight - t.canvas.height);
+      if (t.wall && t.y > top) t.y = top;
+      t.place();
+    });
+    arrange();
+    // Окно могли растянуть с телефонной ширины обратно — тогда они появляются
+    // снова, и их надо разбудить.
+    wake();
+  });
+
   if (LESS_MOTION) {
     pets.forEach(function (p) { p.rest(true); });
     return;
@@ -3038,34 +3133,6 @@
   window.addEventListener('mouseup', function () {
     pets.forEach(function (p) { p.toss(); });
     things.forEach(function (t) { t.drop(); });
-  });
-
-  if (FINE_POINTER) {
-    window.addEventListener('mousemove', function (event) {
-      pets.forEach(function (p) {
-        p.watch(event.clientX, event.clientY);
-        p.hover(event.clientX, event.clientY);
-      });
-      things.forEach(function (t) { t.hover(event.clientX, event.clientY); });
-    }, { passive: true });
-  }
-
-  window.addEventListener('resize', function () {
-    pets.forEach(function (p) {
-      p.checkHidden();
-      p.x = Math.min(p.limit(), p.x);
-      p.place();
-    });
-    things.forEach(function (t) {
-      t.checkHidden();
-      t.x = Math.min(t.limit(), t.x);
-      t.place();
-    });
-    // Мебель при смене ширины разъезжается — привязанные к ней идут следом.
-    arrange(true);
-    // Окно могли растянуть с телефонной ширины обратно — тогда они появляются
-    // снова, и их надо разбудить.
-    wake();
   });
 
   // Во вкладке в фоне кадры не считаются: вернулись — существа просыпаются.
