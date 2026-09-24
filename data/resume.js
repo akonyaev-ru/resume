@@ -24,6 +24,8 @@ window.RESUME = {
       education: { ru: 'Образование', en: 'Education' },
       contact: { ru: 'Контакты', en: 'Contact' },
     },
+    // Имя меню для экранного диктора (до 5.77 он читал «[object Object]»).
+    navLabel: { ru: 'Разделы страницы', en: 'Page sections' },
     eyebrow: { ru: 'Резюме · обновлено', en: 'CV · updated' },
     factCity: { ru: 'Город', en: 'Based in' },
     factFormat: { ru: 'Формат', en: 'Format' },
@@ -34,7 +36,11 @@ window.RESUME = {
       ru: 'Ключевые сведения, прокручиваемая полоса',
       en: 'Key facts, scrollable strip',
     },
-    years: { ru: 'лет', en: 'years old' },
+    // Формы числа — для 1, 2–4 и 5+ (в английском две последние совпадают).
+    // Сроки работы и общий стаж страница считает из дат `start` / `end`.
+    ageForms: { ru: ['год', 'года', 'лет'], en: ['year old', 'years old', 'years old'] },
+    yearForms: { ru: ['год', 'года', 'лет'], en: ['year', 'years', 'years'] },
+    monthForms: { ru: ['месяц', 'месяца', 'месяцев'], en: ['month', 'months', 'months'] },
     resultsTitle: { ru: 'Что изменилось после внедрений', en: 'What changed after the rollouts' },
     resultsNote: {
       ru: 'За полтора года на текущем месте работы.',
@@ -96,8 +102,7 @@ window.RESUME = {
     age: 25,
     city: { ru: 'Москва', en: 'Moscow' },
     github: 'akonyaev-ru',
-    updated: { ru: '16 сентября 2026', en: '16 September 2026' },
-    experienceTotal: { ru: '3 года 3 месяца', en: '3 years 3 months' },
+    updated: { ru: '24 сентября 2026', en: '24 September 2026' },
     employment: { ru: 'полная занятость', en: 'full-time' },
     schedule: { ru: 'Удаленно или гибрид', en: 'Remote or hybrid' },
     relocation: {
@@ -152,8 +157,9 @@ window.RESUME = {
     },
   ],
 
-  // start / end — для шкалы опыта, в формате ГГГГ-ММ. end: null означает
-  // «по настоящее время».
+  // start / end — в формате ГГГГ-ММ, end: null означает «по настоящее время».
+  // Из них страница считает шкалу опыта, срок каждого места и общий стаж —
+  // вписывать «1 год 7 месяцев» руками не нужно, такие строки устаревали.
   experience: [
     {
       company: { ru: 'Айковер ПРО', en: 'iCover PRO' },
@@ -162,7 +168,6 @@ window.RESUME = {
         en: 'Legal counsel for automation and artificial intelligence',
       },
       period: { ru: 'Март 2025 — настоящее время', en: 'March 2025 — present' },
-      duration: { ru: '1 год 7 месяцев', en: '1 year 7 months' },
       start: '2025-03',
       end: null,
       current: true,
@@ -209,7 +214,6 @@ window.RESUME = {
       company: { ru: 'Фабрика Вентиляции ГалВент', en: 'GalVent Ventilation Factory' },
       role: { ru: 'Юрисконсульт', en: 'Legal counsel' },
       period: { ru: 'Июнь 2024 — Декабрь 2024', en: 'June 2024 — December 2024' },
-      duration: { ru: '7 месяцев', en: '7 months' },
       start: '2024-06',
       end: '2024-12',
       bullets: [
@@ -237,7 +241,6 @@ window.RESUME = {
       company: { ru: 'Дом-Профи', en: 'Dom-Profi' },
       role: { ru: 'Юрист', en: 'Lawyer' },
       period: { ru: 'Январь 2024 — Май 2024', en: 'January 2024 — May 2024' },
-      duration: { ru: '5 месяцев', en: '5 months' },
       start: '2024-01',
       end: '2024-05',
       bullets: [
@@ -262,7 +265,6 @@ window.RESUME = {
         en: 'Consultant on safe AI use',
       },
       period: { ru: 'Июль 2023 — настоящее время', en: 'July 2023 — present' },
-      duration: { ru: '3 года 3 месяца', en: '3 years 3 months' },
       start: '2023-07',
       end: null,
       current: true,

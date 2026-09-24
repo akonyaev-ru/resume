@@ -145,7 +145,7 @@
     return el('header', { class: 'topbar' }, [
       el('div', { class: 'wrap topbar__inner' }, [
         el('span', { class: 'topbar__name', text: t(R.person.name) }),
-        el('nav', { class: 'topbar__nav', 'aria-label': u('nav').experience },
+        el('nav', { class: 'topbar__nav', 'aria-label': u('navLabel') },
           NAV.map(function (id) {
             return el('a', { href: '#' + id, text: t(R.ui.nav[id]), 'data-nav': id });
           })),
@@ -178,13 +178,19 @@
   /* Термины из roleAccent подсвечиваются акцентом прямо в заголовке. */
   /* Перенос строки в тексте роли (символ новой строки в данных) становится
      <br>: владелец задаёт, где именно рвётся заголовок. Акценты ищутся внутри
-     каждой строки по очереди. */
+     каждой строки по очереди. Перед <br> — пробел: уже 600 px перенос
+     прячется стилями, и без пробела строки слипались в «LegalOPSи» и
+     «AI-agentimplementation» (второе ещё и выталкивало страницу вбок). На
+     широком экране пробел в конце строки не виден. */
   function roleNode(text, accents) {
     var host = el('h1', { class: 'hero__role' });
     var pending = (accents || []).slice();
 
     text.split('\n').forEach(function (line, index) {
-      if (index) host.appendChild(el('br'));
+      if (index) {
+        host.appendChild(document.createTextNode(' '));
+        host.appendChild(el('br'));
+      }
       var rest = line;
       while (pending.length) {
         var at = rest.indexOf(pending[0]);
@@ -244,10 +250,10 @@
     var p = R.person;
 
     var rows = [
-      [u('factCity'), t(p.city) + ' · ' + p.age + ' ' + u('years')],
+      [u('factCity'), t(p.city) + ' · ' + p.age + ' ' + plural(p.age, u('ageForms'))],
       [u('factFormat'), t(p.schedule) + ' · ' + t(p.employment)],
       [u('factRelocation'), t(p.relocation)],
-      [u('factExperience'), t(p.experienceTotal)],
+      [u('factExperience'), durationText(totalMonths())],
     ];
 
     /* Две одинаковые группы подряд: пока первая уходит влево, вторая занимает
@@ -419,6 +425,10 @@
 
   /* --- результаты -------------------------------------------------------- */
 
+  /* В разметке сразу итоговое число: счёт от нуля (`countTo`) начинается,
+     когда блок попал в кадр, а до того показатели читает всё, что в кадр не
+     смотрит, — печать до прокрутки, снимок, читалка. С нулём там выходило
+     «−0 %». Пока блок не в кадре, он прозрачен, так что итог не мелькает. */
   function buildMetrics() {
     var grid = el('div', { class: 'metrics enter' }, R.metrics.map(function (m) {
       return el('div', { class: 'metric' }, [
@@ -427,7 +437,7 @@
           'data-value': String(m.value),
           'data-prefix': m.prefix || '',
           'data-suffix': m.suffix || '',
-          text: (m.prefix || '') + '0' + (m.suffix || ''),
+          text: (m.prefix || '') + m.value + (m.suffix || ''),
         }),
         el('span', { class: 'metric__caption', text: t(m.caption) }),
       ]);
@@ -457,12 +467,46 @@
     return Number(parts[0]) * 12 + Number(parts[1]) - 1;
   }
 
+  function nowMonth() {
+    var today = new Date();
+    return today.getFullYear() * 12 + today.getMonth();
+  }
+
+  /* Сроки считаются из дат, как и шкала: вписанные руками «1 год 7 месяцев»
+     устаревали каждый месяц, пока отрезок на шкале рос сам. Месяцы — вместе
+     с первым и последним, как считает hh: март 2025 — сентябрь 2026 = 19. */
+  function jobMonths(job) {
+    return (job.end ? months(job.end) : nowMonth()) - months(job.start) + 1;
+  }
+
+  // Общий стаж — месяцы, в которые была хоть одна работа: параллельные места
+  // (ИП рядом с основным) дважды не считаются.
+  function totalMonths() {
+    var seen = {};
+    var count = 0;
+    R.experience.forEach(function (job) {
+      var last = job.end ? months(job.end) : nowMonth();
+      for (var m = months(job.start); m <= last; m += 1) {
+        if (!seen[m]) { seen[m] = true; count += 1; }
+      }
+    });
+    return count;
+  }
+
+  function durationText(total) {
+    var years = Math.floor(total / 12);
+    var rest = total % 12;
+    var parts = [];
+    if (years) parts.push(years + ' ' + plural(years, u('yearForms')));
+    if (rest || !years) parts.push(rest + ' ' + plural(rest, u('monthForms')));
+    return parts.join(' ');
+  }
+
   /* Шкала: три места работы отрезками на общей оси от первого месяца до
      сегодняшнего. Пропуски между работами показаны честно — они и есть
      промежутки на шкале. */
   function buildTimeline() {
-    var today = new Date();
-    var now = today.getFullYear() * 12 + today.getMonth();
+    var now = nowMonth();
 
     // Записи с `parallel` — практика, идущая одновременно с основными местами:
     // на одной дорожке такой отрезок лёг бы поверх остальных во всю ширину.
@@ -510,7 +554,7 @@
         style: 'left:' + left.toFixed(2) + '%',
       }, [
         el('span', { class: 'timeline__company', text: t(job.company) }),
-        el('span', { class: 'timeline__span', text: t(job.duration) }),
+        el('span', { class: 'timeline__span', text: durationText(jobMonths(job)) }),
       ]));
     });
 
@@ -522,7 +566,7 @@
       return el('article', { class: 'job enter', id: 'job-' + index }, [
         el('div', { class: 'job__meta' }, [
           el('span', { class: 'job__period', text: t(job.period) }),
-          el('span', { class: 'job__duration', text: t(job.duration) }),
+          el('span', { class: 'job__duration', text: durationText(jobMonths(job)) }),
           job.current ? el('span', { class: 'job__now', text: u('now') }) : null,
         ]),
         el('div', {}, [
@@ -1484,23 +1528,60 @@
 
     $$('.enter').forEach(function (n) { appear.observe(n); });
 
-    var spy = new IntersectionObserver(function (entries) {
-      entries.forEach(function (entry) {
-        if (!entry.isIntersecting) return;
-        $$('[data-nav]').forEach(function (a) {
-          var active = a.getAttribute('data-nav') === entry.target.id;
-          a.classList.toggle('is-active', active);
-          if (active) revealNav(a);
-        });
+    observers.push(appear);
+  }
+
+  /* --- отметка раздела в меню -------------------------------------------- */
+
+  /* Горит последний раздел меню, чей верх поднялся выше линии чтения — 45 %
+     высоты окна. Пока линия не дошла до первого раздела (первый экран), не
+     горит ничего; у самого низа прокрутки — последний пункт: на высоком окне
+     начало «Контактов» до линии не доходит вовсе. Прежний наблюдатель зажигал
+     раздел при входе в полосу и не гасил при выходе, и после возврата наверх
+     горел последний из пройденных. */
+  var SPY_LINE = 0.45;
+  var spyBound = false;
+  var spyQueued = false;
+  var spyCurrent = null;
+
+  function spy() {
+    spyQueued = false;
+    var current = null;
+    var bottom = window.innerHeight + window.pageYOffset >=
+      document.documentElement.scrollHeight - 2;
+
+    if (bottom) {
+      current = NAV[NAV.length - 1];
+    } else {
+      var line = window.innerHeight * SPY_LINE;
+      NAV.forEach(function (id) {
+        var node = document.getElementById(id);
+        if (node && node.getBoundingClientRect().top <= line) current = id;
       });
-    }, { rootMargin: '-45% 0px -50% 0px' });
+    }
 
-    NAV.forEach(function (id) {
-      var node = document.getElementById(id);
-      if (node) spy.observe(node);
+    var links = $$('[data-nav]');
+    links.forEach(function (a) {
+      var active = a.getAttribute('data-nav') === current;
+      a.classList.toggle('is-active', active);
+      if (active && current !== spyCurrent) revealNav(a);
     });
+    spyCurrent = current;
+  }
 
-    observers.push(appear, spy);
+  function queueSpy() {
+    if (spyQueued) return;
+    spyQueued = true;
+    window.requestAnimationFrame(spy);
+  }
+
+  function initSpy() {
+    spyCurrent = null;   // после перерисовки ссылки новые — ленту подвести заново
+    spy();
+    if (spyBound) return;
+    spyBound = true;
+    window.addEventListener('scroll', queueSpy, { passive: true });
+    window.addEventListener('resize', queueSpy);
   }
 
   /* В узкой шапке меню прокручивается вбок: без этого отметка текущего раздела
@@ -1571,6 +1652,7 @@
     app.appendChild(buildFooter());
 
     initObservers();
+    initSpy();
     initFacts();
     initTitleDecode();
     initGlyphPortrait();

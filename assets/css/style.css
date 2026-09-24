@@ -559,10 +559,11 @@ a:not(.btn):hover { color: var(--text); }
   color: var(--accent);
 }
 
-/* «AI-агентов» не ломается по дефису: иначе акцентный термин рвётся пополам
-   между строками. Только для русской версии: в английской акцент из двух слов,
-   и запрет переноса вытолкнул бы его за край на узком экране. */
-.hero__role:lang(ru) em { white-space: nowrap; }
+/* Акцентный термин с дефисом не ломается: иначе «AI-агентов» и «AI-agent»
+   рвутся пополам между строками. До 5.77 английскую версию исключали — там
+   акцент слипался со следующим словом в «AI-agentimplementation» (см.
+   roleNode), и запрет переноса вытолкнул бы его за край узкого экрана. */
+.hero__role em { white-space: nowrap; }
 
 .hero__lede {
   font-size: var(--step-1);
@@ -1156,9 +1157,11 @@ a:not(.btn):hover { color: var(--text); }
 
 /* --- Проекты ------------------------------------------------------------ */
 
+/* Дорожка не у́же 19rem, но и не шире колонки: на 320 px колонка 280, и
+   19rem (304) выталкивали карточки за край окна (регресс, найден 2026-09-24). */
 .projects {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(19rem, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(19rem, 100%), 1fr));
   gap: 1.25rem;
 }
 
@@ -1296,6 +1299,7 @@ a:not(.btn):hover { color: var(--text); }
 .term__body {
   padding: 1rem 1.1rem 1.1rem;
   display: grid;
+  grid-template-columns: minmax(0, 1fr);   /* вывод не шире окна, даже с длинной плашкой */
   gap: var(--block-gap);
 }
 
@@ -1339,16 +1343,20 @@ a:not(.btn):hover { color: var(--text); }
 .term__block.is-off .term__out { display: none; }
 .term__block.is-off .cmd { opacity: 0.5; }
 
+/* Высота 32 px — минимум, а не жёсткая: самая длинная плашка («Защита
+   персональных данных (152-ФЗ)», «Business requirements and specifications»)
+   шире колонки на 320 px и переносится внутри себя, а не срезается краем окна.
+   В одну строку плашка по-прежнему ровно 32 px: текст с полями ниже минимума. */
 .tblock {
   box-sizing: border-box;
-  height: 32px;
-  padding-inline: 10px;
+  min-height: 32px;
+  max-width: 100%;
+  padding: 3px 10px;
   display: inline-flex;
   align-items: center;
   font-family: var(--font-body);
   font-size: var(--step--1);
   color: var(--text-dim);
-  white-space: nowrap;
   background:
     linear-gradient(0deg, color-mix(in srgb, var(--g) 10%, transparent), color-mix(in srgb, var(--g) 10%, transparent)),
     rgba(15, 19, 28, 0.62);
@@ -1420,7 +1428,7 @@ a:not(.btn):hover { color: var(--text); }
 
 .two-col {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(19rem, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(19rem, 100%), 1fr));
   gap: clamp(1.5rem, 4vw, 3rem);
 }
 

@@ -1384,6 +1384,42 @@
     return out;
   }
 
+  /* --- подписи на языке страницы ----------------------------------------- */
+
+  /* Подсказка при наведении и имя кнопки — парой { ru, en }, как в данных
+     резюме. Язык берётся из `lang` страницы, а его app.js ставит уже после
+     того, как сцена собрана (по DOMContentLoaded), и меняет на месте в
+     одиночной копии, — поэтому подписи переписываются при каждой смене `lang`.
+     До 5.77 на английской странице все подписи сцены были русскими. */
+  var named = [];
+
+  function pageLang() {
+    var root = document.documentElement;
+    return root && String(root.lang || '').slice(0, 2) === 'en' ? 'en' : 'ru';
+  }
+
+  function say(text) {
+    return typeof text === 'string' ? text : (text[pageLang()] || text.ru);
+  }
+
+  function nameCanvas(canvas, title, button) {
+    named.push({ canvas: canvas, title: title, button: button });
+    canvas.title = say(title);
+    if (button) canvas.setAttribute('aria-label', say(title));
+  }
+
+  function renameAll() {
+    named.forEach(function (one) {
+      one.canvas.title = say(one.title);
+      if (one.button) one.canvas.setAttribute('aria-label', say(one.title));
+    });
+  }
+
+  if (window.MutationObserver && document.documentElement) {
+    new window.MutationObserver(renameAll)
+      .observe(document.documentElement, { attributes: true, attributeFilter: ['lang'] });
+  }
+
   /* --- существо ----------------------------------------------------------- */
 
   /* Оба умеют одно и то же, поэтому существо — не набор переменных модуля, как
@@ -1417,7 +1453,7 @@
     canvas.width = (BODY_W + PROP_W) * PIXEL;
     canvas.height = (ART_H + BUBBLE_H) * PIXEL;
     canvas.setAttribute('aria-hidden', 'true');
-    canvas.title = spec.title;
+    nameCanvas(canvas, spec.title, false);
 
     var ctx = canvas.getContext('2d');
 
@@ -2153,7 +2189,7 @@
     canvas.width = art.width;
     canvas.height = art.height;
     canvas.setAttribute('aria-hidden', 'true');
-    canvas.title = spec.title;
+    nameCanvas(canvas, spec.title, !!spec.click);
 
     /* Предмет, который нажимают (компьютер), — кнопка и для клавиатуры: в
        обходе по Tab, с именем, открывается Enter и пробелом. Мышью: нажал и
@@ -2163,7 +2199,6 @@
     if (spec.click) {
       canvas.removeAttribute('aria-hidden');
       canvas.setAttribute('role', 'button');
-      canvas.setAttribute('aria-label', spec.title);
       canvas.tabIndex = 0;
       canvas.addEventListener('click', function () {
         if (!me.dragged) spec.click(me);
@@ -2594,11 +2629,11 @@
 
   // Подпись всплывает при наведении — у каждого своя, с именем.
   var otto = makePet({
-    title: 'Погладить Отто', skin: SKIN.otto, aside: -1,
+    title: { ru: 'Погладить Отто', en: 'Pet Otto' }, skin: SKIN.otto, aside: -1,
     prop: { open: LAPTOP, busy: LAPTOP_TYPE },
   });
   var olivia = makePet({
-    title: 'Погладить Оливию', skin: SKIN.olivia, aside: 1,
+    title: { ru: 'Погладить Оливию', en: 'Pet Olivia' }, skin: SKIN.olivia, aside: 1,
     prop: { open: MUG, busy: MUG_STEAM },
   });
   var pets = [otto, olivia];
@@ -2617,21 +2652,22 @@
     // Доска висит слева над полкой, чуть правее и ниже её — так владелец её и
     // утвердил. К текстовой колонке её привязывали 2026-09-05 и вернули
     // обратно: на широком экране от этого она уезжала на треть окна вправо.
-    { name: 'board', art: BOARD, skin: SKIN.board, title: 'Перевесить доску',
+    { name: 'board', art: BOARD, skin: SKIN.board, title: { ru: 'Перевесить доску', en: 'Move the board' },
       at: 0.02, wall: 64, shift: -8 },
-    { name: 'shelf', art: SHELF, skin: SKIN.shelf, title: 'Подвинуть полку', at: 0 },
-    { name: 'ficus', art: FICUS, skin: SKIN.ficus, title: 'Подвинуть фикус', at: 0.045 },
+    { name: 'shelf', art: SHELF, skin: SKIN.shelf, title: { ru: 'Подвинуть полку', en: 'Move the shelf' }, at: 0 },
+    { name: 'ficus', art: FICUS, skin: SKIN.ficus, title: { ru: 'Подвинуть фикус', en: 'Move the ficus' }, at: 0.045 },
     // Принтер и торшер держатся за соседа (`after`/`before`), а не за долю
     // полосы: доля на широком экране растаскивает пару — фикус и так отходит
     // от полки с 13 px на 1280 до 42 на 1920, — а «рядом с диваном» и есть
     // смысл предмета. Тот же приём, что у часов над проёмом.
-    { name: 'printer', art: PRINTER, skin: SKIN.printer, title: 'Подвинуть принтер',
+    { name: 'printer', art: PRINTER, skin: SKIN.printer, title: { ru: 'Подвинуть принтер', en: 'Move the printer' },
       after: 'ficus', shift: 9 },
     // Рабочее место: стол за принтером, компьютер на столе (`on`) — по
     // горизонтали его левый край, по вертикали его верх. Экран живёт кадрами.
-    { name: 'desk', art: DESK, skin: SKIN.desk, title: 'Подвинуть стол',
+    { name: 'desk', art: DESK, skin: SKIN.desk, title: { ru: 'Подвинуть стол', en: 'Move the desk' },
       after: 'printer', shift: 9 },
-    { name: 'computer', art: COMPUTER, skin: SKIN.computer, title: 'Включить компьютер',
+    { name: 'computer', art: COMPUTER, skin: SKIN.computer,
+      title: { ru: 'Включить компьютер', en: 'Turn on the computer' },
       on: 'desk', face: computerFace, every: COMPUTER_MS, rest: 20,
       // Щелчок открывает окно-консоль из console.js; без него — просто мебель.
       // Пока консоль не открывали, компьютер зовёт нажать — подпрыгивает.
@@ -2640,22 +2676,22 @@
         me.used = true;                  // консоль открыли — зов больше не нужен
         if (window.OfficeConsole) window.OfficeConsole.open(me.canvas);
       } },
-    { name: 'lamp', art: LAMP, skin: SKIN.lamp, title: 'Подвинуть торшер',
+    { name: 'lamp', art: LAMP, skin: SKIN.lamp, title: { ru: 'Подвинуть торшер', en: 'Move the floor lamp' },
       before: 'sofa', shift: -6 },
-    { name: 'sofa', art: SOFA, skin: SKIN.sofa, title: 'Подвинуть диван', at: 0.92 },
-    { name: 'plant', art: PLANT, skin: SKIN.plant, title: 'Подвинуть растение', at: 0.97 },
+    { name: 'sofa', art: SOFA, skin: SKIN.sofa, title: { ru: 'Подвинуть диван', en: 'Move the sofa' }, at: 0.92 },
+    { name: 'plant', art: PLANT, skin: SKIN.plant, title: { ru: 'Подвинуть растение', en: 'Move the plant' }, at: 0.97 },
     /* Потолок — нижняя кромка липкой планки меню. Под ней в левом поле, где
        нет текста, — камера. Как и висящее на стене, без гравитации и спрятана
        на узком окне. Табличка EXIT в правом поле побывала и убрана в тот же
        день: владельцу не понравилась ни в тексте, ни с человечком. */
-    { name: 'camera', art: CAMERA, skin: SKIN.camera, title: 'Перевесить камеру',
+    { name: 'camera', art: CAMERA, skin: SKIN.camera, title: { ru: 'Перевесить камеру', en: 'Move the camera' },
       at: 0, ceiling: true, face: cameraFace, every: 120, rest: 2, cable: true },
     // Табло рекорда: бегущая строка на стене, где висели часы (сняты в 5.34
     // решением владельца), — над промежутком между диваном и растением, чуть
     // выше и чуть левее прежних часов. Неподвижно и без видимых креплений —
     // так решил владелец: провод (5.25) и держатели (5.26) побывали и сняты,
     // «верни как было, но передвижение не трогай».
-    { name: 'ticker', art: TICKER, skin: SKIN.ticker, dots: 'a', title: 'Табло рекорда',
+    { name: 'ticker', art: TICKER, skin: SKIN.ticker, dots: 'a', title: { ru: 'Табло рекорда', en: 'High score board' },
       at: 0.97, wall: 67, between: ['sofa', 'plant'], shift: -16, face: tickerFace,
       every: TICK_MS, rest: 0, fixed: true },
   ].map(function (spec) {
