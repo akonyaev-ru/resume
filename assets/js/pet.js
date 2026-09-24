@@ -2195,19 +2195,20 @@
        обходе по Tab, с именем, открывается Enter и пробелом. Мышью: нажал и
        отпустил, не сдвинув руку больше CLICK_SLOP, — щелчок; сдвинул — обычный
        захват, и тогда браузерный click, который приходит после mouseup,
-       пропускается. */
+       пропускается. Вторым аргументом `spec.click` узнаёт, чем нажали:
+       консоль по нему решает, показывать ли кольцо фокуса, когда вернёт его. */
     if (spec.click) {
       canvas.removeAttribute('aria-hidden');
       canvas.setAttribute('role', 'button');
       canvas.tabIndex = 0;
       canvas.addEventListener('click', function () {
-        if (!me.dragged) spec.click(me);
+        if (!me.dragged) spec.click(me, 'pointer');
         me.dragged = false;
       });
       canvas.addEventListener('keydown', function (event) {
         if (event.key !== 'Enter' && event.key !== ' ') return;
         event.preventDefault();
-        spec.click(me);
+        spec.click(me, 'key');
       });
     }
 
@@ -2671,10 +2672,12 @@
       on: 'desk', face: computerFace, every: COMPUTER_MS, rest: 20,
       // Щелчок открывает окно-консоль из console.js; без него — просто мебель.
       // Пока консоль не открывали, компьютер зовёт нажать — подпрыгивает.
+      // Открыли мышью — консоль, закрываясь, вернёт фокус без кольца (жалоба
+      // владельца 2026-09-24: компьютер оставался обведённым после тетриса).
       hops: true,
-      click: function (me) {
+      click: function (me, how) {
         me.used = true;                  // консоль открыли — зов больше не нужен
-        if (window.OfficeConsole) window.OfficeConsole.open(me.canvas);
+        if (window.OfficeConsole) window.OfficeConsole.open(me.canvas, { quiet: how === 'pointer' });
       } },
     { name: 'lamp', art: LAMP, skin: SKIN.lamp, title: { ru: 'Подвинуть торшер', en: 'Move the floor lamp' },
       before: 'sofa', shift: -6 },

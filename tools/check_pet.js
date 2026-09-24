@@ -2026,8 +2026,8 @@ const BREAKS = [
     name: 'щелчок не отличают от перетаскивания',
     red: 'щелчок по компьютеру открывает консоль, перетаскивание — нет',
     parts: [[
-      '        if (!me.dragged) spec.click(me);',
-      '        spec.click(me);',
+      "        if (!me.dragged) spec.click(me, 'pointer');",
+      "        spec.click(me, 'pointer');",
     ]],
   },
   {

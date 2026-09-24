@@ -899,6 +899,7 @@
   var ui = null;        // разметка окна, строится один раз
   var game = null;
   var opener = null;    // куда вернуть фокус
+  var quietReturn = false;  // открыли мышью — фокус вернуть без кольца
   var timers = [];
   var raf = 0;
   var lastFrame = 0;
@@ -2041,10 +2042,11 @@
 
   /* --- открыть / закрыть --------------------------------------------------- */
 
-  function open(returnTo) {
+  function open(returnTo, options) {
     if (phase !== 'closed') return;
     build();
     opener = returnTo || document.activeElement;
+    quietReturn = !!(options && options.quiet);
     ui.veil.hidden = false;
     document.body.classList.add('is-console');
     document.addEventListener('keydown', onKey, true);
@@ -2067,8 +2069,32 @@
     document.removeEventListener('visibilitychange', onVisibility);
     ui.veil.hidden = true;
     document.body.classList.remove('is-console');
-    if (opener && typeof opener.focus === 'function') opener.focus();
+    if (opener && typeof opener.focus === 'function') {
+      if (quietReturn) returnQuietly(opener);
+      else opener.focus();
+    }
     opener = null;
+  }
+
+  /* Открыли мышью — фокус возвращается на место, но без кольца. Кольцо
+     `:focus-visible` Chrome рисует и при программном возврате, если окно
+     закрыли клавишей Esc, — и компьютер оставался обведённым (жалоба владельца
+     2026-09-24). Тому, кто открыл с клавиатуры, кольцо нужно: оно показывает,
+     куда вернулся фокус, — там `opener.focus()` как был. Первая же клавиша или
+     уход фокуса отдают кольцо обычному правилу. */
+  function returnQuietly(node) {
+    node.setAttribute('data-quiet-focus', '');
+    try { node.focus({ focusVisible: false }); } catch (e) { node.focus(); }
+    function wake() {
+      node.removeAttribute('data-quiet-focus');
+      document.removeEventListener('keydown', wake, true);
+      node.removeEventListener('blur', wake);
+    }
+    // После текущего нажатия: Esc, закрывший окно, ещё не долетел.
+    root.setTimeout(function () {
+      document.addEventListener('keydown', wake, true);
+      node.addEventListener('blur', wake);
+    }, 0);
   }
 
   root.OfficeConsole = {

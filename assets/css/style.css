@@ -251,6 +251,9 @@ a:not(.btn):hover { color: var(--text); }
 /* Неподвижное (табло на держателях): щелчки и курсор — как у стены. */
 .thing--fixed { cursor: default; pointer-events: none !important; }
 .thing--button:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+/* Консоль открыли мышью и закрыли — фокус вернулся без кольца (console.js,
+   returnQuietly); первая клавиша снимает метку, и кольцо снова по правилу. */
+.thing--button[data-quiet-focus]:focus-visible { outline: none; }
 
 /* На телефоне существо только мешало: `position: fixed` считается от
    раскладочного окна, а у мобильных браузеров оно живёт своей жизнью вместе с
