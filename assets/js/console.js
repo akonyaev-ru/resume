@@ -816,6 +816,8 @@
   var NICK_KEY = 'office-tetris-nick';
   var SENT_KEY = 'office-tetris-sent';   // какой счёт уже ушёл в форму
 
+  // Тексты окна — без «ё», как вся страница (решение владельца 2026-09-16,
+  // распространено на консоль в 5.83).
   var TEXT = {
     title: { ru: 'Компьютер', en: 'Computer' },
     path: '~/games',
@@ -823,20 +825,20 @@
     ready: { ru: 'готово — любая клавиша', en: 'ready — press any key' },
     login: 'login: ',
     welcome: { ru: 'добро пожаловать, ', en: 'welcome, ' },
-    score: { ru: 'Счёт', en: 'Score' },
+    score: { ru: 'Счет', en: 'Score' },
     best: { ru: 'Рекорд', en: 'Best' },
     next: { ru: 'Далее', en: 'Next' },
     legend: { ru: 'Блоки', en: 'Blocks' },
     blocks: {   // {span}, {depth}, {life} подставляет blockText из правил ядра
-      hole: { name: { ru: 'чёрная дыра', en: 'black hole' }, text: { ru: 'глотает {span} вокруг себя', en: 'swallows {span} around it' } },
+      hole: { name: { ru: 'черная дыра', en: 'black hole' }, text: { ru: 'глотает {span} вокруг себя', en: 'swallows {span} around it' } },
       acid: { name: { ru: 'кислота', en: 'acid' }, text: { ru: 'разъедает до {width} клеток ряда под собой', en: 'eats up to {width} cells of the row below' } },
       stone: { name: { ru: 'камень', en: 'stone' }, text: { ru: 'ряд с ним не снимается {life} фигур', en: 'its row will not clear for {life} pieces' } },
-      virus: { name: { ru: 'вирус', en: 'virus' }, text: { ru: 'пока он в стопке, фигуры не крутятся, а «далее» врёт', en: 'while it sits in the stack, pieces will not turn and “next” lies' } },
+      virus: { name: { ru: 'вирус', en: 'virus' }, text: { ru: 'пока он в стопке, фигуры не крутятся, а «далее» врет', en: 'while it sits in the stack, pieces will not turn and “next” lies' } },
       rainbow: { name: { ru: 'радуга', en: 'rainbow' }, text: { ru: 'снимает все клетки цвета своей фигуры', en: 'removes every cell of its piece’s colour' } },
     },
     paused: { ru: 'Пауза', en: 'Paused' },
     over: { ru: 'Игра окончена', en: 'Game over' },
-    again: { ru: 'R — ещё раз', en: 'R — again' },
+    again: { ru: 'R — еще раз', en: 'R — again' },
     scores: 'hi-scores',
     nobody: { ru: 'пока никого — будешь первым', en: 'nobody yet — be the first' },
     close: { ru: 'Закрыть', en: 'Close' },
@@ -1930,7 +1932,8 @@
       pane.appendChild(document.createTextNode('\n'));
       pane.appendChild(scoreLine(null, table.extra));
     }
-    pane.appendChild(el('span', { class: 'console__scores-foot', text: t(TEXT.again) + ' · ' + t(TEXT.hint) + '\n' }));
+    // «R — еще раз» — на кнопке ниже; в строке повторять его незачем (5.83).
+    pane.appendChild(el('span', { class: 'console__scores-foot', text: t(TEXT.hint) + '\n' }));
     pane.appendChild(ui.again);
     pane.hidden = false;
     ui.dialog.focus();

@@ -1454,6 +1454,11 @@ a:not(.btn):hover { color: var(--text); }
 
 .record:first-of-type { border-top: 0; }
 
+/* Второй подзаголовок в столбце («Языки» под курсами, 5.83): воздух над ним, а
+   запись сразу под любым подзаголовком — без своей линии, его линии хватает. */
+.record + .skill-group__title { margin-block-start: 1.6rem; }
+.skill-group__title + .record { border-top: 0; }
+
 .record__year {
   font-family: var(--font-mono);
   font-size: var(--step--1);

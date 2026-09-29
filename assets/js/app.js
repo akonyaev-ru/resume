@@ -846,7 +846,8 @@
   }
 
   function buildEducation() {
-    var edu = records(u('educationTitle'), R.education, function (rec) {
+    // «Высшее», а не второе «Образование» подряд под заголовком раздела (5.83).
+    var edu = records(u('degreesTitle'), R.education, function (rec) {
       return el('div', { class: 'record' }, [
         el('span', { class: 'record__year', text: rec.year }),
         el('div', {}, [
@@ -866,8 +867,11 @@
       ]);
     });
 
+    // Языки — своим подзаголовком: строкой в столбце годов они читались как ещё
+    // один курс (5.83). Столбец года у записи пустой — языки встают под курсы.
+    courses.appendChild(el('h3', { class: 'skill-group__title', text: u('languagesTitle') }));
     courses.appendChild(el('div', { class: 'record' }, [
-      el('span', { class: 'record__year', text: u('languagesTitle') }),
+      el('span', { class: 'record__year' }),
       el('div', {}, R.languages.map(function (lang) {
         return el('p', { class: 'record__place', text: t(lang.name) + ' — ' + t(lang.level) });
       })),

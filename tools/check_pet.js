@@ -1189,7 +1189,7 @@ check('доску перевешивают, и она висит', function () {
    крепление на потолке — там, где она висела при загрузке. Считаем сами, а не
    спрашиваем скрипт: иначе сверяли бы его с ним же. */
 function cameraOf(world) {
-  const cam = world.things.filter(function (t) { return t.title === 'Перевесить камеру'; })[0];
+  const cam = world.things.filter(function (t) { return t.title === 'Сорвать камеру'; })[0];
   if (!cam) fail('камеры в обстановке нет');
   if (!world.cord) fail('холста провода нет');
   const mount = cam.spot();
@@ -1237,7 +1237,7 @@ function lensOf(world, cam) {
 check('камера смотрит на курсор: справа — горизонтально, под ней — вниз', function () {
   const world = open({ seed: 3 });
   world.step(300);
-  const cam = world.things.filter(function (t) { return t.title === 'Перевесить камеру'; })[0];
+  const cam = world.things.filter(function (t) { return t.title === 'Сорвать камеру'; })[0];
   if (!cam) fail('камеры в обстановке нет');
   const box = cam.getBoundingClientRect();
   const cx = (box.left + box.right) / 2;

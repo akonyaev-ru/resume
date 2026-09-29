@@ -66,16 +66,18 @@ window.RESUME = {
     termSkills: { ru: ['навык', 'навыка', 'навыков'], en: ['skill', 'skills', 'skills'] },
     termHint: { ru: 'Щелкните по команде, чтобы оставить одну группу', en: 'Click a command to keep one group' },
     educationTitle: { ru: 'Образование', en: 'Education' },
+    // Подзаголовок вузов: второй «Образование» под заголовком раздела повторял его.
+    degreesTitle: { ru: 'Высшее', en: 'Degrees' },
     coursesTitle: { ru: 'Повышение квалификации', en: 'Professional training' },
     languagesTitle: { ru: 'Языки', en: 'Languages' },
     contactEyebrow: { ru: 'Открыт к предложениям', en: 'Open to offers' },
     contactTitle: {
       ru: 'Обсудим, что у вас работает вручную',
-      en: 'Let us talk about what you still do by hand',
+      en: 'Let’s talk about what you still do by hand',
     },
     contactText: {
       ru: 'Расскажите про процесс, который тормозит команду. Отвечу, за какой срок и какими средствами его получится автоматизировать — или честно скажу, что автоматизация здесь не нужна.',
-      en: 'Tell me about the process that slows your team down. I will tell you how long automating it would take and what it would take — or say plainly that automation is not the answer here.',
+      en: 'Tell me about the process that slows your team down. I’ll tell you how long it would take to automate and with what tools — or say plainly that automation is not the answer here.',
     },
     writeEmail: { ru: 'Написать на почту', en: 'Send an email' },
     sourceCode: { ru: 'Исходный код страницы', en: 'Source code of this page' },
@@ -114,12 +116,13 @@ window.RESUME = {
       en: ['Lawyer', 'Business analyst'],
     },
     lede: {
-      ru: 'Перевожу ручные процессы на AI-агентов — и\u00A0сам пишу то, что для этого нужно.',
+      // Неразрывный дефис (\u2011): на 360–414 px строка рвалась на «AI-» / «агентов».
+      ru: 'Перевожу ручные процессы на AI\u2011агентов — и\u00A0сам пишу то, что для этого нужно.',
       en: 'I move manual processes onto AI agents — and write what that takes myself.',
     },
     about: {
-      ru: 'Юрист с практикой в договорной, претензионно-исковой и судебной работе, который автоматизирует юридическую функцию своими руками: нахожу узкие места, собираю требования от юристов и бизнес-заказчиков, формирую ТЗ, довожу решение до внедрения, тестирования и обучения команды, а вокруг инструментов выстраиваю методологию — регламенты, инструкции, маршруты согласования. Два юридических образования плюс Python, API и интеграция LLM. Роботизировал согласование договоров, внедрил шесть ИИ-агентов на базе Claude, выстроил контур безопасного использования ИИ в компании — способен и спроектировать архитектуру автоматизации, и реализовать ее руками, от постановки задачи до пользовательского тестирования.',
-      en: 'A lawyer with hands-on contract, claims and litigation practice who automates the legal function himself: I find the bottlenecks, gather requirements from lawyers and business owners, write the specification and carry the solution through to rollout, testing and team training — and build the method around the tools: policies, instructions, approval routes. Two law degrees plus Python, APIs and LLM integration. I robotised contract approval, rolled out six Claude-based AI agents and built the perimeter for safe AI use in the company — I can both design the automation architecture and build it myself, from framing the task to user testing.',
+      ru: 'Юрист с практикой в договорной, претензионно-исковой и судебной работе. Автоматизирую юридическую функцию своими руками: нахожу узкие места, собираю требования от юристов и бизнес-заказчиков, формирую ТЗ, довожу решение до внедрения, тестирования и обучения команды, а вокруг инструментов выстраиваю методологию — регламенты, инструкции, маршруты согласования. Два юридических образования плюс Python, API и интеграция LLM. Роботизировал согласование договоров, внедрил шесть ИИ-агентов на базе Claude, выстроил контур безопасного использования ИИ в компании — способен и спроектировать архитектуру автоматизации, и реализовать ее руками, от постановки задачи до пользовательского тестирования.',
+      en: 'A lawyer with hands-on contract, claims and litigation practice. I automate the legal function myself: I find the bottlenecks, gather requirements from lawyers and business owners, write the specification and carry the solution through to rollout, testing and team training — and build the method around the tools: policies, instructions, approval routes. Two law degrees plus Python, APIs and LLM integration. I robotised contract approval, rolled out six Claude-based AI agents and built the perimeter for safe AI use in the company — I can both design the automation architecture and build it myself, from framing the task to user testing.',
     },
     pullquote: {
       ru: 'Результат — не внедренный инструмент, а процесс, который после меня работает без меня.',
@@ -176,14 +179,14 @@ window.RESUME = {
       bullets: [
         {
           text: {
-            ru: 'Внедрил 6 ИИ-агентов на базе Claude в работу восьми юристов: разбор и сверка документов, подготовка типовых материалов, контроль регламентных сроков, проекты процессуальных документов и судебных актов с базой практики по каждому судье и нормативной базой АПК — включая контроль резолютивной части при множественности истцов (ст. 175 АПК). Время на типовые задачи сокращено на 70%.',
+            ru: 'Внедрил 6 ИИ-агентов на базе Claude в работу 8 юристов: разбор и сверка документов, подготовка типовых материалов, контроль регламентных сроков, проекты процессуальных документов и судебных актов с базой практики по каждому судье и нормативной базой АПК — включая контроль резолютивной части при множественности истцов (ст. 175 АПК). Время на типовые задачи сокращено на 70%.',
             en: 'Rolled out six Claude-based AI agents to a team of eight lawyers: parsing and cross-checking documents, drafting standard materials, tracking deadlines, and drafting procedural documents and court rulings from a per-judge practice base and the procedural code — including the operative part where there are several claimants (art. 175 of the Commercial Procedure Code). Time on routine tasks cut by 70%.',
           },
         },
         {
           text: {
             ru: 'Автоматизировал сквозной бизнес-процесс согласования договоров в Битрикс24: описал процесс AS IS / TO BE, расшил узкие места в маршруте, перестроил проверку контрагентов, статусы, уведомления и контроль сроков; согласовал целевой процесс с коммерческим блоком и провел презентацию результатов руководству. SLA согласования сокращен на 60%, коммерческий цикл компании ускорен.',
-            en: 'Automated the end-to-end contract approval process in Bitrix24: mapped the process as is / to be, cleared the bottlenecks in the route, rebuilt counterparty screening, statuses, notifications and deadline control; agreed the target process with the commercial team and presented the results to management. Approval SLA cut by 60%, the company commercial cycle sped up.',
+            en: 'Automated the end-to-end contract approval process in Bitrix24: mapped the process as is / to be, cleared the bottlenecks in the route, rebuilt counterparty screening, statuses, notifications and deadline control; agreed the target process with the commercial team and presented the results to management. Approval SLA cut by 60%, the company’s commercial cycle sped up.',
           },
         },
         {
@@ -207,7 +210,7 @@ window.RESUME = {
         {
           text: {
             ru: 'Вел бэклог автоматизации юридической функции в Jira с приоритизацией по эффекту и трудозатратам: формировал бизнес-требования и ТЗ на ИИ-агентов, собирал прототип, тестировал на реальных данных, обкатывал на пилотной группе и передавал в эксплуатацию — этот цикл прошли все шесть агентов. Эффект замерял по BI-дашбордам на данных Битрикс24: убрал 80% ручного ввода в отчетности отдела, вывел KPI в реальном времени.',
-            en: 'Ran the legal function automation backlog in Jira, prioritised by impact against effort: wrote business requirements and specifications for the AI agents, built the prototype, tested it on real data, ran it past a pilot group and handed it over — all six agents went through this cycle. Measured the effect on BI dashboards built on Bitrix24 data: removed 80% of manual entry from the department reporting, put KPIs under real-time control.',
+            en: 'Ran the legal function automation backlog in Jira, prioritised by impact against effort: wrote business requirements and specifications for the AI agents, built the prototype, tested it on real data, ran it past a pilot group and handed it over — all six agents went through this cycle. Measured the effect on BI dashboards built on Bitrix24 data: removed 80% of manual entry from the department’s reporting, put KPIs under real-time control.',
           },
         },
       ],
@@ -229,7 +232,7 @@ window.RESUME = {
         {
           text: {
             ru: 'Выстроил комплаенс-контроль по 275-ФЗ (ГОЗ): плановая проверка прокуратуры пройдена с 0 замечаний, многомиллионные штрафы предотвращены.',
-            en: 'Set up compliance control under the defence procurement law: the scheduled prosecutor audit passed with zero findings, fines running into millions headed off.',
+            en: 'Set up compliance control under the defence procurement law: the scheduled prosecutor audit passed with zero findings, multi-million fines averted.',
           },
         },
         {
@@ -403,7 +406,7 @@ window.RESUME = {
       year: '2026',
       name: {
         ru: 'LegalTech: автоматизация рутины юриста',
-        en: 'LegalTech: automating a lawyer routine',
+        en: 'LegalTech: automating a lawyer’s routine',
       },
       place: 'Legal Academy',
     },
