@@ -1,6 +1,6 @@
 /* Обновляется автоматически: .github/workflows/deploy.yml. Руками не править. */
 window.RECORDS = {
-  "updated": "2026-09-24",
+  "updated": "2026-09-29",
   "top": [
     {
       "nick": "giga-56",
@@ -9,6 +9,10 @@ window.RECORDS = {
     {
       "nick": "road-57",
       "best": 24630
+    },
+    {
+      "nick": "mast-14",
+      "best": 22668
     },
     {
       "nick": "opal-01",
