@@ -4,8 +4,10 @@
     python tools/build_single.py --fragment   -> dist/fragment.html (без обвязки
                                                  html/head/body — для вставки)
 
-Шрифты остаются ссылкой на Google Fonts: без сети подхватятся запасные
-из font-family. Всё остальное работает офлайн, файл можно просто отправить.
+Шрифты у страницы свои (assets/fonts, с 5.84), но в однофайловую версию они
+не вшиваются: это ещё ~200 КБ в письме. Вместо ссылки на assets/css/fonts.css
+сюда ставится ссылка на Google Fonts — без сети подхватятся запасные из
+font-family. Всё остальное работает офлайн, файл можно просто отправить.
 """
 
 from __future__ import annotations
@@ -25,6 +27,12 @@ def asset(path: str) -> str:
 DIST = ROOT / "dist"
 
 LINK = re.compile(r'\s*<link rel="stylesheet" href="(assets/css/[^"]+)" />')
+# Свои шрифты страницы — в однофайловой версии ссылкой на Google (см. шапку).
+FONTS_LINK = re.compile(r'<link rel="stylesheet" href="assets/css/fonts\.css(?:\?v=[^"]*)?" />')
+GOOGLE_FONTS = (
+    '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;600'
+    '&family=JetBrains+Mono:wght@400;500&family=Unbounded:wght@500;600;700&display=swap" />'
+)
 SCRIPT = re.compile(r'\s*<script src="([^"]+)"></script>')
 # Путь к картинке встречается в двух видах: от корня сайта в разметке и
 # скрипте, относительным — в стилях, которые лежат этажом ниже.
@@ -88,7 +96,10 @@ def to_fragment(html: str) -> str:
 
 
 def main() -> int:
-    html = inline((ROOT / "index.html").read_text(encoding="utf-8"))
+    source = (ROOT / "index.html").read_text(encoding="utf-8")
+    if not FONTS_LINK.search(source):
+        raise SystemExit("В index.html нет ссылки на assets/css/fonts.css — разметка изменилась")
+    html = inline(FONTS_LINK.sub(GOOGLE_FONTS, source))
     fragment = "--fragment" in sys.argv
 
     DIST.mkdir(exist_ok=True)

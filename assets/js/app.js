@@ -127,6 +127,15 @@
     return randomFrom(GLYPHS);
   }
 
+  /* Когда моноширинный шрифт загрузится — позвать `fn`. Холсты (поле, портрет)
+     рисуются сразу, и если JetBrains Mono ещё в пути, знаки выходят запасным
+     шрифтом; до 5.84 поле так и оставалось смесью двух шрифтов до изменения
+     размера окна. Шрифт уже на месте — `fn` зовётся сразу же, лишний раз. */
+  function whenMono(fn) {
+    if (!document.fonts || !document.fonts.load) return;
+    document.fonts.load('12px "JetBrains Mono"').then(function () { fn(); }, function () {});
+  }
+
   function section(id, title, kids) {
     return el('section', { class: 'section', id: id }, [
       el('div', { class: 'wrap' }, [
@@ -796,10 +805,11 @@
            свой цвет, поэтому узлы не сливаются в одну строку. */
         var runs = [];
         Array.prototype.forEach.call(text.childNodes, function (n) {
-          var t = n.nodeType === 3 ? n : n.firstChild;
-          if (!t || t.nodeType !== 3) return;
-          runs.push({ node: t, full: t.nodeValue });
-          t.nodeValue = '';
+          // Не `t`: так зовётся переводчик, и локальное имя его заслоняло.
+          var leaf = n.nodeType === 3 ? n : n.firstChild;
+          if (!leaf || leaf.nodeType !== 3) return;
+          runs.push({ node: leaf, full: leaf.nodeValue });
+          leaf.nodeValue = '';
         });
         var caret = el('span', { class: 'cmd__caret', 'aria-hidden': 'true' });
         hide(cmd);
@@ -1045,7 +1055,9 @@
       var probe = document.createElement('canvas');
       probe.width = 12;
       probe.height = 16;
-      var pctx = probe.getContext('2d');
+      // Пиксели читаются по разу на каждый знак — десятки раз подряд: Chrome
+      // просит объявить это заранее и иначе ругается в консоли (5.84).
+      var pctx = probe.getContext('2d', { willReadFrequently: true });
       pctx.font = '11px "JetBrains Mono", ui-monospace, monospace';
       pctx.textBaseline = 'top';
 
@@ -1097,7 +1109,16 @@
       small.height = rows;
       var sctx = small.getContext('2d');
       sctx.drawImage(photo, 0, 0, cols, rows);
-      var pixels = sctx.getImageData(0, 0, cols, rows).data;
+      var pixels;
+      try {
+        pixels = sctx.getImageData(0, 0, cols, rows).data;
+      } catch (e) {
+        /* Страница открыта с диска: браузер считает фото чужим и пиксели не
+           отдаёт. До 5.84 здесь падал скрипт, а портрет оставался пустым —
+           теперь показывается обычная фотография. */
+        host.classList.add('is-plain');
+        return;
+      }
 
       cells = [];
       ctx.clearRect(0, 0, width, height);
@@ -1152,6 +1173,13 @@
     if (photo.complete && photo.naturalWidth) render();
     else photo.addEventListener('load', render);
 
+    // Моноширинный шрифт мог прийти после первой отрисовки: тогда и порядок
+    // знаков по плотности, и сами знаки были запасным шрифтом — пересобрать.
+    whenMono(function () {
+      buildRamp();
+      if (photo.complete && photo.naturalWidth) render();
+    });
+
     if (portraitBound) return;
     portraitBound = true;
 
@@ -1190,8 +1218,11 @@
     var start = null;
 
     // Ширина заголовка на время перебора фиксируется: иначе линейка справа от
-    // него дёргалась бы на каждом кадре.
+    // него дёргалась бы на каждом кадре. И высота (5.84): случайные знаки шире
+    // или уже букв, на 320 px заголовок то добавлял строку, то терял её, и всё
+    // ниже прыгало на 25 px.
     node.style.minWidth = node.offsetWidth + 'px';
+    node.style.height = node.offsetHeight + 'px';
 
     function frame(now) {
       if (start === null) start = now;
@@ -1212,6 +1243,7 @@
       } else {
         node.textContent = text;
         node.style.minWidth = '';
+        node.style.height = '';
       }
     }
 
@@ -1252,6 +1284,10 @@
     var EMBER = '#ffb454';    // и его самая горячая середина
     var FLICKER_MS = 130;      // как часто пересобираются случайные символы
     var FLICKER_COUNT = 5;
+    /* Плотность холста — не выше 1,5 пикселя на точку (5.84). Поле выше окна на
+       два экрана запаса, и на ретине при плотности 2 холст 1920×1080 занимал
+       ~95 МБ; знаки поля едва видны, а разница в резкости на них не заметна. */
+    var FIELD_DPR = 1.5;
 
     /* Доля прокрутки, на которую отстают поля. Четверть: видно, что они едут
        медленнее страницы, но взгляд за них не цепляется. При отключённой в
@@ -1278,7 +1314,7 @@
     var running = false;
 
     function build() {
-      var dpr = Math.min(window.devicePixelRatio || 1, 2);
+      var dpr = Math.min(window.devicePixelRatio || 1, FIELD_DPR);
       var width = window.innerWidth;
       var height = window.innerHeight;
 
@@ -1466,6 +1502,8 @@
     }
 
     build();
+    // Поле могло нарисоваться запасным шрифтом — пришёл JetBrains Mono, перерисовать.
+    whenMono(paintAll);
 
     /* Сборка стоит дорого: поле теперь выше окна, и знаков в нём втрое больше —
        замерено 48 мс на 1280x720 против 18 мс у прежнего поля в один экран.
@@ -1730,9 +1768,14 @@
     initField();
   }
 
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', init);
-  } else {
+  /* Скрипт стоит в конце <body>, после #app и #field: то, что он собирает,
+     уже разобрано. По DOMContentLoaded сборка ждала ещё pet.js и console.js
+     (250 КБ, а на телефоне сцена скрыта): на медленной сети содержание
+     выходило на 0,4 с позже (5.84). Прежний путь — если скрипт когда-нибудь
+     переедет в <head>. */
+  if (document.getElementById('app') || document.readyState !== 'loading') {
     init();
+  } else {
+    document.addEventListener('DOMContentLoaded', init);
   }
 })();

@@ -3,7 +3,7 @@
 
    Оформление одно, тёмное: страница выглядит как рабочая среда, а не как
    документ. Вместо однотонного фона — поле моноширинных символов на canvas
-   (`#field`, рисуется в app.js), курсор освещает его вокруг себя. Индиговый
+   (`#field`, рисуется в app.js), курсор освещает его вокруг себя. Бирюзовый
    акцент на всём интерактивном, мятный — только на числах результата, янтарный
    — ровно один раз. Кислотного неона нет намеренно.
 
@@ -55,7 +55,11 @@
   --radius: 8px;
   --radius-sm: 5px;
 
-  --measure: 66ch;
+  /* Длина строки — 66 знаков Golos Text: 66ch = 40.92em (у Golos ch = 0.62em ровно).
+     В em, а не в ch (5.84): со своими шрифтами файл приходит за первые ~100 мс, и
+     Chrome иногда считает ch по запасному шрифту и больше не пересчитывает —
+     абзац «Подхода» выходил 528 px вместо 572 в каждой четвёртой загрузке. */
+  --measure: 40.92em;
   --page: 68rem;
   --gutter: clamp(1.25rem, 4vw, 3rem);
   --margin-col: 11rem;
@@ -634,6 +638,11 @@ a:not(.btn):hover { color: var(--text); }
 
 .portrait.is-live .portrait__photo { opacity: 1; }
 
+/* Страница открыта с диска: пиксели фото браузер не отдаёт, набора знаков нет —
+   показывается сама фотография, без маски (5.84). */
+.portrait.is-plain .portrait__photo { opacity: 1; -webkit-mask-image: none; mask-image: none; }
+.portrait.is-plain .portrait__glyphs { display: none; }
+
 @media (prefers-reduced-motion: reduce) {
   .portrait__photo { transition: none; }
 }
@@ -894,7 +903,7 @@ a:not(.btn):hover { color: var(--text); }
 .metric__caption {
   font-size: var(--step--1);
   color: var(--text-dim);
-  max-width: 24ch;
+  max-width: 14.88em;   /* 24ch Golos Text; в em — см. --measure */
 }
 
 /* --- Подход ------------------------------------------------------------- */
@@ -1278,6 +1287,9 @@ a:not(.btn):hover { color: var(--text); }
   overflow: hidden;
   font-family: var(--font-mono);
   font-size: 13px;
+  /* JetBrains Mono сливает «--» в сплошное тире — в команде `--group` это были
+     бы не два дефиса, а черта (5.84). */
+  font-variant-ligatures: none;
 }
 
 .term [data-g="0"] { --g: var(--amber); }
@@ -1486,7 +1498,7 @@ a:not(.btn):hover { color: var(--text); }
 
 .contact__title {
   font-size: var(--step-3);
-  max-width: 20ch;
+  max-width: 18.34em;   /* 20ch Unbounded 600 (ch = 0.917em); в em — см. --measure */
 }
 
 .contact__text {

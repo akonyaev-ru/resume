@@ -177,9 +177,12 @@ def stamp_twice():
         shutil.rmtree(work)
     if first != 0 or second != 0:
         fail(f"коды {first}, {second}")
-    if "?v=aaaaaaa" in html or html.count("?v=bbbbbbb") != 7 or "?v=bbbbbbb?v=" in html:
+    # Сколько ссылок подписывать — по самой разметке, а не числом: с 5.84 их стало
+    # на одну больше (assets/css/fonts.css), и число в проверке устарело бы снова.
+    links = len(sa.PATTERN.findall((ROOT / "index.html").read_text(encoding="utf-8")))
+    if "?v=aaaaaaa" in html or html.count("?v=bbbbbbb") != links or "?v=bbbbbbb?v=" in html:
         fail("метки: " + ", ".join(sorted(set(part.split('"')[0] for part in html.split("?v=")[1:]))))
-    return "второй запуск переподписал все 7 ссылок, метка одна"
+    return f"второй запуск переподписал все {links} ссылок, метка одна"
 
 
 # --- папка сайта ---------------------------------------------------------------

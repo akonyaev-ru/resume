@@ -61,7 +61,6 @@ window.RESUME = {
     // для 1, 2–4 и 5+ (в английском две последние совпадают).
     termHost: 'alexey@legalops',
     termPath: '~/skills',
-    termAll: { ru: 'все группы', en: 'all groups' },
     termGroups: { ru: ['группа', 'группы', 'групп'], en: ['group', 'groups', 'groups'] },
     termSkills: { ru: ['навык', 'навыка', 'навыков'], en: ['skill', 'skills', 'skills'] },
     termHint: { ru: 'Щелкните по команде, чтобы оставить одну группу', en: 'Click a command to keep one group' },
@@ -103,7 +102,6 @@ window.RESUME = {
     photo: 'assets/img/portrait.webp',
     age: 25,
     city: { ru: 'Москва', en: 'Moscow' },
-    github: 'akonyaev-ru',
     updated: { ru: '29 сентября 2026', en: '29 September 2026' },
     employment: { ru: 'полная занятость', en: 'full-time' },
     schedule: { ru: 'Удаленно или гибрид', en: 'Remote or hybrid' },

@@ -8,9 +8,9 @@
   <meta name="color-scheme" content="dark" />
   <meta name="theme-color" content="#080a10" />
 
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500&family=JetBrains+Mono:wght@400;500&family=Unbounded:wght@600;700&display=swap" />
+  <!-- Шрифты — свои, с сайта, полным адресом: страница отвечает с любого
+       несуществующего адреса, и относительный путь уводил бы в пустоту. -->
+  <link rel="stylesheet" href="https://akonyaev-ru.github.io/resume/assets/css/fonts.css" />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%23080a10'/%3E%3Cpath d='M7 10l5 6-5 6' fill='none' stroke='%2300c5cd' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpath d='M16 22h9' stroke='%233ddc97' stroke-width='2.5' stroke-linecap='round'/%3E%3C/svg%3E" />
 
   <!-- Страница одна и служебная: стили внутри, чтобы она открывалась с любого
@@ -50,6 +50,11 @@
       overflow: hidden;
       white-space: nowrap;
       margin: 0 0 1.5rem;
+      /* Строка в nowrap не должна раздвигать блок: до 5.84 main вставал по её
+         ширине, и страница была шире телефона (425 px). Так она занимает ровно
+         ширину блока, а лишнее обрезается. */
+      width: 0;
+      min-width: 100%;
     }
 
     .code {
