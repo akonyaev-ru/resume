@@ -1032,18 +1032,27 @@ a:not(.btn):hover { color: var(--text); }
   .timeline__seg.is-current::before { animation: none; }
 }
 
+/* Ряды подписей (5.82): второй и дальше — только если подписи наехали бы друг
+   на друга; ряд каждой считает `stackLabels` в app.js по нарисованному. */
 .timeline__labels {
   position: relative;
-  height: 2.7rem;
+  height: calc(var(--rows, 1) * 2.9rem - 0.2rem);
   margin-block-start: 0.6rem;
 }
 
 .timeline__label {
   position: absolute;
-  inset-block-start: 0;
+  inset-block-start: calc(var(--row, 0) * 2.9rem);
   display: grid;
   gap: 0.1rem;
   text-decoration: none;
+}
+
+/* Текущее место подписано от правого края оси: его отрезок растёт каждый
+   месяц, а подпись у начала упиралась в соседнюю. */
+.timeline__label--end {
+  justify-items: end;
+  text-align: right;
 }
 
 .timeline__company {

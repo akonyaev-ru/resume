@@ -102,7 +102,7 @@ window.RESUME = {
     age: 25,
     city: { ru: 'Москва', en: 'Moscow' },
     github: 'akonyaev-ru',
-    updated: { ru: '24 сентября 2026', en: '24 September 2026' },
+    updated: { ru: '29 сентября 2026', en: '29 September 2026' },
     employment: { ru: 'полная занятость', en: 'full-time' },
     schedule: { ru: 'Удаленно или гибрид', en: 'Remote or hybrid' },
     relocation: {
@@ -160,6 +160,8 @@ window.RESUME = {
   // start / end — в формате ГГГГ-ММ, end: null означает «по настоящее время».
   // Из них страница считает шкалу опыта, срок каждого места и общий стаж —
   // вписывать «1 год 7 месяцев» руками не нужно, такие строки устаревали.
+  // short — короткое имя для подписи на шкале, где полное не помещается; в
+  // карточке места остаётся полное. Языка нет в short — на шкале полное.
   experience: [
     {
       company: { ru: 'Айковер ПРО', en: 'iCover PRO' },
@@ -212,6 +214,7 @@ window.RESUME = {
     },
     {
       company: { ru: 'Фабрика Вентиляции ГалВент', en: 'GalVent Ventilation Factory' },
+      short: { ru: 'ГалВент' },
       role: { ru: 'Юрисконсульт', en: 'Legal counsel' },
       period: { ru: 'Июнь 2024 — Декабрь 2024', en: 'June 2024 — December 2024' },
       start: '2024-06',

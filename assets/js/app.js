@@ -539,6 +539,10 @@
       // Якорь — по месту записи в исходном списке: после фильтра индекс
       // обратного массива с ним больше не совпадает.
       var target = '#job-' + R.experience.indexOf(job);
+      // Отрезок, дошедший до конца оси (текущее место), подписан от правого
+      // края: он растёт каждый месяц, а подпись у его начала упиралась в
+      // соседнюю (5.82).
+      var atEnd = end === to;
 
       track.appendChild(el('a', {
         class: 'timeline__seg' + (job.current ? ' is-current' : ''),
@@ -548,17 +552,71 @@
         title: t(job.company) + ' · ' + t(job.period),
       }));
 
+      // На шкале — короткое имя, если оно есть на языке страницы (`short`).
       labels.appendChild(el('a', {
-        class: 'timeline__label',
+        class: 'timeline__label' + (atEnd ? ' timeline__label--end' : ''),
         href: target,
-        style: 'left:' + left.toFixed(2) + '%',
+        style: atEnd ? 'right:0' : 'left:' + left.toFixed(2) + '%',
       }, [
-        el('span', { class: 'timeline__company', text: t(job.company) }),
+        el('span', { class: 'timeline__company', text: t(job.short) || t(job.company) }),
         el('span', { class: 'timeline__span', text: durationText(jobMonths(job)) }),
       ]));
     });
 
     return el('div', { class: 'timeline enter' }, [scale, track, labels]);
+  }
+
+  /* Подписи шкалы — лесенкой (5.82). Ось идёт до сегодняшнего месяца, отрезки
+     прошлых мест с каждым месяцем короче, и подписи сближаются: к 2029 году
+     они наезжали бы и на широком экране. Подпись, которая наехала бы на уже
+     стоящую в ряду, уходит рядом ниже; пока места хватает, ряд один. Считается
+     по нарисованному: после сборки, смены окна, загрузки шрифтов и при печати —
+     она раскладывает страницу по ширине листа. */
+  var LABEL_GAP = 16;   // px — просвет между подписями в одном ряду
+  var timelineBound = false;
+
+  function stackLabels() {
+    $$('.timeline__labels').forEach(function (box) {
+      var labels = $$('.timeline__label', box);
+      labels.forEach(function (label) { label.style.removeProperty('--row'); });
+
+      var rows = [];
+      labels.forEach(function (label) {
+        var r = label.getBoundingClientRect();
+        if (!r.width) return;             // узкий экран: подписей на шкале нет
+        var row = 0;
+        while (rows[row] && rows[row].some(function (o) {
+          return r.left < o.right + LABEL_GAP && o.left < r.right + LABEL_GAP;
+        })) row += 1;
+        (rows[row] || (rows[row] = [])).push(r);
+        if (row) label.style.setProperty('--row', row);
+      });
+      box.style.setProperty('--rows', Math.max(1, rows.length));
+    });
+  }
+
+  function initTimeline() {
+    stackLabels();
+    if (document.fonts && document.fonts.ready && document.fonts.ready.then) {
+      document.fonts.ready.then(stackLabels);
+    }
+
+    if (timelineBound) return;
+    timelineBound = true;
+
+    var queued = false;
+    window.addEventListener('resize', function () {
+      if (queued) return;
+      queued = true;
+      window.requestAnimationFrame(function () {
+        queued = false;
+        stackLabels();
+      });
+    });
+
+    var print = window.matchMedia ? window.matchMedia('print') : null;
+    if (print && print.addEventListener) print.addEventListener('change', stackLabels);
+    else if (print && print.addListener) print.addListener(stackLabels);
   }
 
   function buildJobs() {
@@ -1654,6 +1712,7 @@
     initObservers();
     initSpy();
     initFacts();
+    initTimeline();
     initTitleDecode();
     initGlyphPortrait();
     collectMagnets();

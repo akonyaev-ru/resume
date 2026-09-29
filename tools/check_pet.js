@@ -93,6 +93,9 @@ function open(options) {
     finePointer: true,
     petsHidden: false,
     records: null,
+    // Колонка текста страницы (`main .wrap`). По умолчанию её нет, как нет и
+    // страницы: поля под мебель считаются, только когда проверка её просит.
+    column: false,
   }, options);
 
   let now = 0;
@@ -190,8 +193,10 @@ function open(options) {
           : opt.finePointer,
       };
     },
-    getComputedStyle: function () {
-      return { display: opt.petsHidden ? 'none' : 'block' };
+    // Спрятанное скриптом (`style.display = 'none'`) спрятано и для него самого.
+    getComputedStyle: function (el) {
+      const off = el && el.style && el.style.display === 'none';
+      return { display: opt.petsHidden || off ? 'none' : 'block' };
     },
     // Общая таблица рекордов (`data/records.js`) — снаружи, как на странице.
     RECORDS: opt.records ? { updated: '2026-09-17', top: opt.records } : undefined,
@@ -201,12 +206,25 @@ function open(options) {
     },
   };
 
+  /* Колонка текста — как у `.wrap` страницы: min(100% − 2 · поле, 68rem), поле
+     clamp(1.25rem, 4vw, 3rem), по центру. */
+  function column() {
+    const gutter = Math.min(48, Math.max(20, 0.04 * opt.width));
+    const width = Math.min(opt.width - 2 * gutter, 1088);
+    const left = (opt.width - width) / 2;
+    return { left: left, right: left + width, width: width };
+  }
+  const wrap = { getBoundingClientRect: column };
+
   const doc = {
     hidden: false,
     /* Ширина без полосы прокрутки. У браузера она меньше `innerWidth` на
        ширину ползунка, и края предметов считаются именно по ней; в прогоне
        ползунка нет, поэтому обе совпадают. */
     documentElement: { get clientWidth() { return opt.width; } },
+    querySelector: function (selector) {
+      return selector === 'main .wrap' && opt.column ? wrap : null;
+    },
     createElement: function () { return makeCanvas(); },
     body: { appendChild: function (el) { appended.push(el); } },
     addEventListener: function (type, fn) {
@@ -254,6 +272,7 @@ function open(options) {
     opens: function () { return consoleOpens; },
     // Размеры окна нужны проверкам, чтобы считать, куда вести курсор.
     wide: function () { return opt.width; },
+    column: column,
     high: function () { return opt.height; },
     /* Шаг времени. `watch` зовётся после каждого кадра — проверки копят
        по нему своё, а не держат в памяти весь прогон. */
@@ -2115,6 +2134,152 @@ check('летящего ловят нажатием', function () {
   return 'поймана на ' + flying.y + ' px, отпущена — приземлилась';
 });
 
+/* --- 5.82: мебель не стоит на колонке текста ------------------------------ */
+
+function named(world, title) {
+  const found = world.things.filter(function (one) { return one.title === title; })[0];
+  if (!found) fail('в обстановке нет «' + title + '»');
+  return found;
+}
+
+function shown(el) { return el.style.display !== 'none'; }
+
+/* До 5.82 мебель стояла по долям окна при любой ширине, и на ноутбуке до ~1600 px
+   часть её стояла на тексте: на 1366 стол с компьютером и торшер — целиком. Теперь
+   в поле остаётся то, что в него влезает, по старшинству. */
+check('на ноутбуке мебель не стоит на колонке текста', function () {
+  const bad = [];
+  [768, 1024, 1280, 1366, 1440, 1536].forEach(function (width) {
+    const world = open({ width: width, column: true });
+    world.step(500);
+    const col = world.column();
+    world.things.forEach(function (t) {
+      if (!shown(t)) return;
+      const box = t.getBoundingClientRect();
+      const over = Math.min(box.right, col.right) - Math.max(box.left, col.left);
+      if (over > 0) bad.push(width + ': ' + t.title.replace(/^\S+ /, '') + ' на ' + Math.round(over) + ' px');
+    });
+  });
+  if (bad.length) fail('на колонке: ' + bad.join('; '));
+  return 'от 768 до 1536 ни один предмет не заходит на колонку';
+});
+
+/* Табло висит над промежутком между диваном и растением, а когда растению в
+   поле места нет — посередине правого поля: рекорд виден и на ноутбуке. */
+check('табло рекорда на ноутбуке висит в поле', function () {
+  const out = [];
+  [1280, 1366].forEach(function (width) {
+    const world = open({ width: width, column: true });
+    world.step(300);
+    const board = named(world, 'Табло рекорда');
+    const box = board.getBoundingClientRect();
+    const col = world.column();
+    if (!shown(board)) fail(width + ': табло спрятано, а в поле ' + Math.round(width - col.right) + ' px оно влезает');
+    if (box.left < col.right) fail(width + ': табло ' + box.left + '–' + box.right + ' на колонке до ' + Math.round(col.right));
+    out.push(width + ': ' + box.left + '–' + box.right);
+  });
+  return out.join(', ');
+});
+
+// Стол с компьютером старше всех: пока он влезает в поле, компьютер на месте.
+check('компьютер на ноутбуке на месте, пока стол помещается в поле', function () {
+  const out = [];
+  [1280, 1366, 1440].forEach(function (width) {
+    const world = open({ width: width, column: true });
+    world.step(500);
+    const pc = named(world, 'Включить компьютер');
+    const desk = named(world, 'Подвинуть стол');
+    if (!shown(pc) || !shown(desk)) fail(width + ': компьютер спрятан, а стол с ним влезает в поле ' + Math.round(world.column().left) + ' px');
+    const p = pc.getBoundingClientRect();
+    const d = desk.getBoundingClientRect();
+    if (p.left !== d.left || p.bottom !== d.top) fail(width + ': компьютер не на столе (' + p.left + ',' + p.bottom + ' против ' + d.left + ',' + d.top + ')');
+    if (d.right > world.column().left) fail(width + ': стол ' + d.left + '–' + d.right + ' заходит на колонку с ' + Math.round(world.column().left));
+    out.push(width + ': ' + d.left + '–' + d.right);
+  });
+  return 'стол с компьютером в поле: ' + out.join(', ');
+});
+
+/* На планшете поля по 41 px: стол и диван не влезают, а принтер и торшер по
+   отдельности влезли бы. Без своего стола принтер и без дивана торшер не стоят. */
+check('принтер только при столе, торшер только при диване', function () {
+  const world = open({ width: 1024, column: true });
+  world.step(500);
+  const seen = ['Подвинуть стол', 'Подвинуть принтер', 'Подвинуть диван', 'Подвинуть торшер']
+    .filter(function (title) { return shown(named(world, title)); });
+  if (seen.length) fail('в полях 41 px стоят: ' + seen.join(', '));
+  return 'на 1024 нет ни стола с принтером, ни дивана с торшером';
+});
+
+// Где мебель в поля и так влезает, расстановка прежняя, пиксель в пиксель.
+check('на широком экране расстановка прежняя', function () {
+  [1600, 1920, 2560].forEach(function (width) {
+    const a = open({ width: width, column: true });
+    const b = open({ width: width });
+    a.step(300);
+    b.step(300);
+    a.things.forEach(function (t, i) {
+      const u = b.things[i];
+      if (shown(t) !== shown(u) || t.style.transform !== u.style.transform) {
+        fail(width + ': ' + t.title + ' ' + (shown(t) ? t.style.transform : 'спрятан') + ' вместо ' + u.style.transform);
+      }
+    });
+  });
+  return 'на 1600, 1920 и 2560 всё на прежних местах';
+});
+
+check('окно сузили и расширили — спрятанная мебель вернулась', function () {
+  const world = open({ width: 1920, column: true });
+  world.step(300);
+  world.resize(1024);
+  world.step(300);
+  const hidden = world.things.filter(function (t) { return !shown(t); }).length;
+  world.resize(1920);
+  world.step(300);
+  const fresh = open({ width: 1920, column: true });
+  fresh.step(300);
+  world.things.forEach(function (t, i) {
+    const u = fresh.things[i];
+    if (shown(t) !== shown(u) || t.style.transform !== u.style.transform) {
+      fail(t.title + ': ' + (shown(t) ? t.style.transform : 'спрятан') + ', а при загрузке ' + u.style.transform);
+    }
+  });
+  if (!hidden) fail('на 1024 ничего не спряталось — проверять нечего');
+  return 'на 1024 спряталось ' + hidden + ', на 1920 всё вернулось';
+});
+
+// Переставленное рукой — решение человека: в поле не пакуется и не прячется.
+check('взятое рукой в поле не прячется', function () {
+  const world = open({ width: 1920, column: true });
+  world.step(300);
+  const sofa = named(world, 'Подвинуть диван');
+  const box = sofa.getBoundingClientRect();
+  sofa.fire('mousedown', event(box.left + 10, box.bottom - 10));
+  world.step(FRAME_MS);
+  world.win('mousemove', event(700, box.bottom - 10));
+  world.step(FRAME_MS);
+  world.win('mouseup', event(700, box.bottom - 10));
+  world.step(2000);
+  const put = sofa.getBoundingClientRect().left;
+  world.resize(1024);
+  world.step(300);
+  if (!shown(sofa)) fail('переставленный рукой диван на 1024 спрятался');
+  if (sofa.getBoundingClientRect().left !== put) fail('диван уехал с ' + put + ' на ' + sofa.getBoundingClientRect().left);
+  return 'диван стоит, где поставили (' + put + ' px)';
+});
+
+// Спрятанное для существ тоже спрятано: на невидимый диван не садятся.
+check('на спрятанный диван не садятся', function () {
+  let high = 0;
+  [3, 5, 7].forEach(function (seed) {
+    const world = open({ width: 1024, column: true, seed: seed });
+    world.step(240000, function (t, pets) {
+      pets.forEach(function (p) { high = Math.max(high, p.y); });
+    });
+  });
+  if (high > 0) fail('на 1024 существо поднималось на ' + high + ' px — сидело на спрятанном');
+  return 'три прогона по 4 мин: никто не забирался на спрятанное';
+});
+
 /* --- кто проверяет проверку --------------------------------------------- */
 
 /* Зелёный прогон стоит ровно столько, сколько эта проверка ловит. Поэтому
@@ -2502,6 +2667,79 @@ const BREAKS = [
     parts: [[
       "  window.addEventListener('resize', function () {\n    pets.forEach",
       "  if (!LESS_MOTION) window.addEventListener('resize', function () {\n    pets.forEach",
+    ]],
+  },
+  // --- 5.82 ---
+  {
+    name: 'поля под мебель не считаются',
+    red: 'на ноутбуке мебель не стоит на колонке текста',
+    parts: [[
+      '    if (!col) return;\n\n    packSide(true, col);',
+      '    return;\n\n    packSide(true, col);',
+    ]],
+  },
+  {
+    name: 'принтер и торшер ставятся одни',
+    red: 'принтер только при столе, торшер только при диване',
+    parts: [[
+      '      if (need && (side.indexOf(need) >= 0 ? kept.indexOf(need) < 0 : need.hidden)) return;',
+      '      void 0;',
+    ]],
+  },
+  {
+    name: 'спрятанное не возвращается',
+    red: 'окно сузили и расширили — спрятанная мебель вернулась',
+    parts: [[
+      '    things.forEach(function (t) { if (!t.moved) setOff(t, false); });',
+      '    void 0;',
+    ]],
+  },
+  {
+    name: 'на широком экране мебель тоже теснится',
+    red: 'на широком экране расстановка прежняя',
+    parts: [[
+      '    if (!side.some(function (t) { return onColumn(t, col); })) return;',
+      '    void 0;',
+    ]],
+  },
+  {
+    name: 'спрятанное существа не замечают',
+    red: 'на спрятанный диван не садятся',
+    parts: [[
+      "    t.canvas.style.display = off ? 'none' : '';\n    t.checkHidden();",
+      "    t.canvas.style.display = off ? 'none' : '';",
+    ]],
+  },
+  {
+    name: 'переставленное рукой теснится вместе со всеми',
+    red: 'взятое рукой в поле не прячется',
+    parts: [[
+      '      return t.rank && !t.moved && !t.hidden && (t.x + t.canvas.width / 2 < cw / 2) === left;',
+      '      return t.rank && !t.hidden && (t.x + t.canvas.width / 2 < cw / 2) === left;',
+    ]],
+  },
+  {
+    name: 'компьютер не идёт за столом',
+    red: 'компьютер на ноутбуке на месте, пока стол помещается в поле',
+    parts: [[
+      '      setSpot(t);\n      setOff(t, !!(base && base.off));',
+      '      setOff(t, !!(base && base.off));',
+    ]],
+  },
+  {
+    name: 'висящее остаётся на колонке',
+    red: 'на ноутбуке мебель не стоит на колонке текста',
+    parts: [[
+      '      setOff(t, onColumn(t, col));',
+      '      void 0;',
+    ]],
+  },
+  {
+    name: 'табло без растения висит между диваном и пустотой',
+    red: 'табло рекорда на ноутбуке висит в поле',
+    parts: [[
+      '        if (a && b && !a.off && !b.off) setSpot(t);',
+      '        if (true) setSpot(t);',
     ]],
   },
 ];
