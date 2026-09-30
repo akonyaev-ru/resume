@@ -997,7 +997,8 @@
 
   function build() {
     if (ui) return ui;
-    var field = el('canvas', { class: 'console__field', 'aria-label': 'Tetris' });
+    // Стакан — картинка с именем: у холста без роли имя читают не все дикторы (5.86).
+    var field = el('canvas', { class: 'console__field', role: 'img', 'aria-label': 'Tetris' });
     var preview = el('canvas', { class: 'console__next', 'aria-hidden': 'true' });
     // Уровень и линии не показываются (5.76 — «не знаю, зачем они»): без них
     // полная легенда влезает на экраны до 720 px высоты при той же клетке.
@@ -1102,6 +1103,10 @@
 
   function boot() {
     phase = 'boot';
+    /* Журнал — живой регион, а печатается по букве: диктор получал десятки
+       объявлений подряд. Пока печать идёт, регион занят (`aria-busy`), и
+       прочитан он будет разом, когда в greet() занятость снимется (5.86). */
+    ui.log.setAttribute('aria-busy', 'true');
     ui.log.textContent = '';
     ui.log.hidden = false;
     ui.play.hidden = true;
@@ -1165,6 +1170,7 @@
 
   function greet() {
     ui.log.appendChild(document.createTextNode('\n' + t(TEXT.welcome) + nick + '\n' + t(TEXT.ready)));
+    ui.log.setAttribute('aria-busy', 'false');
     waiting = true;
     later(startGame, START_MS);
   }
@@ -1267,6 +1273,12 @@
     // R посреди партии: прежняя цепочка кадров ещё ждёт своего кадра, её надо
     // снять — иначе каждое R добавляло цепочку, и стакан рисовался вдвое, втрое…
     root.cancelAnimationFrame(raf);
+    // Окно не в фокусе, когда партия начинается, — игрок ушёл, пока шла
+    // загрузка: партия ждёт его на паузе, а не играет сама (5.86).
+    if (document.hasFocus && !document.hasFocus()) {
+      game.paused = true;
+      showOverlay(t(TEXT.paused), 'P');
+    }
     loop(0);
   }
 
@@ -1950,6 +1962,9 @@
       showScores();   // сразу, без плашки над стаканом — решение владельца
       return;         // без кадров: дальше таблица, R или Esc
     }
+    // На паузе кадры не нужны: стакан стоит под плашкой «Пауза», а до 5.86 он
+    // перерисовывался 60 раз в секунду. Снятая пауза заводит цикл в resume().
+    if (game.paused) return;
     raf = root.requestAnimationFrame(loop);
   }
 
@@ -1992,6 +2007,11 @@
     r: 'restart', R: 'restart', к: 'restart', К: 'restart',
   };
 
+  /* Зажатая клавиша повторяет только ходы. Сброс, пауза и новая партия — по
+     одному на нажатие, как в каноне тетриса: до 5.86 зажатый пробел ронял
+     фигуру за фигурой, P мигала паузой, R начинала партию снова и снова. */
+  var NO_REPEAT = { drop: true, pause: true, restart: true };
+
   /* Окну — только простые нажатия. С Ctrl, Cmd или Alt — сочетания браузера и
      системы, их окно не трогает: до 5.80 Ctrl+R начинал партию заново вместо
      перезагрузки, Ctrl+P ставил паузу вместо печати, Alt+← двигал фигуру
@@ -2008,7 +2028,9 @@
     if (phase === 'scores') {
       if (event.key === 'Enter' || event.key === ' ' || KEYS[event.key] === 'restart') {
         event.preventDefault();
-        startGame();
+        // Повтор зажатой клавиши новую партию не начинает: пробел последнего
+        // сброса иначе сразу уводил с таблицы рекордов в игру (5.86).
+        if (!event.repeat) startGame();
       }
       return;
     }
@@ -2024,6 +2046,7 @@
     var name = KEYS[event.key];
     if (!name) return;
     event.preventDefault();
+    if (event.repeat && NO_REPEAT[name]) return;
     act(name);
   }
 
@@ -2044,10 +2067,17 @@
     focusable[to].focus();
   }
 
+  /* Подгонка окна — раз за кадр, а не на каждое событие: пока тянут край окна,
+     их десятки, и каждое стоило замера раскладки и перерисовки стакана (5.86). */
+  var fitQueued = 0;
   function onResize() {
-    if (phase !== 'play') return;
-    fitWindow();
-    render();
+    if (phase !== 'play' || fitQueued) return;
+    fitQueued = root.requestAnimationFrame(function () {
+      fitQueued = 0;
+      if (phase !== 'play') return;
+      fitWindow();
+      render();
+    });
   }
 
   function onBlur() {
@@ -2060,6 +2090,15 @@
 
   /* --- открыть / закрыть --------------------------------------------------- */
 
+  /* Сцене — что окно открыто или закрыто: под размытой подложкой она встаёт,
+     её кадры заставляли браузер размывать фон заново (5.86). Нет
+     CustomEvent — сцена просто живёт, как до того. */
+  function announce(isOpen) {
+    try {
+      document.dispatchEvent(new root.CustomEvent('office:console', { detail: { open: isOpen } }));
+    } catch (e) { /* см. выше */ }
+  }
+
   function open(returnTo, options) {
     if (phase !== 'closed') return;
     build();
@@ -2067,6 +2106,7 @@
     quietReturn = !!(options && options.quiet);
     ui.veil.hidden = false;
     document.body.classList.add('is-console');
+    announce(true);
     document.addEventListener('keydown', onKey, true);
     root.addEventListener('blur', onBlur);
     root.addEventListener('resize', onResize);
@@ -2087,6 +2127,7 @@
     document.removeEventListener('visibilitychange', onVisibility);
     ui.veil.hidden = true;
     document.body.classList.remove('is-console');
+    announce(false);
     if (opener && typeof opener.focus === 'function') {
       if (quietReturn) returnQuietly(opener);
       else opener.focus();

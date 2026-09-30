@@ -270,6 +270,8 @@ function open(options) {
     },
     hide: function (flag) { opt.petsHidden = flag; },
     opens: function () { return consoleOpens; },
+    // Окно песочницы: сюда проверки с крючком кладут и откуда берут своё (5.86).
+    peek: function () { return win; },
     // Размеры окна нужны проверкам, чтобы считать, куда вести курсор.
     wide: function () { return opt.width; },
     column: column,
@@ -2027,10 +2029,11 @@ check('в тихом режиме компьютер открывается мы
   world.step(200);
   const pc = world.things.filter(function (one) { return one.title === 'Включить компьютер'; })[0];
   const box = pc.getBoundingClientRect();
-  world.win('mousemove', event(box.left + 10, box.top + 10));
+  const at = solidPoint(world, pc);   // прозрачное в рамке с 5.86 щелчков не ловит
+  world.win('mousemove', event(at.x, at.y));
   if (pc.style.pointerEvents !== 'auto') fail('курсор над компьютером, а щелчки идут насквозь (' + pc.style.pointerEvents + ')');
   if (pc.getBoundingClientRect().top !== box.top) fail('в тихом режиме компьютер приподнялся под курсором');
-  pc.fire('click', event(box.left + 10, box.top + 10));
+  pc.fire('click', event(at.x, at.y));
   if (world.opens() !== 1) fail('щелчок не открыл консоль');
 
   // Мебель в тихом режиме не берут — и щелчков у страницы под собой она не отнимает.
@@ -2045,13 +2048,13 @@ check('пальцем компьютер открывается, касание 
   const world = open({ seed: 5, finePointer: false });
   world.step(200);
   const pc = world.things.filter(function (one) { return one.title === 'Включить компьютер'; })[0];
-  const box = pc.getBoundingClientRect();
+  const at = solidPoint(world, pc);   // касание — по нарисованному: прозрачное с 5.86 насквозь
   const touch = function (x, y) {
     return { clientX: x, clientY: y, pointerType: 'touch', preventDefault: function () {} };
   };
-  world.win('pointerdown', touch(box.left + 10, box.top + 10));
+  world.win('pointerdown', touch(at.x, at.y));
   if (pc.style.pointerEvents !== 'auto') fail('касание компьютера, а щелчки идут насквозь (' + pc.style.pointerEvents + ')');
-  pc.fire('click', event(box.left + 10, box.top + 10));
+  pc.fire('click', event(at.x, at.y));
   if (world.opens() !== 1) fail('касание не открыло консоль');
   world.win('pointerdown', touch(5, 5));
   if (pc.style.pointerEvents === 'auto') fail('коснулись мимо, а компьютер всё ещё ловит щелчки');
@@ -2280,6 +2283,290 @@ check('на спрятанный диван не садятся', function () {
   return 'три прогона по 4 мин: никто не забирался на спрятанное';
 });
 
+/* --- пакет З (5.86): остатки аудита 24.09 ------------------------------- */
+
+/* Куда смотрит существо: в строке глаз белок и зрачок стоят рядом, и зрачок
+   правее белка — значит вправо. Отражённый кадр ставит их наоборот. */
+const EYE_WHITE = '#e7eaf2';
+const EYE_PUPIL = '#12141c';
+
+function facing(world, pet) {
+  const body = world.made[look(pet).body];
+  if (!body) fail('тело не нарисовано');
+  const pupil = body.paint.filter(function (c) { return c.c === EYE_PUPIL; })[0];
+  if (!pupil) fail('в кадре тела нет зрачков');
+  const row = body.paint.filter(function (c) {
+    return c.y === pupil.y && (c.c === EYE_WHITE || c.c === EYE_PUPIL);
+  }).sort(function (a, b) { return a.x - b.x; });
+  return row[0].c === EYE_WHITE ? 1 : -1;
+}
+
+/* Крючок: объекты существ наружу, в `window.__pets`. Ставится в исполняемую
+   копию скрипта — в ту, что сейчас в ходу, чтобы на самопроверке поломка не
+   потерялась, — файл на диске не трогается. */
+function openHooked(options, extra) {
+  const anchor = '    me.decide = decide;\n';
+  if (ACTIVE.indexOf(anchor) < 0) fail('крючок не встал: в pet.js нет строки «me.decide = decide;»');
+  const saved = ACTIVE;
+  let code = ACTIVE.replace(anchor, anchor + '    (window.__pets || (window.__pets = [])).push(me);\n');
+  if (extra) {
+    if (code.indexOf(extra[0]) < 0) fail('крючок не встал: в pet.js нет строки «' + extra[0].trim() + '»');
+    code = code.replace(extra[0], extra[1] + extra[0]);
+  }
+  ACTIVE = code;
+  try { return open(options); } finally { ACTIVE = saved; }
+}
+
+function thingTitled(world, title) {
+  const found = world.things.filter(function (t) { return t.title === title; })[0];
+  if (!found) fail('в обстановке нет «' + title + '»');
+  return found;
+}
+
+/* Клетки кадра, которые нарисованы, — по следу `fillRect` кадрового холста. */
+function paintedCells(world, thing) {
+  const frame = world.made[thing.layers[0].id];
+  const cells = new Set();
+  frame.paint.forEach(function (c) { cells.add(c.x + ',' + c.y); });
+  return cells;
+}
+
+/* Точка над нарисованной клеткой предмета — ближе к середине рисунка:
+   прозрачное в рамке с 5.86 щелчков не ловит, и прежние «10 px от угла»
+   у компьютера попадали в пустоту. */
+function solidPoint(world, thing) {
+  const P = NUM.PIXEL;
+  const box = thing.getBoundingClientRect();
+  let best = null;
+  paintedCells(world, thing).forEach(function (key) {
+    const xy = key.split(',').map(Number);
+    const d = Math.abs(xy[0] + P / 2 - thing.width / 2) + Math.abs(xy[1] + P / 2 - thing.height / 2);
+    if (!best || d < best.d) best = { x: xy[0], y: xy[1], d: d };
+  });
+  if (!best) fail('у «' + thing.title + '» не нарисовано ни клетки');
+  return { x: box.left + best.x + P / 2, y: box.top + best.y + P / 2 };
+}
+
+/* Поливающий смотрит на кадку: стоит слева от неё, лейка справа — значит и
+   морда вправо, как у ноутбука и кружки. До 5.86 направление оставалось от
+   ходьбы: подошёл справа — поливал спиной к кадке. И курсор его разворачивал:
+   полива не было в списке занятых дел, при которых курсор не в счёт. */
+check('поливающий смотрит на кадку, и курсор его не разворачивает', function () {
+  const world = open({ seed: 5 });
+  const found = waitForWater(world, 300);
+  if (found.when === null) fail('за пять минут никто не полил растение');
+  const pet = world.pets[found.who];
+  if (facing(world, pet) !== 1) fail('поливает спиной к кадке: кадка справа, а смотрит влево');
+  const box = pet.getBoundingClientRect();
+  world.win('mousemove', event(box.left - 12, box.top + box.height / 2));
+  world.step(FRAME_MS * 2);
+  if (!pouring(world, look(pet).prop)) fail('полив оборвался сам — проверять нечего, нужно другое зерно');
+  if (facing(world, pet) !== 1) fail('курсор слева — поливающий развернулся спиной к кадке');
+  return 'поливает, глядя на кадку; курсор слева его не развернул';
+});
+
+/* Позвали на встречу, пока шёл к дивану или к кадке, — место за ним не
+   держится. До 5.86 `seat`/`pot` оставались, и второй не садился на этот
+   диван, пока первый не дойдёт куда-нибудь ещё. */
+check('позвали на встречу — диван и кадка за позванным не держатся', function () {
+  const world = openHooked({ seed: 3 });
+  const pets = world.peek().__pets;
+  if (!pets || pets.length !== 2) fail('крючок не отдал существ');
+  let who = null;
+  for (let i = 0; i < 3000 && who === null; i++) {
+    world.step(100);
+    who = pets.filter(function (p) { return (p.seat || p.pot) && p.state === 'walk'; })[0] || null;
+  }
+  if (!who) fail('за пять минут никто не пошёл ни к дивану, ни к кадке');
+  const had = who.seat ? 'диван' : 'кадку';
+  who.summon(world.at(), 400, 1);
+  if (who.seat || who.pot) fail('позвали на встречу, а он всё ещё держит ' + had + ' за собой');
+  return 'шёл на ' + had + ', позвали — отпустил';
+});
+
+/* Ошибка в одном кадре не останавливает сцену. До 5.86 следующий кадр
+   заказывался в конце, и исключение посреди кадра глушило сцену до
+   перезагрузки страницы. */
+check('ошибка в одном кадре не останавливает сцену', function () {
+  const boom = "    if (window.__boom) { window.__boom = false; throw new Error('проба'); }\n";
+  const world = openHooked({ seed: 2 }, ['    direct(now);\n', boom]);
+  world.step(500);
+  world.peek().__boom = true;
+  try { world.step(FRAME_MS * 2); } catch (err) { /* кадр с ошибкой — так и задумано */ }
+  const before = world.frames();
+  world.step(1000);
+  const ran = world.frames() - before;
+  if (ran < 30) fail('после ошибки в кадре сцена встала: за секунду ' + ran + ' кадров');
+  return 'после ошибки за секунду ' + ran + ' кадров';
+});
+
+/* Пока открыта консоль, сцена стоит: она под размытой подложкой, и каждый её
+   кадр заставлял браузер размывать фон заново. Закрыли — ожила. */
+check('пока открыта консоль, сцена стоит', function () {
+  const world = open({ seed: 4 });
+  world.step(1000);
+  world.doc('office:console', { detail: { open: true } });
+  world.step(FRAME_MS * 2);
+  const at = world.pets.map(function (p) { return p.spot().x + ',' + p.spot().y; }).join(' ');
+  const before = world.frames();
+  world.step(3000);
+  const counted = world.frames() - before;
+  if (counted > 0) fail('консоль открыта, а сцена считает кадры: ' + counted + ' за 3 с');
+  if (world.pets.map(function (p) { return p.spot().x + ',' + p.spot().y; }).join(' ') !== at) {
+    fail('консоль открыта, а существа двигаются');
+  }
+  world.doc('office:console', { detail: { open: false } });
+  const after = world.frames();
+  world.step(1000);
+  if (world.frames() - after < 30) fail('консоль закрыли, а сцена не проснулась');
+  return 'открыта — ни кадра, закрыли — ожила';
+});
+
+/* После нового рекорда строка бежит с начала. До 5.86 кадр считался по
+   часам страницы (`now / TICK_MS`), и новая строка начиналась с того
+   столбца, на который выпало время, — с середины ника или счёта. */
+check('после нового рекорда табло бежит с начала строки', function () {
+  [300, 300 + 5 * NUM.TICK_MS].forEach(function (wait) {
+    const world = open({ seed: 5, records: [{ nick: 'orbit-42', best: 999 }] });
+    world.step(wait);
+    const board = thingTitled(world, 'Табло рекорда');
+    world.doc('office:record', { detail: { nick: 'otto', best: 1000 } });
+    const first = printOf(world, board.layers[0].id);
+    world.step(NUM.TICK_MS + FRAME_MS);
+    if (printOf(world, board.layers[0].id) !== first) {
+      fail('рекорд пришёл на ' + wait + ' мс — строка побежала не с первого кадра');
+    }
+  });
+  return 'в двух мирах строка после рекорда начинается с первого кадра';
+});
+
+/* В тихом режиме строка не бежит, и до 5.86 табло стояло на её первом кадре:
+   «HI» и обрывок ника, счёта не видно. Теперь — один кадр со счётом по
+   центру. Горящие точки — самый редкий цвет внутри рамки. */
+check('в тихом режиме табло стоит на счёте по центру', function () {
+  const world = open({ seed: 5, lessMotion: true, records: [{ nick: 'orbit-42', best: 12000 }] });
+  world.step(500);
+  const board = thingTitled(world, 'Табло рекорда');
+  const P = NUM.PIXEL;
+  const cols = board.width / P;
+  const rows = board.height / P;
+  const frame = world.made[board.layers[0].id];
+  const inner = frame.paint.filter(function (c) {
+    const cx = Math.round(c.x / P);
+    const cy = Math.round(c.y / P);
+    return cx > 0 && cx < cols - 1 && cy > 0 && cy < rows - 1;
+  });
+  const tally = {};
+  inner.forEach(function (c) { tally[c.c] = (tally[c.c] || 0) + 1; });
+  const colors = Object.keys(tally).sort(function (a, b) { return tally[a] - tally[b]; });
+  if (colors.length < 2) fail('на табло не горит ни одной точки');
+  const lit = inner.filter(function (c) { return c.c === colors[0]; }).map(function (c) { return Math.round(c.x / P); });
+  const from = Math.min.apply(null, lit);
+  const to = Math.max.apply(null, lit);
+  const width = to - from + 1;
+  const left = from - 1;
+  const right = cols - 2 - to;
+  const want = String(12000).length * 4 - 1;
+  if (width !== want || Math.abs(left - right) > 1) {
+    fail('горит столбцы ' + from + '–' + to + ' (ширина ' + width + ', ждали ' + want + '; поля ' + left + ' и ' + right + ') — не счёт по центру');
+  }
+  const still = printOf(world, board.layers[0].id);
+  world.step(3000);
+  if (printOf(world, board.layers[0].id) !== still) fail('в тихом режиме табло меняет кадры');
+  return 'счёт 12000 по центру: поля ' + left + ' и ' + right + ', стоит';
+});
+
+/* У нижней кромки предмет под курсором не дрожит. Приподнятый на клетку, он
+   уходил из-под курсора, опускался и снова приподнимался — на каждом
+   движении мыши (у полки 11 смен на 12 шагов). Попадание теперь считается по
+   предмету в покое. Курсор — над нарисованной клеткой нижнего ряда. */
+check('у нижней кромки предмет под курсором не дрожит', function () {
+  const world = open({ seed: 5 });
+  world.step(500);
+  const shelf = thingTitled(world, 'Подвинуть полку');
+  const P = NUM.PIXEL;
+  const cells = paintedCells(world, shelf);
+  const bottom = shelf.height - P;
+  let x = null;
+  for (let cx = 0; cx < shelf.width && x === null; cx += P) if (cells.has(cx + ',' + bottom)) x = cx;
+  if (x === null) fail('в нижнем ряду полки ничего не нарисовано');
+  const box = shelf.getBoundingClientRect();
+  const tops = [];
+  for (let i = 0; i < 12; i++) {
+    world.win('mousemove', event(box.left + x + 1 + (i % 2), box.bottom - 1));
+    world.step(FRAME_MS);
+    tops.push(shelf.spot().y);
+  }
+  const flips = tops.filter(function (y, i) { return i > 0 && y !== tops[i - 1]; }).length;
+  if (flips > 0) fail('курсор у нижней кромки — полка сменила положение ' + flips + ' раз за 12 шагов по 1 px');
+  if (tops[0] === 0) fail('курсор над полкой, а она не приподнялась');
+  return 'приподнялась и стоит: 12 шагов без дрожи';
+});
+
+/* Прозрачное в рамке предмета щелчков не ловит: попадание — по нарисованной
+   клетке показанного кадра. До 5.86 ловила вся рамка — у компьютера это 55 %
+   пустоты, и щелчок мимо рисунка открывал консоль вместо ссылки под ним. */
+check('прозрачное в рамке предмета щелчков не ловит', function () {
+  const world = open({ seed: 5 });
+  world.step(500);
+  const pc = thingTitled(world, 'Включить компьютер');
+  const P = NUM.PIXEL;
+  const cells = paintedCells(world, pc);
+  let hole = null;
+  let solid = null;
+  for (let y = 0; y < pc.height; y += P) {
+    for (let x = 0; x < pc.width; x += P) {
+      if (!hole && !cells.has(x + ',' + y)) hole = { x: x, y: y };
+      if (!solid && cells.has(x + ',' + y)) solid = { x: x, y: y };
+    }
+  }
+  if (!hole || !solid) fail('в рамке компьютера не нашлось ' + (hole ? 'нарисованной' : 'пустой') + ' клетки');
+  const box = pc.getBoundingClientRect();
+  world.win('mousemove', event(box.left + hole.x + 1, box.top + hole.y + 1));
+  if (pc.style.pointerEvents === 'auto') fail('курсор над пустой клеткой рамки, а компьютер ловит щелчки');
+  world.win('mousemove', event(box.left + solid.x + 1, box.top + solid.y + 1));
+  if (pc.style.pointerEvents !== 'auto') fail('курсор над нарисованным, а щелчки идут насквозь');
+  return 'пустое — насквозь, нарисованное — ловит';
+});
+
+/* Кнопку отпустили за окном — предмет не остаётся в руке. `mouseup` за окном
+   не приходит (Alt+Tab посреди перетаскивания), и до 5.86 полка ходила за
+   курсором, пока не щёлкнут ещё раз. Теперь отпускает движение без кнопки и
+   уход фокуса с окна. Курсор после отпускания уходит влево, а рука до того
+   шла вправо: брошенная полка летит вправо, прилипшая — пошла бы за курсором. */
+check('кнопку отпустили за окном — предмет не остаётся в руке', function () {
+  const world = open({ seed: 5 });
+  world.step(500);
+  const shelf = thingTitled(world, 'Подвинуть полку');
+
+  function grab() {
+    const box = shelf.getBoundingClientRect();
+    const hold = { x: box.left + 10, y: box.top + 10 };
+    shelf.fire('mousedown', event(hold.x, hold.y));
+    world.step(FRAME_MS);
+    world.win('mousemove', Object.assign(event(hold.x + 60, hold.y - 40), { buttons: 1 }));
+    world.step(FRAME_MS);
+    return hold;
+  }
+
+  let hold = grab();
+  world.win('mousemove', Object.assign(event(hold.x + 90, hold.y - 40), { buttons: 0 }));
+  world.step(FRAME_MS);
+  let after = shelf.spot().x;
+  world.win('mousemove', Object.assign(event(hold.x - 300, hold.y - 40), { buttons: 0 }));
+  world.step(1500);
+  if (shelf.spot().x < after - 60) fail('кнопку отпустили, а полка ушла за курсором: ' + after + ' → ' + shelf.spot().x);
+
+  hold = grab();
+  world.win('blur', {});
+  world.step(FRAME_MS);
+  after = shelf.spot().x;
+  world.win('mousemove', event(hold.x - 300, hold.y - 40));
+  world.step(1500);
+  if (shelf.spot().x < after - 60) fail('окно потеряло фокус, а полка ушла за курсором: ' + after + ' → ' + shelf.spot().x);
+  return 'движение без кнопки и уход фокуса отпускают полку';
+});
+
 /* --- кто проверяет проверку --------------------------------------------- */
 
 /* Зелёный прогон стоит ровно столько, сколько эта проверка ловит. Поэтому
@@ -2447,7 +2734,7 @@ const BREAKS = [
     name: 'табло не слышит новый рекорд',
     red: 'табло рекорда на стене бежит вершиной общей таблицы и слышит новый рекорд',
     parts: [[
-      '    board.repaint(tickerFrames(text));',
+      '    board.repaint(tickerArt(record));',
       '    return;',
     ]],
   },
@@ -2740,6 +3027,95 @@ const BREAKS = [
     parts: [[
       '        if (a && b && !a.off && !b.off) setSpot(t);',
       '        if (true) setSpot(t);',
+    ]],
+  },
+  // Пакет З (5.86): каждая поломка возвращает дефект, который пакет закрыл.
+  {
+    name: 'поливает, стоя как подошёл, — спиной к кадке',
+    red: 'поливающий смотрит на кадку, и курсор его не разворачивает',
+    parts: [[
+      "        me.dir = 1;\n        enter('water', now, now + WATER_MS);",
+      "        enter('water', now, now + WATER_MS);",
+    ]],
+  },
+  {
+    name: 'курсор разворачивает поливающего',
+    red: 'поливающий смотрит на кадку, и курсор его не разворачивает',
+    parts: [[
+      "me.state === 'held' || me.state === 'water' ||",
+      "me.state === 'held' ||",
+    ]],
+  },
+  {
+    name: 'позванный держит диван и кадку за собой',
+    red: 'позвали на встречу — диван и кадка за позванным не держатся',
+    parts: [[
+      "      me.seat = null;\n      me.pot = null;\n      me.errand = clamp(x, EDGE, limit());",
+      "      me.errand = clamp(x, EDGE, limit());",
+    ]],
+  },
+  {
+    name: 'следующий кадр заказывается в конце — ошибка глушит сцену',
+    red: 'ошибка в одном кадре не останавливает сцену',
+    parts: [
+      ["    window.requestAnimationFrame(frame);\n\n    var step", "    var step"],
+      ["      t.tick(now);\n    });\n  }\n\n  function wake() {", "      t.tick(now);\n    });\n    window.requestAnimationFrame(frame);\n  }\n\n  function wake() {"],
+    ],
+  },
+  {
+    name: 'сцена живёт под открытой консолью',
+    red: 'пока открыта консоль, сцена стоит',
+    parts: [[
+      "if (document.hidden || allHidden() || consoleOpen) { running = false; return; }",
+      "if (document.hidden || allHidden()) { running = false; return; }",
+    ]],
+  },
+  {
+    name: 'кадр табло по часам страницы',
+    red: 'после нового рекорда табло бежит с начала строки',
+    parts: [[
+      "return Math.floor((now - me.since) / TICK_MS) % me.count;",
+      "return Math.floor(now / TICK_MS) % me.count;",
+    ]],
+  },
+  {
+    name: 'в тихом режиме табло стоит на первом кадре ленты',
+    red: 'в тихом режиме табло стоит на счёте по центру',
+    parts: [[
+      "return LESS_MOTION ? [tickerStill(record)] : tickerFrames(tickerText(record));",
+      "return tickerFrames(tickerText(record));",
+    ]],
+  },
+  {
+    name: 'попадание по приподнятому предмету',
+    red: 'у нижней кромки предмет под курсором не дрожит',
+    parts: [
+      ["var top = box.top + me.lift;", "var top = box.top;"],
+      ["y < box.bottom + me.lift &&", "y < box.bottom &&"],
+    ],
+  },
+  {
+    name: 'щелчки ловит вся рамка предмета',
+    red: 'прозрачное в рамке предмета щелчков не ловит',
+    parts: [[
+      "        solid(x - box.left, y - top);",
+      "        x - box.left >= 0;",
+    ]],
+  },
+  {
+    name: 'движение без кнопки не отпускает взятое',
+    red: 'кнопку отпустили за окном — предмет не остаётся в руке',
+    parts: [[
+      "    if (event.buttons === 0) { release(); return; }\n",
+      "",
+    ]],
+  },
+  {
+    name: 'уход фокуса не отпускает взятое',
+    red: 'кнопку отпустили за окном — предмет не остаётся в руке',
+    parts: [[
+      "  window.addEventListener('blur', release);\n",
+      "",
     ]],
   },
 ];

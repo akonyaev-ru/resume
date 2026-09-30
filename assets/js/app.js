@@ -604,8 +604,26 @@
     });
   }
 
+  /* Кольцо «сейчас» дышит `box-shadow`, а это не композитится: браузер считал
+     стили и рисовал его каждый кадр, даже когда шкала за экраном (5.86). За
+     экраном оно стоит — `is-away` ставит анимацию засечки на паузу, вид тот
+     же. Шкала пересобирается при смене языка в одиночной копии — наблюдатель
+     пересаживается на новый отрезок. Без IntersectionObserver дышит всегда. */
+  var ringWatch = null;
+
+  function watchRing() {
+    if (ringWatch) ringWatch.disconnect();
+    var seg = $('.timeline__seg.is-current');
+    if (!seg || LESS_MOTION || !('IntersectionObserver' in window)) return;
+    ringWatch = new IntersectionObserver(function (entries) {
+      entries.forEach(function (entry) { entry.target.classList.toggle('is-away', !entry.isIntersecting); });
+    });
+    ringWatch.observe(seg);
+  }
+
   function initTimeline() {
     stackLabels();
+    watchRing();
     if (document.fonts && document.fonts.ready && document.fonts.ready.then) {
       document.fonts.ready.then(stackLabels);
     }
@@ -710,15 +728,18 @@
     var total = groups.reduce(function (n, g) { return n + g.skills.length; }, 0);
     var blocks = [];
 
+    /* Имя кнопки для скринридера — только подпись группы: синтаксис команды
+       («skills --group legal #») диктор читал по знакам (5.86). Глазу он виден
+       как был; у --all своё имя — «Все группы: …». */
     function command(flag, comment, index) {
       var btn = el('button', { class: 'cmd', type: 'button', 'aria-pressed': 'false' }, [
         el('span', { class: 'cmd__prompt', 'aria-hidden': 'true', text: '$' }),
-        el('span', { class: 'cmd__text' }, [
+        el('span', { class: 'cmd__text', 'aria-hidden': 'true' }, [
           document.createTextNode('skills '),
           el('span', { class: 'cmd__flag', text: flag }),
         ]),
         el('span', { class: 'cmd__comment' }, [
-          document.createTextNode('# '),
+          el('span', { 'aria-hidden': 'true', text: '# ' }),
           el('em', { text: comment }),
         ]),
       ]);
@@ -726,7 +747,10 @@
       return btn;
     }
 
+    // «Нажата» ровно одна: --all, пока видны все группы, или выбранная группа.
+    // До 5.86 у --all всегда стояло «не нажата».
     function setSolo(index) {
+      all.setAttribute('aria-pressed', String(index === null));
       blocks.forEach(function (block) {
         var off = index !== null && block.index !== index;
         block.node.classList.toggle('is-off', off);
@@ -734,8 +758,11 @@
       });
     }
 
-    var all = command('--all', groups.length + ' ' + plural(groups.length, t(R.ui.termGroups)) + ' · ' +
-      total + ' ' + plural(total, t(R.ui.termSkills)), null);
+    var allCount = groups.length + ' ' + plural(groups.length, t(R.ui.termGroups)) + ' · ' +
+      total + ' ' + plural(total, t(R.ui.termSkills));
+    var all = command('--all', allCount, null);
+    all.setAttribute('aria-label', u('allGroups') + ': ' + allCount);
+    all.setAttribute('aria-pressed', 'true');
     all.addEventListener('click', function () { setSolo(null); });
 
     var body = el('div', { class: 'term__body' }, [el('div', { class: 'term__block' }, [all])]);

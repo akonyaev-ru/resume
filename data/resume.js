@@ -64,6 +64,8 @@ window.RESUME = {
     termGroups: { ru: ['группа', 'группы', 'групп'], en: ['group', 'groups', 'groups'] },
     termSkills: { ru: ['навык', 'навыка', 'навыков'], en: ['skill', 'skills', 'skills'] },
     termHint: { ru: 'Щелкните по команде, чтобы оставить одну группу', en: 'Click a command to keep one group' },
+    // Имя кнопки --all для скринридера (5.86): синтаксис команды от диктора спрятан.
+    allGroups: { ru: 'Все группы', en: 'All groups' },
     educationTitle: { ru: 'Образование', en: 'Education' },
     // Подзаголовок вузов: второй «Образование» под заголовком раздела повторял его.
     degreesTitle: { ru: 'Высшее', en: 'Degrees' },

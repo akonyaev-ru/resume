@@ -74,7 +74,9 @@
   <div id="app"></div>
 
   <noscript>
-    <div class="wrap" style="padding-block: 3rem;">
+    <!-- #main и здесь: без скрипта «К содержанию» вела в никуда (5.86). Со
+         скриптом содержимое noscript не разбирается, и #main один — от app.js. -->
+    <div class="wrap" id="main" style="padding-block: 3rem;">
       <h1>Алексей Коняев</h1>
       <p>Специалист по LegalOPS и внедрению AI-агентов. Юрист по практике. Москва, удаленно или гибрид.</p>
       <p>

@@ -1037,6 +1037,11 @@ a:not(.btn):hover { color: var(--text); }
   100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--mint) 0%, transparent); }
 }
 
+/* Шкала за экраном — кольцо стоит (5.86): `box-shadow` не композитится, и
+   дыхание стоило пересчёта стилей и отрисовки в каждом кадре. `is-away`
+   ставит app.js по IntersectionObserver. */
+.timeline__seg.is-current.is-away::before { animation-play-state: paused; }
+
 @media (prefers-reduced-motion: reduce) {
   .timeline__seg.is-current::before { animation: none; }
 }
@@ -1366,6 +1371,9 @@ a:not(.btn):hover { color: var(--text); }
 
 .term__block.is-off .term__out { display: none; }
 .term__block.is-off .cmd { opacity: 0.5; }
+/* Контраст погашенной команды 2,3–4,6 : 1 — ниже AA 4,5 : 1, хотя по ней
+   щёлкают. Владелец 2026-09-30 оставил этот вид (вариант А из трёх: показаны
+   ещё прозрачность 0,8 и «серым» 5,6 : 1) — осознанно, не поднимать заново. */
 
 /* Высота 32 px — минимум, а не жёсткая: самая длинная плашка («Защита
    персональных данных (152-ФЗ)», «Business requirements and specifications»)
@@ -1849,6 +1857,13 @@ a:not(.btn):hover { color: var(--text); }
 
 /* Пока окно открыто, страница под ним не листается. */
 body.is-console { overflow: hidden; }
+
+/* Палец без мыши (планшет): подсказки «Esc — закрыть» нет — клавиатуры там
+   обычно нет, окно закрывает «×» (5.86). До того её прятал только порог
+   телефона ниже, и на планшете 768–1024 px она обещала несуществующую клавишу. */
+@media (hover: none) and (pointer: coarse) {
+  .console__hint, .console__scores-foot { display: none; }
+}
 
 @media (max-width: 480px) {
   .console__play { grid-template-columns: 1fr; grid-template-areas: 'well' 'side' 'keys'; justify-items: center; }

@@ -1267,8 +1267,36 @@
     }
     return frames;
   }
+  /* В тихом режиме строка не бежит — табло стоит на одном кадре со счётом по
+     центру (5.86). До того оно замирало на первом кадре ленты: «HI» и обрывок
+     ника, счёта не видно. «HI» и ник вместе со счётом в 25 столбцов не
+     влезают; без рекордов — «---». */
+  function tickerStill(record) {
+    var text = record ? String(record.best) : '---';
+    var from = Math.max(0, Math.floor((TICKER_W - 2 - (text.length * 4 - 1)) / 2));
+    var art = [];
+    for (var ry = 0; ry < TICKER_H; ry += 1) {
+      var line = '';
+      for (var rx = 0; rx < TICKER_W; rx += 1) {
+        var edge = ry === 0 || ry === TICKER_H - 1 || rx === 0 || rx === TICKER_W - 1;
+        var col = rx - 1 - from;
+        var at = Math.floor(col / 4);
+        var glyph = col >= 0 && col % 4 < 3 && at < text.length ? FONT[text.charAt(at)] || FONT[' '] : null;
+        var lit = !edge && glyph && ry >= 2 && ry <= 6 && glyph[ry - 2].charAt(col % 4) === '#';
+        line += edge ? 'f' : lit ? 'a' : 'b';
+      }
+      art.push(line);
+    }
+    return art;
+  }
+
+  // Кадры табло для записи: бегущая лента или, в тихом режиме, один кадр.
+  function tickerArt(record) {
+    return LESS_MOTION ? [tickerStill(record)] : tickerFrames(tickerText(record));
+  }
+
   var TICKER_TEXT = tickerText(topRecord());
-  var TICKER = tickerFrames(TICKER_TEXT);
+  var TICKER = tickerArt(topRecord());
 
   /* --- сборка кадров ----------------------------------------------------- */
 
@@ -1594,6 +1622,11 @@
     function summon(now, x, facing, hurry) {
       if (me.state === 'held' || me.state === 'fly') return;
 
+      // Дело брошено — и место при нём: до 5.86 `seat`/`pot` оставались за
+      // позванным, и второй не садился на этот диван, пока первый не дойдёт
+      // куда-нибудь ещё.
+      me.seat = null;
+      me.pot = null;
       me.errand = clamp(x, EDGE, limit());
       me.facing = facing;
       me.hurry = !!hurry;
@@ -1652,6 +1685,10 @@
           decide(now);
           return;
         }
+        // Кадка справа, лейка справа — и морда вправо, как у ноутбука и
+        // кружки. До 5.86 оставалось направление ходьбы: подошёл справа —
+        // поливал спиной к кадке.
+        me.dir = 1;
         enter('water', now, now + WATER_MS);
         return;
       }
@@ -1949,8 +1986,9 @@
       if (!near) return;
 
       if (me.grab || me.errand !== null) return;
+      // Поливающий тоже занят: курсор разворачивал его спиной к кадке (5.86).
       if (me.state === 'open' || me.state === 'busy' || me.state === 'close' ||
-        me.state === 'fly' || me.state === 'held' ||
+        me.state === 'fly' || me.state === 'held' || me.state === 'water' ||
         me.state === 'wait' || me.state === 'jump' || me.state === 'pet' ||
         me.state === 'greet') return;
 
@@ -2136,8 +2174,11 @@
 
   // Табло: столбец сдвига по времени, по кругу; число кадров — у предмета,
   // после нового рекорда оно другое.
+  // Кадр ленты — от начала показа, а не по часам страницы: после нового
+  // рекорда строка бежит с начала (5.86; до того — с того столбца, на который
+  // выпало время, с середины ника или счёта).
   function tickerFace(me, now) {
-    return Math.floor(now / TICK_MS) % me.count;
+    return Math.floor((now - me.since) / TICK_MS) % me.count;
   }
 
   /* --- обстановка --------------------------------------------------------- */
@@ -2152,7 +2193,8 @@
        экран компьютера и бежит табло. Кадр выбирает `spec.face` — по курсору
        или по времени, а не по счётчику кадров. */
     var many = typeof spec.art[0] !== 'string';
-    var sheet = (many ? spec.art : [spec.art]).map(function (one) {
+    var arts = many ? spec.art : [spec.art];   // рисунки кадров: по ним считается попадание курсора
+    var sheet = arts.map(function (one) {
       return render(one, false, spec.skin, spec.dots);
     });
     var art = sheet[0];
@@ -2201,6 +2243,7 @@
       hidden: false,
       frame: spec.rest || 0, // какой кадр показан; `rest` — кадр покоя, у камеры объектив прямо
       count: sheet.length,   // сколько кадров: табло меняет их по событию рекорда
+      since: 0,              // с какого времени показывается нынешний набор кадров
       askedAt: -1000,        // когда в последний раз спрашивали кадр у `face`
       torn: false,           // камера: сорвана с кронштейна, держится на проводе
       swing: null,           // и качается на нём: угол от вертикали и скорость
@@ -2358,9 +2401,11 @@
 
     // Новый набор кадров того же размера: табло после нового рекорда.
     function repaint(frames) {
+      arts = frames;
       sheet = frames.map(function (one) { return render(one, false, spec.skin, spec.dots); });
       me.count = sheet.length;
       me.frame = 0;
+      me.since = performance.now();
       draw();
     }
 
@@ -2372,8 +2417,14 @@
       if (me.grab || spec.fixed) return;   // неподвижное не берётся и не приподнимается
       if (still && !spec.click) return;
 
+      /* Попадание — по предмету в покое и по нарисованной клетке (5.86).
+         Приподнятый уходил из-под курсора у нижней кромки и дрожал на каждом
+         движении мыши; прозрачное в рамке ловило щелчки — у компьютера это
+         55 % рамки, и щелчок мимо рисунка не доходил до страницы. */
       var box = canvas.getBoundingClientRect();
-      var on = x > box.left && x < box.right && y > box.top && y < box.bottom;
+      var top = box.top + me.lift;
+      var on = x > box.left && x < box.right && y > top && y < box.bottom + me.lift &&
+        solid(x - box.left, y - top);
 
       canvas.style.pointerEvents = on ? 'auto' : 'none';
 
@@ -2381,6 +2432,14 @@
       // взять. Ушёл курсор — опустился. Сорванной камере на проводе не до того.
       var lift = on && !me.torn && !still ? PIXEL : 0;
       if (lift !== me.lift) { me.lift = lift; place(); }
+    }
+
+    // Нарисована ли клетка показанного кадра под точкой — по тому же правилу,
+    // что у render(): у буквы есть цвет в палитре.
+    function solid(dx, dy) {
+      var art = arts[me.frame] || arts[0];
+      var line = art[Math.floor(dy / PIXEL)];
+      return !!line && !!spec.skin[line.charAt(Math.floor(dx / PIXEL))];
     }
 
     function take(event) {
@@ -2883,7 +2942,11 @@
   }
 
   function frame(now) {
-    if (document.hidden || allHidden()) { running = false; return; }
+    if (document.hidden || allHidden() || consoleOpen) { running = false; return; }
+
+    // Следующий кадр — первым делом: ошибка ниже не должна останавливать
+    // сцену до перезагрузки страницы, как было до 5.86.
+    window.requestAnimationFrame(frame);
 
     var step = last ? Math.min(now - last, 80) : 16.7;
     last = now;
@@ -2898,12 +2961,10 @@
       t.update(now, step);
       t.tick(now);
     });
-
-    window.requestAnimationFrame(frame);
   }
 
   function wake() {
-    if (running || document.hidden || allHidden() || LESS_MOTION) return;
+    if (running || document.hidden || allHidden() || LESS_MOTION || consoleOpen) return;
     running = true;
     last = 0;
     window.requestAnimationFrame(frame);
@@ -3091,10 +3152,19 @@
   // а рекорд ниже вершины общей таблицы строки не меняет.
   document.addEventListener('office:record', function (event) {
     var board = thingNamed('ticker');
-    var text = tickerText(topRecord(event.detail));
+    var record = topRecord(event.detail);
+    var text = tickerText(record);
     if (!board || text === TICKER_TEXT) return;
     TICKER_TEXT = text;
-    board.repaint(tickerFrames(text));
+    board.repaint(tickerArt(record));
+  });
+
+  /* Пока открыта консоль, сцена стоит (5.86): она под размытой подложкой, и
+     каждый её кадр заставлял браузер размывать фон заново. Закрыли — ожила. */
+  var consoleOpen = false;
+  document.addEventListener('office:console', function (event) {
+    consoleOpen = !!(event.detail && event.detail.open);
+    if (!consoleOpen) wake();
   });
 
   /* Существ ставим после мебели: Отто встаёт правее левой кадки. Раньше он
@@ -3173,16 +3243,24 @@
   pets.forEach(function (p) { p.rest(false); });
   wake();
 
+  function release() {
+    pets.forEach(function (p) { p.toss(); });
+    things.forEach(function (t) { t.drop(); });
+  }
+
+  /* Кнопку отпустили за окном — `mouseup` сюда не придёт (Alt+Tab посреди
+     перетаскивания), и до 5.86 взятое ходило за курсором, пока не щёлкнут ещё
+     раз. Теперь отпускает и движение без кнопки, и уход фокуса с окна.
+     `buttons` сравнивается строго: у синтетических событий без поля его нет. */
   window.addEventListener('mousemove', function (event) {
     pointer = { x: event.clientX, y: event.clientY };
+    if (event.buttons === 0) { release(); return; }
     pets.forEach(function (p) { p.haul(event); });
     things.forEach(function (t) { t.haul(event); });
   }, { passive: true });
 
-  window.addEventListener('mouseup', function () {
-    pets.forEach(function (p) { p.toss(); });
-    things.forEach(function (t) { t.drop(); });
-  });
+  window.addEventListener('mouseup', release);
+  window.addEventListener('blur', release);
 
   // Во вкладке в фоне кадры не считаются: вернулись — существа просыпаются.
   document.addEventListener('visibilitychange', wake);
