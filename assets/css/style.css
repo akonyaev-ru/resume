@@ -202,6 +202,30 @@ a:not(.btn):hover { color: var(--text); }
   color: var(--void);
 }
 
+/* --- Текстовая версия -------------------------------------------------------
+   Для тех, кто без JavaScript (5.87): роботы, которые скрипт не исполняют, и
+   посетители с выключенным. Собирает tools/build_static.js при выкладке — в
+   #app, из data/resume.js. Со скриптом её не видно даже мгновение: класс `js`
+   на <html> ставится в <head> до первой отрисовки, а render() очищает #app. */
+.js .static-cv { display: none; }
+.static-cv { position: relative; z-index: 1; padding-block: 3rem 6rem; }
+.static-cv h1 { font-size: var(--step-4); }
+/* Двумя классами: `.static-cv p` ниже перебивал бы цвет роли. */
+.static-cv .static-cv__role {
+  margin-top: 0.6rem;
+  font-family: var(--font-display);
+  font-size: var(--step-2);
+  color: var(--accent);
+}
+.static-cv h2 { margin-block: 3rem 1rem; font-size: var(--step-3); }
+.static-cv h3 { margin-block: 1.6rem 0.4rem; font-size: var(--step-1); }
+.static-cv p, .static-cv li { max-width: var(--measure); color: var(--text-dim); line-height: 1.6; }
+.static-cv > p, .static-cv p + p, .static-cv ul + p { margin-top: 0.9rem; }
+.static-cv ul { margin-top: 0.6rem; padding-inline-start: 1.2em; list-style: disc; }
+.static-cv li + li { margin-top: 0.4rem; }
+.static-cv b { color: var(--text); }
+.static-cv__note { padding-block: 1.5rem 0; color: var(--muted); font-size: var(--step--1); }
+
 /* --- Существо ----------------------------------------------------------- */
 
 /* Ходит по нижнему краю окна поверх содержимого, но ниже шапки. Холст ровно по

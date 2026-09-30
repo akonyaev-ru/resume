@@ -670,11 +670,16 @@
   /* --- проекты ----------------------------------------------------------- */
 
   /* Звёзды и последний выпуск подставляет `scripts/fetch_stats.py` перед
-     выкладкой. Данных может не быть вовсе — тогда строки просто нет. */
+     выкладкой. Данных может не быть вовсе — тогда строки просто нет.
+     Звёзды — от десяти (5.87): «★ 1» и «★ 3» у своих продуктов работали
+     скорее против. Меньше порога — счётчика нет, строка выпуска остаётся;
+     наберётся десять — появится сам. */
+  var STARS_MIN = 10;
+
   function buildProjects() {
     var grid = el('div', { class: 'projects enter' }, R.projects.map(function (pr) {
       var stat = (STATS.repos && STATS.repos[pr.repo]) || null;
-      var stars = stat && typeof stat.stars === 'number' ? stat.stars : null;
+      var stars = stat && typeof stat.stars === 'number' && stat.stars >= STARS_MIN ? stat.stars : null;
       var release = stat && stat.release;
       return el('article', { class: 'project' }, [
         el('div', { class: 'project__top' }, [

@@ -9,6 +9,11 @@
   <meta name="color-scheme" content="dark" />
   <meta name="theme-color" content="#080a10" />
 
+  <!-- Класс `js` — до первой отрисовки: текстовую версию резюме в #app
+       (tools/build_static.js — для роботов и тех, кто без JavaScript) посетитель
+       со скриптом не видит даже мгновение: её прячут стили, а app.js убирает. -->
+  <script>document.documentElement.classList.add('js');</script>
+
   <!-- Английская версия — отдельная страница `en.html`, ее собирает
        tools/build_en.py. Раньше версии различались только параметром ?lang=en,
        и поисковик с превью ссылки видели русские заголовок и описание в обеих. -->
@@ -23,7 +28,14 @@
   <meta property="og:url" content="https://akonyaev-ru.github.io/resume/" />
   <meta property="og:locale" content="ru_RU" />
   <meta property="og:locale:alternate" content="en_US" />
-  <meta name="twitter:card" content="summary" />
+  <!-- Картинка превью ссылки — первый экран страницы, 1200×630, у каждого языка
+       своя. Снимает tools/make_og.js с настоящей страницы; при правке роли —
+       переснять. -->
+  <meta property="og:image" content="https://akonyaev-ru.github.io/resume/assets/img/og-ru.jpg" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta property="og:image:alt" content="Алексей Коняев — специалист по LegalOPS и внедрению AI-агентов" />
+  <meta name="twitter:card" content="summary_large_image" />
 
   <!-- Шрифты свои (assets/fonts): страница не ждёт Google. Однофайловая сборка
        подставляет сюда ссылку на Google Fonts — см. tools/build_single.py. -->
@@ -70,23 +82,14 @@
 <body>
   <a class="skip" href="#main">К содержанию</a>
 
+  <!-- Без скрипта в #app — текстовая версия резюме (tools/build_static.js, с
+       5.87), и #main у неё. Здесь — только пояснение над ней. -->
+  <noscript>
+    <p class="wrap static-cv__note">Интерактивная версия страницы собирается на JavaScript — без него здесь текстовая.</p>
+  </noscript>
+
   <canvas id="field" aria-hidden="true"></canvas>
   <div id="app"></div>
-
-  <noscript>
-    <!-- #main и здесь: без скрипта «К содержанию» вела в никуда (5.86). Со
-         скриптом содержимое noscript не разбирается, и #main один — от app.js. -->
-    <div class="wrap" id="main" style="padding-block: 3rem;">
-      <h1>Алексей Коняев</h1>
-      <p>Специалист по LegalOPS и внедрению AI-агентов. Юрист по практике. Москва, удаленно или гибрид.</p>
-      <p>
-        <a href="https://t.me/konyaev929">Написать в Telegram</a> ·
-        Почта: <a href="mailto:inbox@akonyaev.ru">inbox@akonyaev.ru</a> ·
-        <a href="https://github.com/akonyaev-ru">github.com/akonyaev-ru</a>
-      </p>
-      <p>Страница собирается на JavaScript — включите его, чтобы увидеть резюме целиком.</p>
-    </div>
-  </noscript>
 
   <script src="data/resume.js"></script>
   <script src="data/stats.js"></script>

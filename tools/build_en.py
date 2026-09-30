@@ -50,18 +50,22 @@ STRINGS = [
     ('"addressLocality": "Москва"', '"addressLocality": "Moscow"'),
     ('"name": "Айковер ПРО"', '"name": "iCover PRO"'),
     (">К содержанию<", ">Skip to content<"),
-    ("<h1>Алексей Коняев</h1>", "<h1>Alexey Konyaev</h1>"),
+    # Картинка превью — своя у каждого языка (5.87), подпись к ней тоже.
     (
-        "<p>Специалист по LegalOPS и внедрению AI-агентов. Юрист по практике. Москва, удаленно или гибрид.</p>",
-        "<p>LegalOPS and AI-agent implementation specialist. A practising lawyer. Moscow, remote or hybrid.</p>",
+        'content="https://akonyaev-ru.github.io/resume/assets/img/og-ru.jpg"',
+        'content="https://akonyaev-ru.github.io/resume/assets/img/og-en.jpg"',
     ),
-    (">Написать в Telegram<", ">Message me on Telegram<"),
-    ("Почта: <a", "Email: <a"),
     (
-        "<p>Страница собирается на JavaScript — включите его, чтобы увидеть"
-        " резюме целиком.</p>",
-        "<p>The page is built with JavaScript — switch it on to see the whole"
-        " CV.</p>",
+        'content="Алексей Коняев — специалист по LegalOPS и внедрению AI-агентов"',
+        'content="Alexey Konyaev — LegalOPS and AI-agent implementation specialist"',
+    ),
+    # С 5.87 в <noscript> только пояснение: резюме без скрипта — текстовая
+    # версия в #app, её собирает tools/build_static.js на языке страницы.
+    (
+        "Интерактивная версия страницы собирается на JavaScript — без него здесь"
+        " текстовая.",
+        "The interactive version of this page is built with JavaScript — without"
+        " it, you are reading the text version.",
     ),
 ]
 
