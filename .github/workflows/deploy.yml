@@ -42,13 +42,16 @@ jobs:
       # там уже жил дефект, из-за которого Оливия не появлялась совсем. Прогон
       # крутит `pet.js` вхолостую под заглушками браузера, `--selftest` следом
       # проверяет саму проверку. Красный прогон останавливает выкладку.
-      # Следом — сборщик текстовой версии для тех, кто без JavaScript (5.87).
-      - name: Прогнать существ, тетрис и текстовую версию
+      # Следом — сборщик текстовой версии для тех, кто без JavaScript (5.87),
+      # и сверка иконки вкладки с кадром Отто: перерисовали существо — иконку
+      # надо пересобрать `node tools/make_favicon.js` (5.88).
+      - name: Прогнать существ, тетрис, текстовую версию и иконку
         run: |
           node tools/check_pet.js
           node tools/check_pet.js --selftest
           node tools/check_tetris.js
           node tools/check_static.js
+          node tools/make_favicon.js --check
 
       - uses: actions/setup-python@v7
         with:
