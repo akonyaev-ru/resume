@@ -602,14 +602,6 @@ BODY_FRAMES = [
         lambda: body(legs='tuck', crouch=1),
         lambda: body(legs='tuck', crouch=1, step=1),
     ]),
-    # Танцует на месте: приседает и подскакивает, щупальца перебирают вбок.
-    # Качать вбок само тело нельзя — крайний столбец срезало бы краем рамки.
-    ('dance', [
-        lambda: body(legs='sweep', crouch=1),
-        lambda: body(legs='stand', lift=1),
-        lambda: body(legs='stand', crouch=1),
-        lambda: body(legs='sweep', lift=1),
-    ]),
     # Отто держат на весу: щупальца висят и качаются из стороны в сторону.
     ('held', [
         lambda: body(lift=1, hang=True),
@@ -627,9 +619,9 @@ BODY_FRAMES = [
 ]
 
 LAP_FRAMES = [laptop(0), laptop(1), laptop(2), laptop(3)]
-# Лист поднимают к глазам: четыре кадра подъёма.
+# Кружку поднимают к лицу: три кадра подъёма.
 MUG_FRAMES = [mug(0), mug(1), mug(2)]
-# И просматривают: лист покачивается на клетку — это и есть само дело.
+# И пьют: над кружкой идёт пар — это и есть само дело.
 MUG_STEAM_FRAMES = [mug(2, 0), mug(2, 1), mug(2, 2), mug(2, 3)]
 CAN_FRAMES = [can(0), can(1), can(2)]
 CAN_POUR_FRAMES = [can(2, 0), can(2, 1), can(2, 2), can(2, 3)]

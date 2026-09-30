@@ -66,7 +66,7 @@
   var SPECIAL_SCORE = 10;      // за сожжённую клетку стопки, × уровень
   var HOLE_MS = 500;           // чёрная дыра: втягивает 3×3 вокруг себя (5.47; 5.41–5.46 было 5×5)
   var BLAST = { hole: 1 };     // радиус в клетках: 3×3
-  var ACID_STEP = 220;         // кислота: мс на клетку вниз (5.39: было 180)
+  var ACID_STEP = 220;         // кислота: мс на шаг лужи (до 5.72 — на клетку вниз; 5.38 — 180)
   var ACID_REACH = 2;          // кислота-лужа (5.72): клеток в каждую сторону по ряду под собой (5.38–5.71 — ACID_DEPTH 4 вниз)
 
   function rotateShape(shape) {
@@ -107,7 +107,6 @@
     return typeof value === 'string' && value.indexOf('stone:') === 0;
   }
 
-  function stoneKind(value) { return value.split(':')[1]; }
   function stoneLife(value) { return parseInt(value.split(':')[2], 10); }
 
   // Клетки со сроком — камень и вирус, `<тег>:<фигура>:<жизней>`: стареют на одно
@@ -362,7 +361,7 @@
   }
 
   function startEffect(game, special, own) {
-    var effect = { type: special.type, x: special.x, y: special.y, t: 0, own: own, burnt: 0 };
+    var effect = { type: special.type, x: special.x, y: special.y, t: 0, own: own };
     if (effect.type === 'rainbow') {
       // Радуга (5.68): все клетки стакана цвета своей фигуры — и свои, и чужие
       // (свои без очков), и заражённые вирусом того же цвета; камень — не цвет.
@@ -532,7 +531,6 @@
           effect.puddle.push({ x: c.x, y: c.y, stage: effect.stage });   // плёнка лужи для картинки
         });
       }
-      effect.burnt += targets.length;
       effect.stage += 1;
       settleOwn(game, effect);
       settleAll(game, effect);
@@ -829,7 +827,7 @@
     best: { ru: 'Рекорд', en: 'Best' },
     next: { ru: 'Далее', en: 'Next' },
     legend: { ru: 'Блоки', en: 'Blocks' },
-    blocks: {   // {span}, {depth}, {life} подставляет blockText из правил ядра
+    blocks: {   // {span}, {width}, {life} подставляет blockText из правил ядра
       hole: { name: { ru: 'черная дыра', en: 'black hole' }, text: { ru: 'глотает {span} вокруг себя', en: 'swallows {span} around it' } },
       acid: { name: { ru: 'кислота', en: 'acid' }, text: { ru: 'разъедает до {width} клеток ряда под собой', en: 'eats up to {width} cells of the row below' } },
       stone: { name: { ru: 'камень', en: 'stone' }, text: { ru: 'ряд с ним не снимается {life} фигур', en: 'its row will not clear for {life} pieces' } },
@@ -1335,29 +1333,22 @@
      Значки рисуются пикселем в одну восьмую клетки — 5 px при 40, то же зерно,
      что фаска обычных блоков (требование владельца после TNT субпикселем 2 px).
      Движение — по часам кадра `clock`, без таймеров; при reduced-motion часы
-     стоят на нуле — первый кадр. Мина — тёмный металл с пластиной и красным
-     диодом, мигает двойным вспыхом; дыра — плоская чернота с туманностью
+     стоят на нуле — первый кадр. Дыра — плоская чернота с туманностью
      вокруг ядра, ободок дышит, звёзды мерцают; яд — череп на лайме, плывёт по
      синусу вверх на 0,7 и вниз на 0,2 доли, рядом всплывают пузырьки. Всё
      строго внутри клетки. Выбрано владельцем из девяти показов на настоящем
      стакане (5.38). */
   var INK = {
     acid: '#d4ff2e', acidDark: '#5f8a00',
-    gun: '#3a4152', plateLight: '#7c8699', plate: '#5c6478', plateDark: '#454c5e', socket: '#22262f',
-    screw: '#8a93a3', ledOn: '#ff2e2e', ledOff: '#5a1010', ledCore: '#ffb0b0',
+    plate: '#5c6478',      // спецклетка в cellColor
     black: '#05030d', star: '#e7eaf2', starDim: '#9aa3b5', flash: '#ffffff',
-    fireWhite: '#fff3b0', fireYellow: '#ffd23f', fireOrange: '#ff7a1a', fireDark: '#7a2416',
   };
   var NEBULA = { n: '#2a3f8f', p: '#5a3aa8', m: '#9b5de5', l: '#d8c8ff', k: '#000000' };
   var NEBULA_DIM = { n: '#2a3f8f', p: '#5a3aa8', m: '#9b5de5', l: '#b48cff', k: '#000000' };
   var NEBULA_ROWS = ['..n.n..', '.npmpn.', 'npmlmpn', 'pmlklmp', 'npmlmpn', '.npmpn.', '..n.n..'];
-  var PLATE_ROWS = ['.llll.', 'lmmmmd', 'lmmmmd', 'lmmmmd', 'lmmmmd', '.dddd.'];
-  var PLATE_INK = { l: INK.plateLight, m: INK.plate, d: INK.plateDark };
-  var SOCKET_ROWS = ['.xx.', 'xxxx', 'xxxx', '.xx.'];
   var SKULL_ROWS = ['.xxx.', 'xxxxx', 'x.x.x', 'xxxxx', '.x.x.'];
   var STONE = { body: '#7c8699', dark: '#5c6478', crack: '#2c313d', light: '#9aa3b5' };
   var FRAME_MS = 120;       // шаг дискретных движений: мигание, мерцание, пузырьки
-  var BLINK_MS = 2400;      // период двойного мигания диода мины
   var FLOAT_MS = 1800;      // период плавания черепа
 
   // Пиксель значка: координаты и размер в восьмых долях клетки. Края считаются
@@ -1389,11 +1380,6 @@
     pix(ctx, x, y, size, ray, cx, cy - u, u, u);
     pix(ctx, x, y, size, ray, cx, cy + u, u, u);
     pix(ctx, x, y, size, core, cx, cy, u, u);
-  }
-
-  function screw(ctx, x, y, size, sx, sy) {
-    pix(ctx, x, y, size, INK.screw, sx, sy, 0.8, 0.8);
-    pix(ctx, x, y, size, INK.socket, sx + 0.1, sy + 0.3, 0.6, 0.2);
   }
 
   // Камень: серая глыба с крапом; трещин тем больше, чем меньше жизней —
@@ -1479,7 +1465,7 @@
 
   // ms = null — поза покоя для значка легенды (5.54): череп по центру, без
   // пузырьков; остальным типам это первый кадр. kind — фигура-носитель: вирус
-  // рисуется её цветом (в легенде — цветом T).
+  // рисуется её цветом (в легенде носителя нет — светло-серым, 5.65).
   function drawSpecial(ctx, x, y, size, type, ms, kind) {
     var still = ms === null;
     ms = ms || 0;
