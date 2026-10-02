@@ -76,7 +76,7 @@ function build(R, lang) {
         list(job.bullets.map(function (b) { return esc(t(b.text)); })) + '</article>';
     }).join('') + '</section>',
     '<section><h2>' + u('projectsTitle') + '</h2>' + R.projects.map(function (pr) {
-      return '<article><h3><a href="' + esc(pr.link) + '">' + esc(pr.name) + '</a></h3><p>' + esc(t(pr.tagline)) + '</p><p>' +
+      return '<article><h3><a href="' + esc(pr.link) + '">' + esc(t(pr.name)) + '</a></h3><p>' + esc(t(pr.tagline)) + '</p><p>' +
         esc(t(pr.description)) + '</p><p>' + pr.stack.map(esc).join(' · ') + '</p></article>';
     }).join('') + '</section>',
     '<section><h2>' + u('skillsTitle') + '</h2>' + R.skillGroups.map(function (g) {

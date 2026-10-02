@@ -51,10 +51,15 @@ window.RESUME = {
     now: { ru: 'сейчас', en: 'now' },
     projectsTitle: { ru: 'Собственные продукты', en: 'My own products' },
     projectsNote: {
-      ru: 'Обе программы выросли из рабочих задач: сначала нужны были мне, потом — команде.',
-      en: 'Both grew out of real work: first I needed them, then the team did.',
+      ru: 'Программы выросли из настоящих задач: две — из рабочих, сначала для меня, потом для команды; третья — из семейной.',
+      en: 'These programs grew out of real tasks: two from work, first for me and then for the team; the third from family life.',
     },
     openOnGithub: { ru: 'Открыть на GitHub →', en: 'Open on GitHub →' },
+    // колода продуктов: стрелки и подпись «1 из 3» для чтения с экрана
+    deckPrev: { ru: 'Предыдущий продукт', en: 'Previous product' },
+    deckNext: { ru: 'Следующий продукт', en: 'Next product' },
+    deckOf: { ru: 'из', en: 'of' },
+    deckRole: { ru: 'карусель', en: 'carousel' },
     releaseLabel: { ru: 'Выпуск', en: 'Release' },
     skillsTitle: { ru: 'Навыки', en: 'Skills' },
     // Окно терминала: подписи шапки и команд. Формы множественного числа —
@@ -314,6 +319,21 @@ window.RESUME = {
       },
       stack: ['Python', 'TUI', 'OAuth', 'HH API'],
       link: 'https://github.com/akonyaev-ru/HunterCLI',
+    },
+    {
+      // Имя переводится (5.92, владелец: «Давай Sadoviy Pomoshnik»): так же названы репозиторий и файл выпуска.
+      name: { ru: 'Садовый помощник', en: 'Sadoviy Pomoshnik' },
+      repo: 'akonyaev-ru/Sadoviy-Pomoshnik',
+      tagline: {
+        ru: 'Помощник для браузерной игры „Садовая империя“',
+        en: 'Helper for the browser game Molehill Empire',
+      },
+      description: {
+        ru: 'Ставит прямо в игру кнопки-гномов: полить весь сад, засеять свободные клетки, собрать созревшее, выставить товар на рынок, разослать птиц и пчёл по заказам. Программа для Windows без установки и расширений браузера: свой код доставляет в игру по отладочному протоколу браузера. Ничего не делает без нажатия.',
+        en: 'Puts gnome buttons right into the game: water the whole garden, sow the empty plots, harvest what is ripe, put goods on the market, send birds and bees out to their orders. A Windows program with no installer and no browser extension: it delivers its own code into the game over the browser debugging protocol. Nothing happens without a click.',
+      },
+      stack: ['Python', 'JavaScript', 'Chrome DevTools Protocol', 'Windows'],
+      link: 'https://github.com/akonyaev-ru/Sadoviy-Pomoshnik',
     },
   ],
 

@@ -1367,6 +1367,105 @@ a:not(.btn):hover { color: var(--text); }
 
 .project__link:hover { text-decoration: underline; }
 
+/* Колода продуктов (5.92, «три блока, где один впереди и сделать стрелки» → «Колода»): все карточки в одной ячейке
+   сетки — высота колоды по самой высокой, без замеров на JS; боковые сдвинуты и уменьшены отдельными свойствами
+   translate и scale, поэтому подъём карточки при наведении (transform) с ними не спорит. Справа и слева — место под
+   стрелки; лишнее по ширине обрезается (overflow-x: clip — страница не едет вбок). */
+.deck-wrap {
+  position: relative;
+  padding-inline: 3.25rem;
+}
+
+.deck {
+  display: grid;
+  grid-template-areas: 'card';
+  justify-items: center;
+  overflow-x: clip;
+  padding-block: 0.5rem;
+  touch-action: pan-y;
+}
+
+.deck > .project {
+  grid-area: card;
+  width: min(34rem, 100%);
+  transition: translate 0.4s ease, scale 0.4s ease, opacity 0.4s ease, filter 0.4s ease,
+    border-color 0.18s ease, transform 0.18s ease, background 0.18s ease;
+}
+
+.deck > .project.is-front { z-index: 2; }
+
+.deck > .project.is-left,
+.deck > .project.is-right {
+  z-index: 1;
+  scale: 0.86;
+  opacity: 0.7;
+  filter: brightness(0.8);
+  cursor: pointer;
+}
+
+.deck > .project.is-left { translate: -42% 0; }
+.deck > .project.is-right { translate: 42% 0; }
+
+/* боковая под курсором — чуть ярче: её можно вынести вперёд; рамку и подъём оставляем передней */
+.deck > .project.is-left:hover,
+.deck > .project.is-right:hover {
+  opacity: 0.85;
+  filter: brightness(0.9);
+  border-color: var(--line);
+  background: var(--panel);
+  transform: none;
+}
+
+.deck__arrow {
+  position: absolute;
+  top: 50%;
+  translate: 0 -50%;
+  display: grid;
+  place-items: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  background: var(--panel);
+  color: var(--accent);
+  font: 600 1.25rem/1 var(--font-mono);
+  cursor: pointer;
+  transition: border-color 0.18s ease, background 0.18s ease;
+}
+
+.deck__arrow:hover { border-color: var(--accent); background: var(--panel-2); }
+.deck__arrow:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.deck__arrow--prev { left: 0; }
+.deck__arrow--next { right: 0; }
+
+/* на телефоне — одна карточка, стрелки под ней; боковые не видны и не ловят нажатий */
+@media (max-width: 720px) {
+  .deck-wrap { padding-inline: 0; padding-block-end: 3.5rem; }
+  .deck > .project.is-left,
+  .deck > .project.is-right { opacity: 0; pointer-events: none; }
+  .deck__arrow { top: auto; bottom: 0; translate: none; }
+  .deck__arrow--prev { left: calc(50% - 3.25rem); }
+  .deck__arrow--next { right: calc(50% - 3.25rem); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .deck > .project { transition: none; }
+}
+
+/* только для читалки: живая строка колоды */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 /* --- Навыки ------------------------------------------------------------- */
 
 /* Навыки — окно терминала. Рамка и шапка в цветах панелей, команды
@@ -2049,6 +2148,14 @@ body.is-console { overflow: hidden; }
   .term__block.is-off .term__out { display: flex; }
   .cursor { animation: none; }
   .projects { grid-template-columns: 1fr 1fr; }
+  /* колода в печати — сетка всех карточек, как раньше. Боковые перечислены явно: их правила сильнее, а лист A4 за
+     вычетом полей (~688 px) попадает под телефонное правило, которое их прячет */
+  .deck-wrap { padding: 0; }
+  .deck { grid-template-areas: none; grid-template-columns: 1fr 1fr; gap: 12pt; overflow: visible; }
+  .deck > .project,
+  .deck > .project.is-left,
+  .deck > .project.is-right { grid-area: auto; width: auto; translate: none; scale: none; opacity: 1; filter: none; transition: none; }
+  .deck__arrow { display: none; }
   a { text-decoration: none; color: #000; }
 
   .print-only { display: block !important; }

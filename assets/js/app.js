@@ -676,14 +676,67 @@
      наберётся десять — появится сам. */
   var STARS_MIN = 10;
 
+  /* Колода продуктов (5.92; владелец: «появилось приложение для онлайн игры… три блока, где один впереди и сделать
+     стрелки» → из эскизов «Колода»): передняя карточка по центру, боковые выглядывают из-за неё — меньше и тусклее.
+     Стрелки и щелчок по боковой выносят её вперёд; с клавиатуры — ← и →, пока фокус в колоде; на телефоне видна одна, а
+     смахивание листает. У боковых ссылки не ловятся табом и читалке их не видно; живая строка называет переднюю. Впереди
+     сперва — первая (Umbra). В печати — сетка всех карточек (style.css). */
+  function buildDeck(cards) {
+    var n = cards.length, front = 0, sx = null;
+    var live = el('p', { class: 'sr-only', 'aria-live': 'polite' });
+    var deck = el('div', { class: 'deck' }, cards);
+    function place(announce) {
+      cards.forEach(function (card, i) {
+        var pos = (i - front + n) % n;   // 0 — впереди, 1 — справа, n − 1 — слева
+        card.classList.toggle('is-front', pos === 0);
+        card.classList.toggle('is-right', pos === 1);
+        card.classList.toggle('is-left', pos === n - 1 && n > 2);
+        if (pos) card.setAttribute('aria-hidden', 'true'); else card.removeAttribute('aria-hidden');
+        $$('a', card).forEach(function (a) { if (pos) a.setAttribute('tabindex', '-1'); else a.removeAttribute('tabindex'); });
+      });
+      if (announce) live.textContent = (front + 1) + ' ' + u('deckOf') + ' ' + n + ': ' + t(R.projects[front].name);
+    }
+    function go(step) { front = (front + step + n) % n; place(true); }
+    cards.forEach(function (card, i) {
+      card.addEventListener('click', function (event) {   // боковая — вперёд, а не по ссылке
+        if (card.classList.contains('is-front')) return;
+        event.preventDefault();
+        front = i;
+        place(true);
+      });
+    });
+    deck.addEventListener('pointerdown', function (event) { sx = event.pointerType === 'mouse' ? null : event.clientX; });
+    deck.addEventListener('pointerup', function (event) {
+      if (sx === null) return;
+      var dx = event.clientX - sx;
+      sx = null;
+      if (Math.abs(dx) > 40) go(dx < 0 ? 1 : -1);
+    });
+    var wrap = el('div', {
+      class: 'deck-wrap enter', role: 'group', 'aria-roledescription': u('deckRole'), 'aria-label': u('projectsTitle'),
+      onkeydown: function (event) {
+        if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return;
+        event.preventDefault();
+        go(event.key === 'ArrowLeft' ? -1 : 1);
+      },
+    }, [
+      deck,
+      el('button', { class: 'deck__arrow deck__arrow--prev', type: 'button', 'aria-label': u('deckPrev'), onclick: function () { go(-1); } }, ['‹']),
+      el('button', { class: 'deck__arrow deck__arrow--next', type: 'button', 'aria-label': u('deckNext'), onclick: function () { go(1); } }, ['›']),
+      live,
+    ]);
+    place(false);
+    return wrap;
+  }
+
   function buildProjects() {
-    var grid = el('div', { class: 'projects enter' }, R.projects.map(function (pr) {
+    var cards = R.projects.map(function (pr) {
       var stat = (STATS.repos && STATS.repos[pr.repo]) || null;
       var stars = stat && typeof stat.stars === 'number' && stat.stars >= STARS_MIN ? stat.stars : null;
       var release = stat && stat.release;
       return el('article', { class: 'project' }, [
         el('div', { class: 'project__top' }, [
-          el('h3', { class: 'project__name', text: pr.name }),
+          el('h3', { class: 'project__name', text: t(pr.name) }),
           stars !== null ? el('span', { class: 'project__stars', text: '★ ' + stars }) : null,
         ]),
         el('p', { class: 'project__tagline', text: t(pr.tagline) }),
@@ -700,11 +753,11 @@
           text: u('openOnGithub'),
         }),
       ]);
-    }));
+    });
 
     return section('projects', u('projectsTitle'), [
       el('p', { class: 'section__note', text: u('projectsNote') }),
-      grid,
+      cards.length > 2 ? buildDeck(cards) : el('div', { class: 'projects enter' }, cards),
     ]);
   }
 

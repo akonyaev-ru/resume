@@ -49,7 +49,7 @@ function everything(lang) {
     .concat(R.experience.map(function (j) { return pick(j.company, lang); }))
     .concat(R.experience.map(function (j) { return pick(j.role, lang); }))
     .concat([].concat.apply([], R.experience.map(function (j) { return j.bullets.map(function (b) { return pick(b.text, lang); }); })))
-    .concat(R.projects.map(function (p) { return p.name; }))
+    .concat(R.projects.map(function (p) { return pick(p.name, lang); }))
     .concat(R.projects.map(function (p) { return pick(p.description, lang); }))
     .concat(R.skillGroups.map(function (g) { return pick(g.title, lang); }))
     .concat([].concat.apply([], R.skillGroups.map(function (g) { return g.skills.map(function (s) { return pick(s.name, lang); }); })))
