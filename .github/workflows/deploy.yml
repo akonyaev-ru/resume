@@ -44,14 +44,18 @@ jobs:
       # проверяет саму проверку. Красный прогон останавливает выкладку.
       # Следом — сборщик текстовой версии для тех, кто без JavaScript (5.87),
       # и сверка иконки вкладки с кадром Отто: перерисовали существо — иконку
-      # надо пересобрать `node tools/make_favicon.js` (5.88).
-      - name: Прогнать существ, тетрис, текстовую версию и иконку
+      # надо пересобрать `node tools/make_favicon.js` (5.88). Пещера за «Опытом»
+      # (5.90): мир — тот, что одобрен в прототипе, запасные пути без видеокарты
+      # не трогают страницу; картинку считает видеокарта, её сверяют живые
+      # проверки локально.
+      - name: Прогнать существ, тетрис, текстовую версию, иконку и пещеру
         run: |
           node tools/check_pet.js
           node tools/check_pet.js --selftest
           node tools/check_tetris.js
           node tools/check_static.js
           node tools/make_favicon.js --check
+          node tools/check_cave.js
 
       - uses: actions/setup-python@v7
         with:

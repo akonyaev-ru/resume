@@ -1205,6 +1205,78 @@ a:not(.btn):hover { color: var(--text); }
   background: var(--line);
 }
 
+/* --- Пещера за «Опытом» -------------------------------------------------- */
+
+/* Холст рисует cave.js на видеокарте (5.90): над полем знаков, под содержимым,
+   пиксель пещеры — 3 px, увеличивает браузер без сглаживания. Пока пещеры не
+   видно (раздел вне окна), холст прозрачен; если её нет вовсе (нет WebGL2,
+   узкое окно), скрипт его не вставляет и класса `cave` не ставит — страница
+   прежняя. */
+#cave {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0;
+  image-rendering: pixelated;
+}
+
+/* Пока пещера есть, раздел «Опыт» живёт в ней: у букв тёмная тень, разделителей
+   между местами работы и хвоста у заголовка нет, а офис внизу окна гаснет —
+   пещера и офис вместе не сходятся (владелец, 2026-10-01: «гаснет»).
+   `cave-away` — состояние, `cave-office` — плавность: её ставят кадром позже,
+   и при загрузке посреди раздела офис гаснет сразу, без анимации напоказ.
+   Задержку каждому предмету ставит скрипт — гаснут слева направо. Спрятанное —
+   `visibility: hidden`: не схватить мышью и не поймать табом. */
+@media screen {
+  html.cave #experience > .wrap {
+    text-shadow: 0 0 2px rgba(8, 10, 16, 0.95), 0 0 6px rgba(8, 10, 16, 0.9),
+      0 0 14px rgba(8, 10, 16, 0.75);
+  }
+
+  html.cave #experience .job { border-top-color: transparent; }
+  html.cave #experience .section__head::after { opacity: 0; }
+
+  /* Серые подписи раздела (сроки, годы и сроки на шкале) на пещере светлее, чем
+     `--muted`: под ними та же пещера, что под текстом (фон не ярче предела
+     L_TEXT в cave.js), и этому цвету она даёт 4.65:1. В прототипе вместо этого
+     под колонкой дат и шкалой шла тёмная полоса — владелец: «тут не должно
+     быть этой полоски». Цвет сверяет tools/check_cave.js. */
+  html.cave #experience .job__duration,
+  html.cave #experience .timeline__year,
+  html.cave #experience .timeline__span { color: #a9b1c4; }
+
+  html.cave-away .pet,
+  html.cave-away .thing {
+    filter: brightness(0);
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none !important;
+  }
+
+  html.cave-office .pet,
+  html.cave-office .thing {
+    transition: opacity 380ms ease-out var(--cave-delay, 0ms),
+      filter 570ms ease-in-out calc(var(--cave-delay, 0ms) + 285ms),
+      visibility 0s linear 0s;
+  }
+
+  html.cave-office.cave-away .pet,
+  html.cave-office.cave-away .thing {
+    transition: filter 570ms ease-in-out var(--cave-delay, 0ms),
+      opacity 475ms ease-in calc(var(--cave-delay, 0ms) + 427.5ms),
+      visibility 0s linear calc(var(--cave-delay, 0ms) + 950ms);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html.cave-office .pet,
+  html.cave-office .thing,
+  html.cave-office.cave-away .pet,
+  html.cave-office.cave-away .thing { transition: none; }
+}
+
 /* --- Проекты ------------------------------------------------------------ */
 
 /* Дорожка не у́же 19rem, но и не шире колонки: на 320 px колонка 280, и
@@ -1964,6 +2036,7 @@ body.is-console { overflow: hidden; }
   .contact__actions,
   .section__note,
   #field,
+  #cave,
   .skip { display: none !important; }
 
   .section, .contact { border-top: 1px solid #bbb; padding-block: 12pt; }
