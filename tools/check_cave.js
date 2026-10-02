@@ -14,7 +14,8 @@
    — страница под заглушками: без WebGL2, без видеокарты, с несобравшимся шейдером пещеры нет и
      страница не тронута; на узком окне — выключена; при «уменьшить движение» — неподвижный кадр;
      кадр собирается без ошибок и рисует спрайты и снег;
-   — персонажи в нишах: ни одна точка арта не в камне, под ними и перед ними — пол. */
+   — персонажи в нишах: ни одна точка арта не в камне, под ними и перед ними — пол;
+   — смена сцены (5.91): пещера по всему экрану, пока раздел посреди окна, во времени и через темноту; «тише». */
 'use strict';
 
 const fs = require('fs');
@@ -227,54 +228,38 @@ check('камера: до раздела в начале хода, после �
   return 'от ' + C.Y0 + ' до ' + C.Y1 + ' клетки';
 });
 
-/* Вход и выход (2026-10-02). Владелец — после 900 px за разделом («слишком сильно пещеру растянул»), перехода
-   только в промежутке («снова топорный, просто полоса») и компромисса: «просто утренний вариант, но начало фона
-   пещеры ниже „Подхода“ (чуть выше „Опыт работы“), а конец чуть выше „Собственных продуктов“» → «утро 600».
-   Пещера — от чуть ниже текста «Подхода» до чуть выше заголовка «Проектов», переходы — утренние, внутрь
-   раздела: сперва поле знаков тонет в темноте цвета фона, потом из неё проступают камни. Раскладка — как на
-   широком экране: промежутки по 144 px. Меры — от слов владельца и утреннего вида, а не от чисел cave.js. */
-check('вход и выход — утренние, внутри пещеры: сперва темнота, потом камни; за краями пещеры нет', function () {
-  const inY = 1000, headY = 1144, lastY = 4000, outY = 4144;
-  const Z = core.zoneFrom(inY, headY, lastY, outY);
-  const A = function (y) { return core.edgeAt(y, Z)[0]; }, S = function (y) { return core.edgeAt(y, Z)[1]; };
+/* Смена сцены (5.91). Владелец о «утре 600» — «переход к пещере это просто полоса»; после форм края, «по краям»,
+   разломов в фоне и трещин по периметру — «Через темноту мне нравится»: пещера включается по всему экрану, пока
+   занимает середину окна, — во времени, сперва темнота цвета фона, потом камни. Меры — от слов и вида («середина
+   окна», «через темноту», без мигания у границы), а не от чисел cave.js. */
+check('смена сцены: пещера — пока занимает середину окна, с запасом у границы; сперва темнота, потом камни', function () {
+  const vh = 945, mid = vh / 2, Z = function (top, bot) { return { darkTop: top, darkBot: bot }; };
   const bad = [];
-  // за краями пещеры её нет вовсе: на тексте «Подхода» и на заголовке «Проектов» — пусто
-  [inY - 300, inY, inY + 4, outY - 4, outY, outY + 300].forEach(function (y) { if (A(y) !== 0) bad.push('пещера на ' + y + ': ' + A(y).toFixed(3)); });
-  // начало — сразу под текстом «Подхода»: к заголовку раздела поле знаков уже заметно тонет, камней ещё нет
-  if (!(A(headY) > 0.2 && A(headY) < 0.9 && S(headY) === 0)) bad.push('у заголовка темнота ' + A(headY).toFixed(2) + ', камни ' + S(headY).toFixed(2));
-  // утренний вид: сперва темнота, потом камни — там, где камни только начинаются, темнота уже почти во всю силу
-  let s10 = null, s90 = null, a10 = null, a90 = null;
-  for (let y = inY; y <= inY + 2000; y++) {
-    if (a10 === null && A(y) >= 0.1) a10 = y;
-    if (a90 === null && A(y) >= 0.9) a90 = y;
-    if (s10 === null && S(y) >= 0.1) s10 = y;
-    if (s90 === null && S(y) >= 0.9) { s90 = y; break; }
+  if (core.sceneTarget(Z(mid - 200, mid + 2000), vh, false) !== 1) bad.push('пещера посреди окна — сцены нет');
+  if (core.sceneTarget(Z(mid + 200, mid + 2000), vh, false) !== 0) bad.push('верх пещеры ниже середины — сцена уже есть');
+  if (core.sceneTarget(Z(-2000, mid - 200), vh, false) !== 0) bad.push('низ пещеры выше середины — сцена ещё есть');
+  // запас у границы: места верха пещеры, где включённая сцена держится, а выключенная не включается
+  let hyst = 0;
+  for (let x = mid - 300; x <= mid + 300; x++) {
+    if (core.sceneTarget(Z(x, mid + 2000), vh, true) === 1 && core.sceneTarget(Z(x, mid + 2000), vh, false) === 0) hyst += 1;
   }
-  if (!(A(s10) >= 0.9)) bad.push('камни проступают, а темнота ещё ' + A(s10).toFixed(2));
-  // «утро 600»: темнота 10 → 90 % — 140…190 px, камни 10 → 90 % — 230…280 px (утром — 246 и 383 при 900)
-  if (!(a90 - a10 >= 140 && a90 - a10 <= 190)) bad.push('темнота 10 → 90 % за ' + (a90 - a10) + ' px');
-  if (!(s90 - s10 >= 230 && s90 - s10 <= 280)) bad.push('камни 10 → 90 % за ' + (s90 - s10) + ' px');
-  // в середине пещеры — во всю силу; выход — зеркально входу
-  [2500, 3000].forEach(function (y) { if (core.rampAt(y, Z) !== 1) bad.push('в середине на ' + y + ': ' + core.rampAt(y, Z)); });
-  const mid = (inY + outY) / 2;
-  for (let d = 0; d <= 1500; d += 7) {
-    const up = core.rampAt(mid - d, Z), dn = core.rampAt(mid + d, Z);
-    if (Math.abs(up - dn) > 0.02) { bad.push('выход не зеркален входу: ' + up.toFixed(3) + ' / ' + dn.toFixed(3)); break; }
+  if (hyst < 40 || hyst > 300) bad.push('запас у границы ' + hyst + ' px');
+  // через темноту: на 0 — ничего, на 1 — всё; камни проступают, когда темнота почти во всю силу
+  const L0 = core.sceneLook(0), L1 = core.sceneLook(1);
+  if (L0[0] !== 0 || L0[1] !== 0 || L1[0] !== 1 || L1[1] !== 1) bad.push('края смены ' + L0 + ' / ' + L1);
+  let firstStone = null, back = 0;
+  for (let i = 0; i <= 1000; i++) {
+    const a = core.sceneLook(i / 1000), b = core.sceneLook(Math.min(1, (i + 1) / 1000));
+    if (firstStone === null && a[1] > 0.02) firstStone = i / 1000;
+    if (b[0] < a[0] || b[1] < a[1]) back += 1;
   }
-  // в одну сторону и без ступенек: соседние ряды (3 px) — не больше 2 %
-  let back = 0, jump = 0;
-  for (let y = inY - 30; y < inY + 1000; y++) {
-    if (A(y + 1) < A(y) || S(y + 1) < S(y)) back += 1;
-    jump = Math.max(jump, Math.abs(A(y + 3) - A(y)), Math.abs(S(y + 3) - S(y)));
-  }
-  if (back) bad.push('не в одну сторону: рядов ' + back);
-  if (jump > 0.02) bad.push('ступенька ' + (jump * 100).toFixed(1) + ' % на ряд');
-  // короткая пещера: переходы не длиннее её половины, середина — во всю силу
-  const Zs = core.zoneFrom(1000, 1144, 1600, 1744);
-  if (!(Zs.fullTop <= Zs.fullBot && core.rampAt((Zs.fullTop + Zs.fullBot) / 2, Zs) >= 0.999)) bad.push('короткая пещера не доходит до полной силы');
+  if (firstStone === null || !(core.sceneLook(firstStone)[0] >= 0.8)) bad.push('камни проступают, а темнота ещё ' + (firstStone === null ? '—' : core.sceneLook(firstStone)[0].toFixed(2)));
+  if (back) bad.push('не в одну сторону: шагов ' + back);
+  // смена — около секунды: не мгновенно и не тягуче
+  if (!(C.SCENE_MS >= 600 && C.SCENE_MS <= 2000)) bad.push('смена за ' + C.SCENE_MS + ' мс');
   if (bad.length) fail(bad.join('; '));
-  return 'темнота 10 → 90 % за ' + (a90 - a10) + ' px, камни — за ' + (s90 - s10) + ' px; у заголовка темнота ' + A(headY).toFixed(2) +
-    ', камней нет; соседние ряды — до ' + (jump * 100).toFixed(1) + ' %';
+  return 'запас у границы ' + hyst + ' px; камни — с хода ' + firstStone.toFixed(2) + ' (темнота ' + core.sceneLook(firstStone)[0].toFixed(2) +
+    '); смена ' + C.SCENE_MS + ' мс';
 });
 
 /* Предел под текстом — против настоящих цветов текста из style.css, по формуле WCAG 2: бирюза
@@ -454,9 +439,10 @@ function fakeGL(opts, calls) {
    раздела (100): так видно, что края пещеры взяты у соседей, а не достроены по разделу — при 120 px
    допуск «чуть ниже — 5…30 px» их не различал, и поломка «соседи не читаются» прошла. */
 const PAGE = { secTop: 1550, secH: 2300, head: 1600, lastBottom: 3800, prevBottom: 1440, nextHead: 3960, vh: 945 };
-// края пещеры на странице и видимость пещеры в ряду окна ys при прокрутке sy
+// края пещеры на странице
 PAGE.zone = core.zoneFrom(PAGE.prevBottom, PAGE.head, PAGE.lastBottom, PAGE.nextHead);
-PAGE.ramp = function (ys, sy) { return core.rampAt(ys, core.shiftZone(PAGE.zone, -sy)); };
+// тики цикла пещеры вручную: n кадров по 16 мс от t0; при загрузке первый тик ставит сцену сразу
+function ticks(p, n, t0) { for (let i = 1; i <= n; i++) p.log.raf.splice(0).forEach(function (f) { f((t0 || 0) + 16 * i); }); }
 function sandbox(opts) {
   const log = { inserted: 0, cls: new Set(), warns: [], raf: [], calls: [], flips: 0 };
   const win = { innerWidth: opts.width || 1920, innerHeight: 945, scrollY: opts.scrollY || 0 };
@@ -552,14 +538,13 @@ check('соседей нет — промежутки как удвоенные 
 /* Края пещеры на странице (координаты документа) — по словам владельца, а не по числам из cave.js
    (проверка, взявшая числа у проверяемого файла, зеленеет на любой их поломке): начало — «ниже „Подхода“»,
    то есть на 5…30 px ниже его текста (inY); конец — «чуть выше „Собственных продуктов“», на 5…30 px выше
-   заголовка (outY); переходы — по 600 px («утро 600»). */
+   заголовка (outY). */
 function zoneIs(p, inY, outY, tag) {
   const z = p.win.__cave.zone(), sy = p.win.scrollY;
-  const got = [z.darkTop, z.darkBot, z.fullTop, z.fullBot].map(function (v) { return Math.round((v + sy) * 1000) / 1000; });
+  const got = [z.darkTop, z.darkBot].map(function (v) { return Math.round((v + sy) * 1000) / 1000; });
   const bad = [];
   if (!(got[0] - inY >= 5 && got[0] - inY <= 30)) bad.push('пещера с ' + got[0] + ', а текст соседа кончается на ' + inY);
   if (!(outY - got[1] >= 5 && outY - got[1] <= 30)) bad.push('пещера до ' + got[1] + ' — заголовок следующего раздела на ' + outY);
-  if (Math.abs(got[2] - got[0] - 600) > 0.01 || Math.abs(got[1] - got[3] - 600) > 0.01) bad.push('переходы ' + (got[2] - got[0]) + ' / ' + (got[1] - got[3]) + ' px');
   if (bad.length) fail(tag + ': ' + bad.join('; '));
   return got;
 }
@@ -568,9 +553,10 @@ check('«уменьшить движение» — неподвижный кад
   if (p.win.__cave.state() !== 'static') fail('состояние ' + p.win.__cave.state());
   return 'состояние static';
 });
-check('кадр собирается: спрайты экземплярами, снег точками, без ошибок', function () {
+check('кадр собирается: спрайты экземплярами, без ошибок', function () {
   const p = sandbox({ scrollY: 2600 });   // середина раздела в окне
-  const notes = [];
+  ticks(p, 1, 0);                         // загрузка посреди раздела — сцена сразу
+  const f0 = p.win.__cave.frames(), notes = [];
   [4, 12, 20, C.Y1].forEach(function (cam) {
     p.log.calls.length = 0;
     p.win.__cave.render(1234, cam);
@@ -579,72 +565,95 @@ check('кадр собирается: спрайты экземплярами, �
     const full = p.log.calls.filter(function (c) { return c[0] === 'drawArrays' && c[3] === 3; });
     if (full.length !== 1) fail('камера ' + cam + ': проход стен ' + full.length + ' раз');
     if (!inst.length || !(inst[0][4] > 0)) fail('камера ' + cam + ': спрайтов не нарисовано');
-    notes.push(cam + ': спрайтов ' + inst[0][4] + ', снежинок ' + (pts.length ? pts[0][3] : 0));
+    notes.push(cam + ': спрайтов ' + inst[0][4] + (pts.length ? ', снежинок ' + pts[0][3] : ''));
   });
-  if (p.win.__cave.frames() !== 4) fail('кадров ' + p.win.__cave.frames());
+  if (p.win.__cave.frames() - f0 !== 4) fail('кадров ' + (p.win.__cave.frames() - f0));
   if (p.log.warns.length) fail('в консоли: ' + p.log.warns.join(' | '));
   return notes.join('; ');
 });
-check('из разломов вылетают знаки, не больше MAXP; при «уменьшить движение» — ни одного', function () {
-  const run = function (less) {
-    const p = sandbox({ scrollY: 2600, less: less });
-    let most = 0;
-    for (let t = 0; t <= 6000; t += 50) { p.win.__cave.render(t, 15); most = Math.max(most, p.win.__cave.stats().parts); }
-    return { most: most, rifts: p.win.__cave.stats().rifts };
-  };
-  const a = run(false), b = run(true);
-  if (!(a.rifts > 0)) fail('разломов нет');
-  if (!(a.most > 0) || a.most > C.MAXP) fail('знаков в полёте ' + a.most);
-  if (b.most !== 0) fail('при «уменьшить движение» знаков ' + b.most);
-  return 'разломов ' + a.rifts + ', знаков в полёте до ' + a.most + ' (предел ' + C.MAXP + '); без движения — 0';
-});
-
-check('глубже — снег: в верхнем ярусе его нет, в нижних есть', function () {
+/* «Тише» (5.91; владелец: «пещера слишком большая, эффектов много» → «Тише нравится»): знаки из разломов не вылетают,
+   снега нет, свет кристаллов не дышит, ход и предметы ближе к цвету фона; рыцарь и маг — как есть. Свет — по тому,
+   что уходит в видеокарту (текстура огней), за 6 секунд. */
+check('тише: знаки не вылетают, снега нет, свет кристаллов не дышит, ход и предметы ближе к цвету фона', function () {
   const p = sandbox({ scrollY: 2600 });
-  const snow = function (cam) {
+  ticks(p, 1, 0);
+  const st0 = p.win.__cave.stats(), crystals = st0.lights - st0.rifts - p.win.__cave.chars().length;
+  let most = 0, flakes = 0, moved = 0, first = null;
+  for (let t = 0; t <= 6000; t += 100) {
     p.log.calls.length = 0;
-    p.win.__cave.render(5000, cam);
+    p.win.__cave.render(t, 15);
+    most = Math.max(most, p.win.__cave.stats().parts);
     const pts = p.log.calls.filter(function (c) { return c[0] === 'drawArrays' && c[3] !== 3; });
-    return pts.length ? pts[0][3] : 0;
-  };
-  const gates = p.win.__cave.gates(), top = snow(Math.max(1.5, gates[0] - 20)), deep = snow(gates[1] + 3);
-  if (top !== 0) fail('в верхнем ярусе снежинок ' + top);
-  if (deep < 5) fail('в нижнем ярусе снежинок ' + deep);
-  return 'сверху 0, внизу ' + deep;
+    flakes += pts.length ? pts[0][3] : 0;
+    const up = p.log.calls.filter(function (c) { return c[0] === 'texImage2D' && c[9] && c[9].length === C.MAXL * 2 * 4; }).pop();
+    if (!up) continue;
+    const li = Array.from(up[9]).slice(C.MAXL * 4, C.MAXL * 4 + crystals * 4).filter(function (v, i) { return i % 4 === 0; });
+    if (first === null) first = li; else if (li.some(function (v, i) { return Math.abs(v - first[i]) > 1e-9; })) moved += 1;
+  }
+  const bad = [];
+  if (!(crystals > 0)) bad.push('кристаллов нет');
+  if (first === null) bad.push('огни в видеокарту не уходят');
+  if (most) bad.push('знаков в полёте ' + most);
+  if (flakes) bad.push('снежинок ' + flakes);
+  if (moved) bad.push('свет кристаллов менялся в ' + moved + ' кадрах');
+  const S = core.shaders;
+  if (S.FS_TUBE.indexOf('finish(FOG + (c - FOG) * DIM, xs, ys)') < 0) bad.push('ход не ближе к цвету фона');
+  if (S.FS_SPRITE.indexOf('finish(FOG + (col - FOG) * (vTone.a * DIM), xs, ys)') < 0) bad.push('предметы не ближе к цвету фона');
+  if (!(C.CAVE_DIM > 0.5 && C.CAVE_DIM < 0.9)) bad.push('затемнение ' + C.CAVE_DIM);
+  if (bad.length) fail(bad.join('; '));
+  return 'кристаллов ' + crystals + ', за 6 с: знаков 0, снежинок 0, свет не менялся; ход и предметы — ×' + C.CAVE_DIM;
 });
 
-/* Офис (2026-10-02, «пропадают и появляются поздно, нужно чтобы когда низ сайта был вне пещеры они
-   появлялись»): гаснет, только пока низ окна в пещере. Цикл пещеры прокручивается вручную: один тик
-   при данной прокрутке — и смотрим класс cave-away. */
-check('офис гаснет, только пока низ окна в пещере', function () {
-  const strip = function (sy) { return sy + PAGE.vh - 50; };   // середина офиса — 50 px от низа окна
-  // «конец выхода» — первое место, где пещера у низа окна почти сошла (< 0,08), а раздел ещё в окне:
-  // ровно здесь старое правило («по разделу») держало офис погашенным
-  let exitY = PAGE.zone.fullBot;
-  while (PAGE.ramp(PAGE.vh - 50, exitY - PAGE.vh + 50) >= 0.08) exitY += 1;
-  const cases = [
-    ['низ окна над входом', 5],
-    ['низ окна в полосе «во всю силу»', 2500 - PAGE.vh + 50],
-    ['низ окна в начале выхода', PAGE.zone.fullBot + 10 - PAGE.vh + 50],
-    ['низ окна в конце выхода, раздел ещё в окне', exitY - PAGE.vh + 50],
-    ['низ окна под выходом', PAGE.zone.outBot + 200 - PAGE.vh + 50],
-  ];
-  const secBottom = PAGE.secTop + PAGE.secH - cases[3][1];
-  if (secBottom < PAGE.vh * 0.2) fail('случай «конец выхода» не про то: низ раздела уже в ' + secBottom + ' px от верха окна');
-  // несколько тиков на месте: офис встаёт в своё состояние один раз и дальше не мигает
-  const ticks = function (p) { for (let i = 1; i <= 6; i++) p.log.raf.splice(0).forEach(function (f) { f(16 * i); }); };
-  const notes = cases.map(function (cs) {
-    const p = sandbox({ scrollY: cs[1] });
-    ticks(p);
-    const v = PAGE.ramp(PAGE.vh - 50, cs[1]), away = p.log.cls.has('cave-away');
-    if (away !== (v > 0.3)) fail(cs[0] + ': видимость пещеры у низа окна ' + v.toFixed(2) + ', офис ' + (away ? 'погашен' : 'виден'));
-    if (p.log.flips > 1) fail(cs[0] + ': офис мигает — переключений ' + p.log.flips + ' за 6 кадров на месте');
-    return cs[0] + ' — ' + (away ? 'погашен' : 'виден') + ' (' + v.toFixed(2) + ')';
-  });
-  const exitEnd = sandbox({ scrollY: cases[3][1] });
-  ticks(exitEnd);
-  if (exitEnd.log.cls.has('cave-away')) fail('в конце выхода, пока раздел в окне, офис должен быть виден');
-  return notes.join('; ');
+/* Смена во времени (5.91): прокрутили в раздел — пещера проступает за SCENE_MS, ушли — так же уходит; загрузка посреди
+   раздела и «уменьшить движение» — сразу. Офис уходит на время сцены (смена прошла 0,3) и возвращается после неё
+   (ниже 0,12); на месте не мигает. Цикл пещеры крутится вручную, кадр — 16 мс. */
+check('смена во времени: около SCENE_MS туда и обратно; при загрузке и «уменьшить движение» — сразу; офис — на время сцены', function () {
+  const bad = [];
+  const inside = sandbox({ scrollY: 2600 });
+  ticks(inside, 6, 0);
+  if (inside.win.__cave.scene().v !== 1) bad.push('загрузка посреди раздела — сцена ' + inside.win.__cave.scene().v);
+  if (!inside.log.cls.has('cave-away')) bad.push('посреди раздела офис виден');
+  if (inside.log.flips > 1) bad.push('посреди раздела офис мигает');
+  const above = sandbox({ scrollY: 5 });
+  ticks(above, 6, 0);
+  if (above.win.__cave.scene().v !== 0 || above.log.cls.has('cave-away')) bad.push('над разделом — сцена или офис погашен');
+  // туда: от прокрутки до полной сцены; офис уходит, когда смена прошла 0,3
+  const p = sandbox({ scrollY: 5 });
+  ticks(p, 2, 0);
+  p.win.scrollY = 2600;
+  let tOn = null, awayAt = null, t = 32;
+  for (let i = 0; i < 400 && tOn === null; i++) {
+    t += 16;
+    p.log.raf.splice(0).forEach(function (f) { f(t); });
+    const v = p.win.__cave.scene().v;
+    if (awayAt === null && p.log.cls.has('cave-away')) awayAt = v;
+    if (v >= 1) tOn = t - 32;
+  }
+  if (tOn === null || Math.abs(tOn - C.SCENE_MS) > 48) bad.push('сцена включилась за ' + tOn + ' мс вместо ' + C.SCENE_MS);
+  if (awayAt === null || awayAt < 0.3 || awayAt > 0.35) bad.push('офис ушёл на ходе ' + awayAt);
+  // обратно: ушли из раздела — сцена гаснет за SCENE_MS, офис возвращается ниже 0,12
+  p.win.scrollY = 5;
+  const t1 = t;
+  let tOff = null, backAt = null;
+  for (let i = 0; i < 400 && tOff === null; i++) {
+    t += 16;
+    p.log.raf.splice(0).forEach(function (f) { f(t); });
+    const v = p.win.__cave.scene().v;
+    if (backAt === null && !p.log.cls.has('cave-away')) backAt = v;
+    if (v <= 0) tOff = t - t1;
+  }
+  if (tOff === null || Math.abs(tOff - C.SCENE_MS) > 48) bad.push('сцена погасла за ' + tOff + ' мс');
+  if (backAt === null || backAt > 0.12 || backAt < 0.07) bad.push('офис вернулся на ходе ' + backAt);
+  if (p.log.flips !== 2) bad.push('офис переключался ' + p.log.flips + ' раз вместо 2');
+  // «уменьшить движение»: сразу
+  const less = sandbox({ scrollY: 5, less: true });
+  ticks(less, 2, 0);
+  less.win.scrollY = 2600;
+  ticks(less, 1, 100);
+  if (less.win.__cave.scene().v !== 1) bad.push('«уменьшить движение» — сцена ' + less.win.__cave.scene().v + ' через кадр');
+  if (bad.length) fail(bad.join('; '));
+  return 'туда ' + tOn + ' мс, обратно ' + tOff + ' мс; офис ушёл на ' + awayAt.toFixed(2) + ', вернулся на ' + backAt.toFixed(2) +
+    '; при загрузке и «уменьшить движение» — сразу';
 });
 
 const failed = results.filter(function (r) { return !r.ok; }).length;

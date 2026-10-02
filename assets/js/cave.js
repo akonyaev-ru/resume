@@ -69,29 +69,28 @@
      style.css у `html.cave`, и он рассчитан на этот же предел (4.65:1). */
   var L_TEXT = 0.055;
   /* Над верхом и под низом раздела «Опыт» фон под блоком текста — не ярче L_OUT: серому тексту
-     `--muted` соседей это даёт 4.55:1. До текста соседей пещера не доходит вовсе (она начинается под
-     текстом «Подхода» и кончается над заголовком «Проектов»); L_OUT — на случай, если раскладка сдвинет
-     соседей: 2026-10-02 вход и выход по 900 px заходили на них камнями, и серое пояснение «Проектов»
-     падало до 3.04:1. */
+     `--muted` соседей это даёт 4.55:1. С 5.91 пещера на время сцены — по всему экрану, и текст соседних
+     разделов, если он в окне, лежит на ней: под ним — этот предел (2026-10-02 вход и выход по 900 px заходили
+     на соседей камнями без него, и серое пояснение «Проектов» падало до 3.04:1). */
   var L_OUT = 0.019;
-  /* Вход и выход (2026-10-02). Владелец: «переход с фона на пещеру более плавный… вход и выход в цвет
-     фона» (вход и выход стали по 900 px через темноту — «слишком сильно пещеру растянул… чуть выше слов
-     „Опыт работы“ и чуть выше слов „Собственные продукты“»; переход только в промежутке — «снова
-     топорный, просто полоса»; неровные края и темнота за промежутком не прижились) → «просто утренний
-     вариант, но начало фона пещеры ниже „Подхода“ (чуть выше „Опыт работы“), а конец чуть выше
-     „Собственных продуктов“» → из 900 / 600 / 350 px — «утро 600». Пещера начинается на EDGE_M
-     промежутка ниже текста «Подхода» (14 px из 144) и кончается на EDGE_M промежутка выше заголовка
-     «Проектов»; вход и выход — утренние, внутрь раздела, по EDGE_T px (не больше половины пещеры):
-     непрозрачность — за первые EDGE_A доли (поле знаков тонет в темноте цвета фона), свет — с доли EDGE_L
-     до конца (из темноты проступают камни); на выходе — то же в обратном порядке. Заголовок раздела и
-     шкала — в начале входа, на темноте; камни во всю силу — с середины первого места работы. */
-  var EDGE_M = 0.1, EDGE_T = 600, EDGE_A = 0.45, EDGE_L = 0.3;
+  /* Пещера — сам раздел «Опыт»: от EDGE_M промежутка ниже текста «Подхода» (14 px из 144) до EDGE_M промежутка
+     выше заголовка «Проектов»; по этому отрезку идёт камера. Переход к ней — не по месту, а во времени, как смена
+     сцены (5.91; владелец о «утре 600» — «переход к пещере это просто полоса», после форм края, «по краям», разломов
+     в фоне и трещин по периметру — «Через темноту мне нравится»): когда пещера занимает середину окна (с запасом
+     SCENE_HYST px — без мигания на границе), она за SCENE_MS включается по всему экрану — сперва темнота цвета фона
+     (за первые SCENE_A доли), потом камни (с доли SCENE_L), — и так же выключается, когда раздел уходит с середины.
+     При загрузке посреди раздела — сразу, без смены напоказ. */
+  var EDGE_M = 0.1, SCENE_MS = 1200, SCENE_HYST = 60, SCENE_A = 0.45, SCENE_L = 0.35;
+  /* «Тише» (5.91; владелец: «пещера слишком большая, эффектов много» → из трёх ступеней — «Тише нравится»): знаки
+     из разломов не вылетают, снега нет, свет кристаллов не дышит, ход и предметы на 1 − CAVE_DIM ближе к цвету фона
+     (на 30 %); рыцарь и маг — как есть. Вернуть что-то — свой флаг. */
+  var GLYPHS_FLY = false, SNOW_FALL = false, LIGHT_BREATHE = false, CAVE_DIM = 0.7;
   var SPRITE_FAR = 22;                 // дальше спрайтов не видно в тумане
   var MAXL = 80;                       // огней в мире больше не бывает: ряд — не больше одного
   var DEPTH_K = 128;                   // глубина в буфере — клетки / DEPTH_K
   var CAM_TAU = 140;                   // камера догоняет прокрутку, мс
   var CAM_SNAP = 6;                    // скачок больше — сразу на место (перезагрузка, переход по ссылке)
-  var IDLE_MS = 83;                    // без движения кадр ~12 раз в секунду: дышат кристаллы, падает снег
+  var IDLE_MS = 83;                    // без движения кадр ~12 раз в секунду: дышат разломы и персонажи, искры
 
   /* Разломы. Форма — из атласа: RS_N форм по RS_W × RS_H текселей, коробка формы R_BOX_W × R_BOX_L
      клеток при масштабе 1 (тексель ~0,022 клетки по обеим осям). Разлом на стене стоит по углу θ
@@ -535,28 +534,21 @@
 
   /* Края пещеры по раскладке, в координатах страницы: inY — низ текста раздела выше, headY — верх
      заголовка «Опыт работы», lastY — низ последнего места работы, outY — верх заголовка раздела ниже.
-     Пещера — darkTop…darkBot; темнота цвета фона — darkTop…alphaTop и alphaBot…darkBot, камни —
-     inTop…fullTop и fullBot…outBot. */
+     Пещера — darkTop…darkBot: по ней идёт камера и по ней же включается сцена. */
   function zoneFrom(inY, headY, lastY, outY) {
-    var s0 = inY + EDGE_M * (headY - inY), s1 = outY - EDGE_M * (outY - lastY), t = Math.max(Math.min(EDGE_T, (s1 - s0) / 2), 1);
-    return { darkTop: s0, alphaTop: s0 + EDGE_A * t, inTop: s0 + EDGE_L * t, fullTop: s0 + t,
-      fullBot: s1 - t, outBot: s1 - EDGE_L * t, alphaBot: s1 - EDGE_A * t, darkBot: s1 };
+    return { darkTop: inY + EDGE_M * (headY - inY), darkBot: outY - EDGE_M * (outY - lastY) };
   }
   // Те же края, сдвинутые на d (от верха раздела — в окно и обратно).
-  function shiftZone(z, d) {
-    return { darkTop: z.darkTop + d, alphaTop: z.alphaTop + d, inTop: z.inTop + d, fullTop: z.fullTop + d,
-      fullBot: z.fullBot + d, outBot: z.outBot + d, alphaBot: z.alphaBot + d, darkBot: z.darkBot + d };
-  }
+  function shiftZone(z, d) { return { darkTop: z.darkTop + d, darkBot: z.darkBot + d }; }
 
-  // Непрозрачность (темнота цвета фона) и свет (камни) в ряду ys; Z — края в тех же координатах. Как в шейдере.
-  function edgeAt(ys, Z) {
-    return [
-      Math.min(smooth01((ys - Z.darkTop) / Math.max(Z.alphaTop - Z.darkTop, 1)), smooth01((Z.darkBot - ys) / Math.max(Z.darkBot - Z.alphaBot, 1))),
-      Math.min(smooth01((ys - Z.inTop) / Math.max(Z.fullTop - Z.inTop, 1)), smooth01((Z.outBot - ys) / Math.max(Z.outBot - Z.fullBot, 1))),
-    ];
+  /* Сцена: 1 — пещера включена, пока занимает середину окна высотой vh (Z — края в окне); on — включена ли сейчас.
+     Включается, когда края ушли за середину на SCENE_HYST, выключается, когда вернулись за неё на столько же. */
+  function sceneTarget(Z, vh, on) {
+    var mid = vh / 2, h = on ? -SCENE_HYST : SCENE_HYST;
+    return Z.darkTop < mid - h && Z.darkBot > mid + h ? 1 : 0;
   }
-  // Видимость пещеры — камней — в ряду: непрозрачность × свет.
-  function rampAt(ys, Z) { var e = edgeAt(ys, Z); return e[0] * e[1]; }
+  // Непрозрачность (темнота цвета фона) и свет (камни) при ходе смены s 0…1: сперва темнота, потом камни.
+  function sceneLook(s) { return [smooth01(s / SCENE_A), smooth01((s - SCENE_L) / (1 - SCENE_L))]; }
 
   // Арт персонажа — точки RGBA (точка арта — точка пещеры) из строки с повторами (make_js.py).
   function artPixels(K) {
@@ -692,6 +684,7 @@
     'const int MLI = ' + ML + ', BINSI = ' + T_BINS + ', MAXL = ' + MAXL + ';',
     'const float BINS = ' + fl(T_BINS) + ', UREP = ' + fl(T_UREP) + ', DEPTH_K = ' + fl(DEPTH_K) + ';',
     'const vec3 FOG = ' + v3(FOG) + ';',
+    'const float DIM = ' + fl(CAVE_DIM) + ';',
     'const float FOG_K = ' + fl(FOG_K) + ', HEAD = ' + fl(HEAD) + ', HEAD_K = ' + fl(HEAD_K) + ', EXPO = ' + fl(EXPO) + ';',
     'const float LWIN2 = ' + fl(LWIN * LWIN) + ';',
     'const vec3 LRGB = ' + v3(CRYSTAL_RGB) + ';',
@@ -707,11 +700,12 @@
 
   /* Подача — функция точки экрана, поэтому её можно делать в каждом проходе (стены, спрайты,
      снег) в момент записи: побеждает по глубине одна точка, и обработана будет она. xs, ys — центр
-     точки в CSS px от левого верхнего угла окна. Края — в окне: uDt…uAt и uAb…uDb — темнота цвета фона,
-     uIt…uTt и uBb…uOb — камни. Цвет 0…255, на выходе — с умноженной прозрачностью (так холст WebGL отдаёт
-     странице). */
+     точки в CSS px от левого верхнего угла окна. Сцена — uScene: непрозрачность (темнота цвета фона) и свет
+     (камни), одни на весь экран (sceneLook). Цвет 0…255, на выходе — с умноженной прозрачностью (так холст WebGL
+     отдаёт странице). */
   var GLSL_FINISH = [
-    'uniform float uCW, uH, uDt, uAt, uIt, uTt, uBb, uOb, uAb, uDb, uWrL, uWrR, uSecT, uSecB;',
+    'uniform float uCW, uH, uWrL, uWrR, uSecT, uSecB;',
+    'uniform vec2 uScene;',   // смена сцены: непрозрачность и свет
     'uniform float uBodyL, uBodyR;',   // левый край колонки строк мест работы и правый край самих строк, px окна
     'uniform vec4 uMeta[8];',  // текст колонки дат каждого места работы — рамки в окне, px
     'uniform int uNMeta;',
@@ -720,11 +714,6 @@
     'uniform int uNG;',
     'float sm(float x) { return smoothstep(0.0, 1.0, x); }',
     'float levelOf(float y) { return uNG < 2 ? 3.0 : (y < uGates.x ? 3.0 : (y < uGates.y ? 2.0 : 1.0)); }',
-    // непрозрачность (темнота цвета фона) и свет (камни) в ряду ys
-    'vec2 edge(float ys) {',
-    '  return vec2(min(sm((ys - uDt) / max(uAt - uDt, 1.0)), sm((uDb - ys) / max(uDb - uAb, 1.0))),',
-    '              min(sm((ys - uIt) / max(uTt - uIt, 1.0)), sm((uOb - ys) / max(uOb - uBb, 1.0))));',
-    '}',
     'float lin(float c) { c /= 255.0; return c <= 0.04045 ? c / 12.92 : pow((c + 0.055) / 1.055, 2.4); }',
     'float unlin(float l) { return 255.0 * (l <= 0.0031308 ? l * 12.92 : 1.055 * pow(l, 1.0 / 2.4) - 0.055); }',
     // доля защиты текста в точке: весь блок текста (пещера) или только строки и текст колонки дат (рыцарь)
@@ -739,7 +728,7 @@
     '  return ka;',
     '}',
     'vec4 finishK(vec3 c, float xs, float ys, float ka) {',
-    '  vec2 e = edge(ys);',
+    '  vec2 e = uScene;',
     '  float a8 = floor(clamp(e.x * 255.0, 0.0, 255.0));',
     '  if (a8 < 1.0) return vec4(0.0);',
     '  float lt = e.y;',
@@ -851,9 +840,9 @@
     '}',
     'void main() {',
     '  float ys = (uH - gl_FragCoord.y) * uCW, xs = gl_FragCoord.x * uCW;',
-    '  vec2 e0 = edge(ys);',
+    '  vec2 e0 = uScene;',
     '  if (e0.x * 255.0 < 1.0) { outColor = vec4(0.0); gl_FragDepth = 0.0; return; }',
-    // одна темнота цвета фона, камней нет: ход не считаем, спрайтам и снегу здесь не рисоваться
+    // сцена в начале смены — одна темнота цвета фона, камней нет: ход не считаем, спрайтам здесь не рисоваться
     '  if (e0.y <= 0.0) { outColor = finish(FOG, xs, ys); gl_FragDepth = 0.0; return; }',
     '  float sx = (xs - uVw0) / uF, vz = (uHz - ys) / uF, cy = uCam;',
     '  float bf = ((sx == 0.0 && vz == 0.0 ? 0.0 : atan(vz, sx)) + PI) / TAU * BINS - 0.5;',
@@ -895,7 +884,7 @@
     '    c = code * (0.55 + 0.45 * F) + FOG * (0.45 - 0.45 * F);',
     '  }',
     '  gl_FragDepth = t / DEPTH_K;',
-    '  outColor = finish(c, xs, ys);',
+    '  outColor = finish(FOG + (c - FOG) * DIM, xs, ys);',   // «тише»: ход ближе к цвету фона
     '}',
   ].join('\n');
 
@@ -1003,7 +992,7 @@
     '    if (!hit) discard;',
     '    col = hc * vTone.r;',
     '  }',
-    '  outColor = finish(col * vTone.a + FOG * (1.0 - vTone.a), xs, ys);',
+    '  outColor = finish(FOG + (col - FOG) * (vTone.a * DIM), xs, ys);',   // «тише»: предметы — тоже; персонажи — выше, как есть
     '}',
   ].join('\n');
 
@@ -1044,11 +1033,12 @@
     MASK_LIMITS: { L_TEXT: L_TEXT, L_OUT: L_OUT },
     rng: rng, makeTextures: makeTextures, buildWorld: buildWorld, buildFlakes: buildFlakes, buildTube: buildTube,
     riftAtlas: riftAtlas, buildRifts: buildRifts, RIFT: RIFT, GLYPH_ROWS: GLYPH_ROWS,
-    levelOf: levelOf, gatesFrom: gatesFrom, camTarget: camTarget, zoneFrom: zoneFrom, shiftZone: shiftZone, edgeAt: edgeAt,
-    rampAt: rampAt, lightAt: lightAt, breathe: breathe, KNIGHT: KNIGHT, MAGE: MAGE, CHARS: CHARS, artPixels: artPixels, charAt: charAt,
+    levelOf: levelOf, gatesFrom: gatesFrom, camTarget: camTarget, zoneFrom: zoneFrom, shiftZone: shiftZone,
+    sceneTarget: sceneTarget, sceneLook: sceneLook, lightAt: lightAt, breathe: breathe, KNIGHT: KNIGHT, MAGE: MAGE, CHARS: CHARS, artPixels: artPixels, charAt: charAt,
     carveNiche: carveNiche, charReach: charReach, CHAR_PIX: CHAR_PIX,
     shaders: { VS_FULL: VS_FULL, FS_TUBE: FS_TUBE, VS_SPRITE: VS_SPRITE, FS_SPRITE: FS_SPRITE, VS_SNOW: VS_SNOW, FS_SNOW: FS_SNOW },
-    consts: { ML: ML, Y0: Y0, Y1: Y1, T_BINS: T_BINS, T_R0: T_R0, TUBE: TUBE, MAXL: MAXL, PX: PX, N: N, EDGE_M: EDGE_M, EDGE_T: EDGE_T, EDGE_A: EDGE_A, EDGE_L: EDGE_L,
+    consts: { ML: ML, Y0: Y0, Y1: Y1, T_BINS: T_BINS, T_R0: T_R0, TUBE: TUBE, MAXL: MAXL, PX: PX, N: N, EDGE_M: EDGE_M, SCENE_MS: SCENE_MS, SCENE_HYST: SCENE_HYST, SCENE_A: SCENE_A, SCENE_L: SCENE_L,
+      GLYPHS_FLY: GLYPHS_FLY, SNOW_FALL: SNOW_FALL, LIGHT_BREATHE: LIGHT_BREATHE, CAVE_DIM: CAVE_DIM,
       MAXR: MAXR, MAXP: MAXP, RS_W: RS_W, RS_H: RS_H, RS_N: RS_N, KN_H: KN_H, KN_NICHE: KN_NICHE, KN_NICHE_R: KN_NICHE_R, KN_D: KN_D, KN_REF: KN_REF,
       KN_SPARK: KN_SPARK, KN_LIGHT: KN_LIGHT, KN_SLOPE: KN_SLOPE, KN_SHADOW: KN_SHADOW, KN_GAP: KN_GAP, KN_FLOOR: KN_FLOOR,
       KNIGHT_ANIM: KNIGHT_ANIM,
@@ -1091,7 +1081,7 @@
       names.forEach(function (n) { u[n] = gl.getUniformLocation(p, n); });
       return { p: p, u: u };
     }
-    var COMMON = ['uCW', 'uH', 'uBodyL', 'uBodyR', 'uMeta', 'uNMeta', 'uDt', 'uAt', 'uIt', 'uTt', 'uBb', 'uOb', 'uAb', 'uDb', 'uWrL', 'uWrR', 'uSecT', 'uSecB', 'uF', 'uHz', 'uVw0', 'uGates', 'uNG', 'uW'];
+    var COMMON = ['uCW', 'uH', 'uBodyL', 'uBodyR', 'uMeta', 'uNMeta', 'uScene', 'uWrL', 'uWrR', 'uSecT', 'uSecB', 'uF', 'uHz', 'uVw0', 'uGates', 'uNG', 'uW'];
     var tube = program(VS_FULL, FS_TUBE, COMMON.concat(['uRing', 'uTex', 'uLights', 'uNL', 'uCam', 'uRift', 'uRiftD', 'uNR',
       'uGlyph', 'uMouse', 'uScrollK', 'uTime', 'uKnF']));
     var sprite = program(VS_SPRITE, FS_SPRITE, COMMON.concat(['uGlyph', 'uKnight', 'uKTime']));
@@ -1388,8 +1378,8 @@
       if (!section || lost) return;
       var t0 = root.performance.now();
       var vw = root.innerWidth, vh = root.innerHeight, sr = section.getBoundingClientRect();
-      var Z = shiftZone(L.z, sr.top);
-      if (Z.darkBot <= 0 || Z.darkTop >= vh) { show(false); return; }
+      if (scene <= 0) { show(false); return; }   // сцены нет — пещеры нет
+      var look = sceneLook(scene);
       var w = Math.ceil(vw / PX), h = Math.ceil(vh / PX);
       if (w !== W || h !== H) {
         W = w; H = h;
@@ -1397,7 +1387,7 @@
         canvas.style.width = W * PX + 'px';
         canvas.style.height = H * PX + 'px';
       }
-      var f = vw / 2, hz = vh / 2, vw0 = vw / 2, rowLo = Math.max(0, Math.floor(Z.darkTop / PX)), rowHi = Math.min(H - 1, Math.ceil(Z.darkBot / PX));
+      var f = vw / 2, hz = vh / 2, vw0 = vw / 2, rowLo = 0, rowHi = H - 1;   // сцена — по всему экрану
       // персонажи: дышат светом, при KNIGHT_ANIM 2 — парят на точку арта; тени под ними; рамки текста дат — в окно
       var knBright = LESS_MOTION ? 1 : 0.93 + 0.07 * Math.sin(time / 900 + 1.3);
       var knBob = KNIGHT_ANIM === 2 && !LESS_MOTION ? Math.floor(Math.sin(time * 0.0021) + 0.5) : 0;   // в точках арта
@@ -1405,10 +1395,10 @@
       L.chars.forEach(function (ch, i) { if (i < 2) shadowBuf.set([ch.x, ch.y, KN_SHADOW], i * 3); });
       metaBuf.fill(0);
       L.metas.forEach(function (b, i) { metaBuf.set([b[0], b[1] + sr.top, b[2], b[3] + sr.top], i * 4); });
-      // камней в окне нет — одна темнота цвета фона: огни, знаки, спрайты и снег не считаем
-      var stones = Z.outBot > 0 && Z.inTop < vh, n = 0, m = 0;
+      // камней ещё нет — одна темнота цвета фона: огни, спрайты и снег не считаем
+      var stones = look[1] > 0, n = 0, m = 0;
       if (stones) {
-        breathe(world.lights, time);
+        breathe(world.lights, LIGHT_BREATHE ? time : 0);
         rifts.forEach(function (rf, i) {
           var k = riftPulse(rf, time);
           riftTex[i * 8 + 7] = RIFT.glow * k;
@@ -1417,7 +1407,7 @@
         });
         upload(gl, R.texRiftD, 4, MAXR * 2, 1, riftTex);
         uploadLights(false);
-        stepParts(time, cy);
+        if (GLYPHS_FLY) stepParts(time, cy);
 
         // спрайты: дальние первыми (при равной глубине прав первый — как в прототипе)
         var list = [];
@@ -1471,7 +1461,7 @@
         }
 
         // снег — в ярусах со льдом
-        for (var k = 0; k < FLAKES.length; k++) {
+        for (var k = 0; SNOW_FALL && k < FLAKES.length; k++) {
           var fk = FLAKES[k], rel = ((fk.y * 12 - cy) % 12 + 12) % 12, fyw = cy + 0.6 + rel;
           if (levelOf(gates, fyw) === 3) continue;
           var fz = HW - (((time * 0.00011 * fk.sp) + fk.ph) % 1) * HW, fx = fk.x + Math.sin(time * 0.0007 + fk.ph) * 0.15;
@@ -1495,8 +1485,7 @@
         gl.uniform1f(p.u.uCW, PX); gl.uniform1f(p.u.uH, H); gl.uniform1f(p.u.uW, W);
         gl.uniform1f(p.u.uBodyL, L.bodyL); gl.uniform1f(p.u.uBodyR, L.bodyR);
         gl.uniform4fv(p.u.uMeta, metaBuf); gl.uniform1i(p.u.uNMeta, L.metas.length);
-        gl.uniform1f(p.u.uDt, Z.darkTop); gl.uniform1f(p.u.uAt, Z.alphaTop); gl.uniform1f(p.u.uIt, Z.inTop); gl.uniform1f(p.u.uTt, Z.fullTop);
-        gl.uniform1f(p.u.uBb, Z.fullBot); gl.uniform1f(p.u.uOb, Z.outBot); gl.uniform1f(p.u.uAb, Z.alphaBot); gl.uniform1f(p.u.uDb, Z.darkBot);
+        gl.uniform2f(p.u.uScene, look[0], look[1]);
         gl.uniform1f(p.u.uSecT, sr.top); gl.uniform1f(p.u.uSecB, sr.bottom);
         gl.uniform1f(p.u.uWrL, L.wrL); gl.uniform1f(p.u.uWrR, L.wrR);
         gl.uniform1f(p.u.uF, f); gl.uniform1f(p.u.uHz, hz); gl.uniform1f(p.u.uVw0, vw0);
@@ -1539,17 +1528,14 @@
       mainMs += lastMs;
     }
 
-    /* Офис стоит по нижнему краю окна и гаснет, пока низ окна — в пещере: вместе они не сходятся.
-       Мера — видимость пещеры в ряду середины офиса (OFFICE_Y px от низа окна): гаснет выше 0,3,
-       возвращается ниже 0,12 — с запасом, чтобы на границе не мигало. Гаснут слева направо, по
-       очереди; при «уменьшить движение» — сразу. До 2026-10-02 мерой был сам раздел: офис гас, когда
-       пещеры у низа окна ещё не было, и возвращался, когда раздел почти ушёл из окна (владелец:
-       «пропадают и появляются поздно, нужно чтобы когда низ сайта был вне пещеры они появлялись»). */
-    var officeAway = false, OFFICE_STAGGER = 55, OFFICE_Y = 50;
+    /* Офис стоит по нижнему краю окна и уходит на время сцены (5.91): пещера тогда — по всему экрану, и вместе
+       они не сходятся. Гаснет, когда смена прошла 0,3, возвращается ниже 0,12 — с запасом, чтобы на границе не
+       мигало. Гаснут слева направо, по очереди; при «уменьшить движение» — сразу. До 5.91 мерой была видимость
+       пещеры у низа окна (по месту). */
+    var officeAway = false, OFFICE_STAGGER = 55;
     function officeTick() {
       if (!section) return;
-      var vh = root.innerHeight, r = section.getBoundingClientRect();
-      var v = rampAt(vh - OFFICE_Y, shiftZone(L.z, r.top));
+      var v = scene;
       if (!officeAway && v > 0.3) {
         Array.prototype.slice.call(doc.querySelectorAll('canvas.pet, canvas.thing'))
           .map(function (el) { return { el: el, r: el.getBoundingClientRect() }; })
@@ -1568,6 +1554,7 @@
        экрана, потом ~12 кадров в секунду. При «уменьшить движение» камера стоит перед первыми
        воротами, время стоит, а кадр перерисовывается только когда сдвинулся сам раздел. */
     var raf = 0, cam = null, prev = 0, last = 0, dirty = true, t0 = 0, relayout = false;
+    var scene = 0, sceneT = 0, sceneLast = 0;   // смена сцены: ход 0…1, цель, время прошлого тика
     function staticCam() { return gates && gates.length ? Math.max(Y0, gates[0] - 6) : (Y0 + Y1) / 2; }
     function loop(now) {
       raf = 0;
@@ -1575,6 +1562,11 @@
       if (section && !section.isConnected) relayout = true;   // страницу пересобрали (язык на file://)
       if (relayout) { relayout = false; layout(); dirty = true; }
       if (!section) { show(false); raf = root.requestAnimationFrame(loop); return; }
+      // смена сцены — во времени: цель — по месту раздела, ход — SCENE_MS на весь путь; при загрузке — сразу
+      sceneT = sceneTarget(shiftZone(L.z, section.getBoundingClientRect().top), root.innerHeight, sceneT === 1);
+      if (!sceneLast || LESS_MOTION) { if (scene !== sceneT) dirty = true; scene = sceneT; }
+      else if (scene !== sceneT) { scene = clamp01(scene + (sceneT > scene ? 1 : -1) * Math.min(64, now - sceneLast) / SCENE_MS); dirty = true; }
+      sceneLast = now;
       officeTick();
       if (LESS_MOTION) {
         if (dirty) { draw(0, staticCam()); dirty = false; }
@@ -1598,7 +1590,7 @@
       officeTick();
       // плавность ухода офиса — кадром позже: загрузка посреди раздела гасит его сразу
       root.requestAnimationFrame(function () { if (state !== 'off') html.classList.add('cave-office'); });
-      cam = null; prev = root.performance.now(); dirty = true;
+      cam = null; prev = root.performance.now(); dirty = true; sceneLast = 0;
       if (!raf) raf = root.requestAnimationFrame(loop);
     }
     function disable() {
@@ -1650,23 +1642,12 @@
       stats: function () { return world ? { lights: world.lights.length, sprites: world.sprites.length, rifts: rifts.length, parts: parts.length } : null; },
       rifts: function () { return rifts.map(function (rf) { return { kind: rf.kind, a: rf.a, y: rf.y, s: rf.s }; }); },
       render: function (time, cy) { draw(time, cy); return lastMs; },
-      ramp: function () {
-        if (!section) return [];
-        var Z = shiftZone(L.z, section.getBoundingClientRect().top), out = [];
-        for (var r = 0; r < H; r++) out.push(rampAt((r + 0.5) * PX, Z));
-        return out;
-      },
-      // непрозрачность (темнота) и свет (камни) по рядам холста
-      edges: function () {
-        if (!section) return [];
-        var Z = shiftZone(L.z, section.getBoundingClientRect().top), out = [];
-        for (var r = 0; r < H; r++) out.push(edgeAt((r + 0.5) * PX, Z));
-        return out;
-      },
+      // смена сцены: ход, цель и непрозрачность со светом
+      scene: function () { return { v: scene, target: sceneT, look: sceneLook(scene) }; },
       // персонажи: место в мире и рамка на экране при последней камере (без полей для искр); рыцарь — первый
       chars: function () { return L.chars.map(charView); },
       knight: function () { return L.chars.length ? charView(L.chars[0]) : null; },
-      // края пещеры в окне (zoneFrom): темнота, камни, полоса «во всю силу»
+      // края пещеры в окне (zoneFrom)
       zone: function () { return section ? shiftZone(L.z, section.getBoundingClientRect().top) : null; },
     };
   }
