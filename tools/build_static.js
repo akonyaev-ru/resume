@@ -59,6 +59,12 @@ function build(R, lang) {
     '<a href="' + esc(c.github.href) + '">' + esc(t(c.github.label)) + '</a>',
   ].join(' · ') + '</p>';
   const list = function (items) { return '<ul>' + items.map(function (x) { return '<li>' + x + '</li>'; }).join('') + '</ul>'; };
+  // пункт опыта: результат (`bold`, 5.95) — полужирным, как на странице; фразы в тексте нет — текст как есть
+  const bulletHtml = function (b) {
+    const text = t(b.text), bold = b.bold ? t(b.bold) : '', at = bold ? text.indexOf(bold) : -1;
+    if (at < 0) return esc(text);
+    return esc(text.slice(0, at)) + '<b>' + esc(bold) + '</b>' + esc(text.slice(at + bold.length));
+  };
 
   return [
     '<main class="static-cv wrap" id="main">',
@@ -73,7 +79,7 @@ function build(R, lang) {
     '<section><h2>' + u('approachTitle') + '</h2><p>' + esc(t(p.about)) + '</p><p>' + esc(t(p.pullquote)) + '</p></section>',
     '<section><h2>' + u('experienceTitle') + '</h2>' + R.experience.map(function (job) {
       return '<article><h3>' + esc(t(job.role)) + ' — ' + esc(t(job.company)) + '</h3><p>' + esc(t(job.period)) + '</p>' +
-        list(job.bullets.map(function (b) { return esc(t(b.text)); })) + '</article>';
+        list(job.bullets.map(bulletHtml)) + '</article>';
     }).join('') + '</section>',
     '<section><h2>' + u('projectsTitle') + '</h2>' + R.projects.map(function (pr) {
       return '<article><h3><a href="' + esc(pr.link) + '">' + esc(t(pr.name)) + '</a></h3><p>' + esc(t(pr.tagline)) + '</p><p>' +

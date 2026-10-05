@@ -40,7 +40,8 @@ function pick(value, lang) {
 
 // Текст блока без разметки и с разобранными сущностями — как его прочтёт робот.
 function textOf(html) {
-  return html.replace(/<[^>]+>/g, ' ').replace(/&quot;/g, '"').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');
+  // полужирное внутри строки (результат пункта, 5.95) — тот же сплошной текст, без пробелов вокруг
+  return html.replace(/<\/?b>/g, '').replace(/<[^>]+>/g, ' ').replace(/&quot;/g, '"').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');
 }
 
 function everything(lang) {
@@ -72,6 +73,24 @@ function everything(lang) {
     const other = lang === 'ru' ? pick(R.experience[0].company, 'en') : pick(R.experience[0].company, 'ru');
     if (text.indexOf(other) >= 0) fail('в тексте чужой язык: «' + other + '»');
     return need.length + ' строк на месте';
+  });
+});
+
+check('результат пункта опыта (`bold`) — дословно из его текста на обоих языках, в текстовой версии полужирный', function () {
+  const marked = [].concat.apply([], R.experience.map(function (j) { return j.bullets.filter(function (b) { return b.bold; }); }));
+  if (marked.length < 5) fail('помеченных пунктов ' + marked.length + ', а должно быть не меньше пяти');
+  ['ru', 'en'].forEach(function (lang) {
+    marked.forEach(function (b) {
+      const text = pick(b.text, lang), bold = pick(b.bold, lang);
+      if (!bold || text.indexOf(bold) < 0) fail(lang + ': фразы «' + bold + '» нет в тексте пункта');
+    });
+    const page = lang === 'ru' ? SOURCE : SOURCE.replace('<html lang="ru">', '<html lang="en">');
+    const html = S.inject(page, S.build(R, S.langOf(page)));
+    const head = '<h2>' + pick(R.ui.experienceTitle, lang) + '</h2>', from = html.indexOf(head);
+    if (from < 0) fail(lang + ': нет раздела опыта в текстовой версии');
+    const exp = html.slice(from, html.indexOf('</section>', from));
+    const n = (exp.match(/<b>/g) || []).length;
+    if (n !== marked.length) fail(lang + ': полужирных пунктов в текстовой версии ' + n + ' из ' + marked.length);
   });
 });
 

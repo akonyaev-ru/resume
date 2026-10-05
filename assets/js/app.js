@@ -98,6 +98,16 @@
 
   /* --- мелкие помощники -------------------------------------------------- */
 
+  /* Пункт опыта. Результат (`bold` в данных, 5.95) — полужирным, текст пункта тот же. Пункт — сетка (маркер + текст),
+     поэтому весь текст в одном span: иначе выделение встало бы отдельной ячейкой. Фразы в тексте нет — как раньше. */
+  function bulletItem(bullet) {
+    var text = t(bullet.text), bold = bullet.bold ? t(bullet.bold) : '', at = bold ? text.indexOf(bold) : -1;
+    if (at < 0) return el('li', { class: 'bullet', text: text });
+    return el('li', { class: 'bullet' }, [el('span', {}, [
+      text.slice(0, at), el('b', { class: 'bullet__result', text: bold }), text.slice(at + bold.length),
+    ])]);
+  }
+
   function el(tag, props, kids) {
     var node = document.createElement(tag);
     if (props) {
@@ -657,9 +667,7 @@
         el('div', {}, [
           el('h3', { class: 'job__company', text: t(job.company) }),
           el('p', { class: 'job__role', text: t(job.role) }),
-          el('ul', { class: 'job__bullets' }, job.bullets.map(function (bullet) {
-            return el('li', { class: 'bullet', text: t(bullet.text) });
-          })),
+          el('ul', { class: 'job__bullets' }, job.bullets.map(bulletItem)),
         ]),
       ]);
     }));

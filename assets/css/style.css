@@ -283,17 +283,37 @@ a:not(.btn):hover { color: var(--text); }
    returnQuietly); первая клавиша снимает метку, и кольцо снова по правилу. */
 .thing--button[data-quiet-focus]:focus-visible { outline: none; }
 
+/* Пол под офисом (5.95, правка №3 Дизайнера; высота — выбор владельца, 40 px): полоса цвета фона (`--void`) по
+   низу окна, кверху сходит на нет; текст уходит под неё, существа и мебель стоят сверху — и мебели больше не нужно
+   тесниться в полях (pet.js, `makeFloor`). Элемент ставит pet.js и включает классом `is-on` после первой
+   прокрутки: в первом экране внизу анкета. В пещере пол гаснет вместе с офисом (ниже, `html.cave-away`). */
+.floor {
+  position: fixed;
+  inset-inline: 0;
+  inset-block-end: 0;
+  z-index: 15;
+  height: 40px;
+  pointer-events: none;
+  background: linear-gradient(to bottom, rgba(8, 10, 16, 0), rgba(8, 10, 16, 0.94) 62%);
+  opacity: 0;
+  transition: opacity 300ms ease-out;
+}
+
+.floor.is-on { opacity: 1; }
+
 /* На телефоне существо только мешало: `position: fixed` считается от
    раскладочного окна, а у мобильных браузеров оно живёт своей жизнью вместе с
    выезжающей адресной строкой — существо оказывалось висящим в воздухе. */
 @media (max-width: 720px) {
   .pet,
-  .thing { display: none; }
+  .thing,
+  .floor { display: none; }
 }
 
 @media print {
   .pet,
-  .thing { display: none; }
+  .thing,
+  .floor { display: none; }
 }
 
 /* --- Шапка -------------------------------------------------------------- */
@@ -1197,6 +1217,9 @@ a:not(.btn):hover { color: var(--text); }
   color: var(--text-dim);
 }
 
+/* результат пункта (5.95): тем же текстом, но ярче и полужирным */
+.bullet__result { color: var(--text); font-weight: 600; }
+
 .bullet::before {
   content: '';
   width: 6px;
@@ -1246,6 +1269,8 @@ a:not(.btn):hover { color: var(--text); }
   html.cave #experience .job__duration,
   html.cave #experience .timeline__year,
   html.cave #experience .timeline__span { color: #a9b1c4; }
+
+  html.cave-away .floor { opacity: 0; transition: opacity 475ms ease-in 430ms; }
 
   html.cave-away .pet,
   html.cave-away .thing {

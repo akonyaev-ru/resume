@@ -181,30 +181,36 @@ window.RESUME = {
       start: '2025-03',
       end: null,
       current: true,
+      // `bold` — результат пункта полужирным (5.95, правка №5 Дизайнера; владелец: «Мне нравится 5»): фраза дословно
+      // из текста пункта на каждом языке, текст не меняется. Сверяет tools/check_static.js.
       bullets: [
         {
           text: {
             ru: 'Внедрил 6 ИИ-агентов на базе Claude в работу 8 юристов: разбор и сверка документов, подготовка типовых материалов, контроль регламентных сроков, проекты процессуальных документов и судебных актов с базой практики по каждому судье и нормативной базой АПК — включая контроль резолютивной части при множественности истцов (ст. 175 АПК). Время на типовые задачи сокращено на 70%.',
             en: 'Rolled out six Claude-based AI agents to a team of eight lawyers: parsing and cross-checking documents, drafting standard materials, tracking deadlines, and drafting procedural documents and court rulings from a per-judge practice base and the procedural code — including the operative part where there are several claimants (art. 175 of the Commercial Procedure Code). Time on routine tasks cut by 70%.',
           },
+          bold: { ru: 'Время на типовые задачи сокращено на 70%', en: 'Time on routine tasks cut by 70%' },
         },
         {
           text: {
             ru: 'Автоматизировал сквозной бизнес-процесс согласования договоров в Битрикс24: описал процесс AS IS / TO BE, расшил узкие места в маршруте, перестроил проверку контрагентов, статусы, уведомления и контроль сроков; согласовал целевой процесс с коммерческим блоком и провел презентацию результатов руководству. SLA согласования сокращен на 60%, коммерческий цикл компании ускорен.',
             en: 'Automated the end-to-end contract approval process in Bitrix24: mapped the process as is / to be, cleared the bottlenecks in the route, rebuilt counterparty screening, statuses, notifications and deadline control; agreed the target process with the commercial team and presented the results to management. Approval SLA cut by 60%, the company’s commercial cycle sped up.',
           },
+          bold: { ru: 'SLA согласования сокращен на 60%', en: 'Approval SLA cut by 60%' },
         },
         {
           text: {
             ru: 'Провел правовую экспертизу и согласование свыше 700 договоров (40–50 в месяц): проверка контрагентов, сопровождение исполнения, обмен документами с контрагентами через Диадок.',
             en: 'Reviewed and approved over 700 contracts (40–50 a month): counterparty screening, performance follow-up, document exchange with counterparties via Diadoc.',
           },
+          bold: { ru: 'свыше 700 договоров', en: 'over 700 contracts' },
         },
         {
           text: {
             ru: 'Разработал middleware на Python для автоматической деперсонализации данных перед отправкой в LLM: закрыл риски по 152-ФЗ и утечке коммерческой тайны, ручная подготовка документов сокращена на 95%.',
             en: 'Built Python middleware that de-identifies data automatically before it goes to an LLM: closed the risks under the personal data law and trade secret leaks; manual document preparation cut by 95%.',
           },
+          bold: { ru: 'ручная подготовка документов сокращена на 95%', en: 'manual document preparation cut by 95%' },
         },
         {
           text: {
@@ -217,6 +223,7 @@ window.RESUME = {
             ru: 'Вел бэклог автоматизации юридической функции в Jira с приоритизацией по эффекту и трудозатратам: формировал бизнес-требования и ТЗ на ИИ-агентов, собирал прототип, тестировал на реальных данных, обкатывал на пилотной группе и передавал в эксплуатацию — этот цикл прошли все шесть агентов. Эффект замерял по BI-дашбордам на данных Битрикс24: убрал 80% ручного ввода в отчетности отдела, вывел KPI в реальном времени.',
             en: 'Ran the legal function automation backlog in Jira, prioritised by impact against effort: wrote business requirements and specifications for the AI agents, built the prototype, tested it on real data, ran it past a pilot group and handed it over — all six agents went through this cycle. Measured the effect on BI dashboards built on Bitrix24 data: removed 80% of manual entry from the department’s reporting, put KPIs under real-time control.',
           },
+          bold: { ru: 'убрал 80% ручного ввода в отчетности отдела', en: 'removed 80% of manual entry from the department’s reporting' },
         },
       ],
     },

@@ -41,7 +41,7 @@
                              // два толчка сливаются в один длинный прыжок
   var HOP_MS = 260;          // прыжок в ответ на щелчок
   var EDGE = 12;             // отступ от краёв окна
-  var PACK_GAP = 6;          // просвет между мебелью, когда она теснится в поле у края
+  var FLOOR_AFTER = 40;      // px прокрутки, после которых виден пол под офисом (5.95)
   var CLICK_SLOP = 3;        // сдвиг руки меньше этого — щелчок, а не захват
 
   var GRAVITY = 1700;        // px/с² — с каким ускорением падает брошенный
@@ -2690,29 +2690,27 @@
      предметом их не делаем нарочно — владелец просил, чтобы растащить их можно
      было в любую сторону. Следующий предмет добавляется строкой.
 
-     `rank` — старшинство, когда полю не хватает места (5.82, `fitMargins`):
-     1 — остаётся последним. `needs` — без кого предмет не ставится: принтер
-     без стола, торшер без дивана. */
+     Стоящее на полу стоит по долям окна на любой ширине (5.95): под офисом пол
+     (`makeFloor`), и текст уходит под него. До 5.95 на ноутбуке мебель жалась в
+     боковые поля по старшинству, не влезшее пряталось (5.82). */
   var things = [
     // Доска висит слева над полкой, чуть правее и ниже её — так владелец её и
     // утвердил. К текстовой колонке её привязывали 2026-09-05 и вернули
     // обратно: на широком экране от этого она уезжала на треть окна вправо.
     { name: 'board', art: BOARD, skin: SKIN.board, title: { ru: 'Перевесить доску', en: 'Move the board' },
       at: 0.02, wall: 64, shift: -8 },
-    { name: 'shelf', art: SHELF, skin: SKIN.shelf, title: { ru: 'Подвинуть полку', en: 'Move the shelf' }, at: 0,
-      rank: 2 },
-    { name: 'ficus', art: FICUS, skin: SKIN.ficus, title: { ru: 'Подвинуть фикус', en: 'Move the ficus' }, at: 0.045,
-      rank: 3 },
+    { name: 'shelf', art: SHELF, skin: SKIN.shelf, title: { ru: 'Подвинуть полку', en: 'Move the shelf' }, at: 0 },
+    { name: 'ficus', art: FICUS, skin: SKIN.ficus, title: { ru: 'Подвинуть фикус', en: 'Move the ficus' }, at: 0.045 },
     // Принтер и торшер держатся за соседа (`after`/`before`), а не за долю
     // полосы: доля на широком экране растаскивает пару — фикус и так отходит
     // от полки с 13 px на 1280 до 42 на 1920, — а «рядом с диваном» и есть
     // смысл предмета. Тот же приём, что у табло над проёмом.
     { name: 'printer', art: PRINTER, skin: SKIN.printer, title: { ru: 'Подвинуть принтер', en: 'Move the printer' },
-      after: 'ficus', shift: 9, rank: 4, needs: 'desk' },
+      after: 'ficus', shift: 9 },
     // Рабочее место: стол за принтером, компьютер на столе (`on`) — по
     // горизонтали его левый край, по вертикали его верх. Экран живёт кадрами.
     { name: 'desk', art: DESK, skin: SKIN.desk, title: { ru: 'Подвинуть стол', en: 'Move the desk' },
-      after: 'printer', shift: 9, rank: 1 },
+      after: 'printer', shift: 9 },
     { name: 'computer', art: COMPUTER, skin: SKIN.computer,
       title: { ru: 'Включить компьютер', en: 'Turn on the computer' },
       on: 'desk', face: computerFace, every: COMPUTER_MS, rest: 20,
@@ -2726,11 +2724,9 @@
         if (window.OfficeConsole) window.OfficeConsole.open(me.canvas, { quiet: how === 'pointer' });
       } },
     { name: 'lamp', art: LAMP, skin: SKIN.lamp, title: { ru: 'Подвинуть торшер', en: 'Move the floor lamp' },
-      before: 'sofa', shift: -6, rank: 3, needs: 'sofa' },
-    { name: 'sofa', art: SOFA, skin: SKIN.sofa, title: { ru: 'Подвинуть диван', en: 'Move the sofa' }, at: 0.92,
-      rank: 1 },
-    { name: 'plant', art: PLANT, skin: SKIN.plant, title: { ru: 'Подвинуть растение', en: 'Move the plant' }, at: 0.97,
-      rank: 2 },
+      before: 'sofa', shift: -6 },
+    { name: 'sofa', art: SOFA, skin: SKIN.sofa, title: { ru: 'Подвинуть диван', en: 'Move the sofa' }, at: 0.92 },
+    { name: 'plant', art: PLANT, skin: SKIN.plant, title: { ru: 'Подвинуть растение', en: 'Move the plant' }, at: 0.97 },
     /* Потолок — нижняя кромка липкой планки меню. Под ней в левом поле, где
        нет текста, — камера. Как и висящее на стене, без гравитации и спрятана
        на узком окне. Табличка EXIT в правом поле побывала и убрана в тот же
@@ -2757,9 +2753,7 @@
     thing.before = spec.before || null; // или слева
     thing.on = spec.on || null;         // или на нём сверху
     thing.shift = spec.shift || 0;    // доводка на пару пикселей, по просьбе
-    thing.rank = spec.rank || 0;        // старшинство в тесном поле; 0 — не теснится
-    thing.needs = spec.needs || null;   // без кого не ставится
-    thing.off = false;                  // спрятан: в поле не хватило места
+    thing.off = false;                  // спрятан: висящее, залезшее на колонку текста
     return thing;
   });
 
@@ -3045,72 +3039,42 @@
     t.checkHidden();
   }
 
-  /* Тесное поле. По долям окна обстановка встаёт в боковые поля от ~1600 px, а
-     уже часть её стояла на тексте: на 1366 стол с компьютером и торшер —
-     целиком (до 5.82). Теперь сторона, где хоть один предмет залез на колонку,
-     встаёт плотно от края окна: по старшинству (`rank`), пока влезает в поле, в
-     прежнем порядке, с просветом PACK_GAP; не влезшее прячется. Принтер без
-     стола и торшер без дивана не ставятся (`needs`) — одинокий принтер на
-     планшете смотрелся забытым. */
-  function packSide(left, col) {
-    var cw = document.documentElement.clientWidth;
-    var side = things.filter(function (t) {
-      return t.rank && !t.moved && !t.hidden && (t.x + t.canvas.width / 2 < cw / 2) === left;
-    });
-    if (!side.some(function (t) { return onColumn(t, col); })) return;
-
-    var room = left ? col.left : cw - col.right;
-    var used = EDGE;
-    var kept = [];
-    side.slice().sort(function (a, b) { return a.rank - b.rank; }).forEach(function (t) {
-      var need = t.needs ? thingNamed(t.needs) : null;
-      if (need && (side.indexOf(need) >= 0 ? kept.indexOf(need) < 0 : need.hidden)) return;
-      var add = t.canvas.width + (kept.length ? PACK_GAP : 0);
-      if (used + add > room) return;
-      kept.push(t);
-      used += add;
-    });
-
-    var order = side.slice().sort(function (a, b) { return a.x - b.x; });
-    if (!left) order.reverse();
-    var at = EDGE;
-    order.forEach(function (t) {
-      var keep = kept.indexOf(t) >= 0;
-      setOff(t, !keep);
-      if (!keep) return;
-      t.x = left ? at : cw - at - t.canvas.width;
-      at += t.canvas.width + PACK_GAP;
-      t.place();
-    });
+  /* Пол (5.95, правка №3 Дизайнера; владелец выбрал высоту 40 px). До 5.95 мебель жалась в боковые поля, и не
+     влезшее пряталось (5.82): на 1366 оставалось 10 предметов из 13, на 1280 — 7, на 1366×768 при 125 % — одни
+     существа (владелец: «на ноутбуке с меньшим экраном офиса практически нет»). Теперь под офисом полоса цвета фона,
+     текст уходит под неё, и стоящему на полу незачем тесниться — оно стоит по долям окна. В первом экране пола нет,
+     пока не прокрутили (там внизу анкета); в пещере он гаснет вместе с офисом (style.css). Вид — `.floor`. */
+  function makeFloor() {
+    var floor = document.createElement('div');
+    floor.className = 'floor';
+    floor.setAttribute('aria-hidden', 'true');
+    document.body.appendChild(floor);
+    function onScroll() {
+      if ((window.scrollY || 0) > FLOOR_AFTER) floor.classList.add('is-on');
+      else floor.classList.remove('is-on');
+    }
+    window.addEventListener('scroll', onScroll, { passive: true });
+    onScroll();
   }
 
+  // Висящее — в поля: на текст его не вешают, залезшее на колонку прячется.
   function fitMargins() {
-    // Сперва всё нетронутое — на виду: по долям окна оно уже расставлено.
-    things.forEach(function (t) { if (!t.moved) setOff(t, false); });
+    // Прятаться может только висящее, и его видимость пересчитывается ниже каждый раз.
     var col = column();
     if (!col) return;
 
-    packSide(true, col);
-    packSide(false, col);
-
-    // Компьютер идёт за столом: и местом, и видимостью.
-    things.forEach(function (t) {
-      if (!t.on || t.moved) return;
-      var base = thingNamed(t.on);
-      setSpot(t);
-      setOff(t, !!(base && base.off));
-    });
-
-    /* Висящее. Табло — над промежутком между диваном и растением, пока оба на
-       виду, иначе посередине правого поля; залезшее на колонку прячется. */
+    /* Табло — над промежутком между диваном и растением, пока оба на виду и место
+       не на тексте (на ноутбуке диван и растение стоят над колонкой — на полу),
+       иначе посередине правого поля; залезшее на колонку прячется. */
     var cw = document.documentElement.clientWidth;
     things.forEach(function (t) {
       if (!t.wall || t.moved) return;
       if (t.between) {
         var a = thingNamed(t.between[0]);
         var b = thingNamed(t.between[1]);
-        if (a && b && !a.off && !b.off) setSpot(t);
-        else {
+        var gap = !!(a && b && !a.off && !b.off);
+        if (gap) setSpot(t);
+        if (!gap || onColumn(t, col)) {
           t.x = clamp(col.right + (cw - col.right - t.canvas.width) / 2, EDGE, t.limit());
           t.place();
         }
@@ -3122,8 +3086,7 @@
   /* Расставить обстановку двумя проходами: сперва те, кто стоит сам по себе,
      потом висящие над промежутком между ними. Порядок обязателен: иначе проём
      считается по нерасставленным предметам, и табло уезжает к краю. Затем —
-     поля: что не влезает рядом с колонкой текста, теснится или прячется.
-     Взятое рукой не трогаем никогда. */
+     висящее в поля (`fitMargins`). Взятое рукой не трогаем никогда. */
   function arrange() {
     things.forEach(function (t) {
       if (!t.moved && !leans(t)) setSpot(t);
@@ -3137,6 +3100,7 @@
   }
 
   arrange();
+  makeFloor();
 
   /* Планку меню строит app.js — с 5.84 сразу, до этого скрипта, и потолок на
      месте уже при первой расстановке. До 5.84 он строил её по
