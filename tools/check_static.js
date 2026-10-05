@@ -78,7 +78,7 @@ function everything(lang) {
 
 check('результат пункта опыта (`bold`) — дословно из его текста на обоих языках, в текстовой версии полужирный', function () {
   const marked = [].concat.apply([], R.experience.map(function (j) { return j.bullets.filter(function (b) { return b.bold; }); }));
-  if (marked.length < 5) fail('помеченных пунктов ' + marked.length + ', а должно быть не меньше пяти');
+  if (marked.length < 8) fail('помеченных пунктов ' + marked.length + ', а должно быть не меньше восьми (5.96: Айковер 5, ГалВент 2, Дом-Профи 1)');
   ['ru', 'en'].forEach(function (lang) {
     marked.forEach(function (b) {
       const text = pick(b.text, lang), bold = pick(b.bold, lang);

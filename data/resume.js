@@ -181,8 +181,9 @@ window.RESUME = {
       start: '2025-03',
       end: null,
       current: true,
-      // `bold` — результат пункта полужирным (5.95, правка №5 Дизайнера; владелец: «Мне нравится 5»): фраза дословно
-      // из текста пункта на каждом языке, текст не меняется. Сверяет tools/check_static.js.
+      // `bold` — результат пункта полужирным (5.95, правка №5 Дизайнера; владелец: «Мне нравится 5»; с 5.96 — и у
+      // ГалВента и Дом-Профи): фраза дословно из текста пункта на каждом языке, текст не меняется; выделяется только
+      // измеримый результат. Сверяет tools/check_static.js.
       bullets: [
         {
           text: {
@@ -246,12 +247,14 @@ window.RESUME = {
             ru: 'Выстроил комплаенс-контроль по 275-ФЗ (ГОЗ): плановая проверка прокуратуры пройдена с 0 замечаний, многомиллионные штрафы предотвращены.',
             en: 'Set up compliance control under the defence procurement law: the scheduled prosecutor audit passed with zero findings, multi-million fines averted.',
           },
+          bold: { ru: 'плановая проверка прокуратуры пройдена с 0 замечаний', en: 'the scheduled prosecutor audit passed with zero findings' },
         },
         {
           text: {
             ru: 'Стандартизировал претензионно-исковую работу и взыскание дебиторской задолженности: единый регламент, контроль стадий, отчетность по статусам; полный цикл от претензии до арбитражного суда, ФССП и банков. Выиграно 6 из 6 дел, взыскано свыше 12 000 000 ₽.',
             en: 'Standardised claims and receivables recovery: one set of rules, stage tracking, status reporting; the full cycle from claim letter to commercial court, bailiffs and banks. Won 6 cases out of 6, recovered over 12,000,000 ₽.',
           },
+          bold: { ru: 'Выиграно 6 из 6 дел, взыскано свыше 12 000 000 ₽', en: 'Won 6 cases out of 6, recovered over 12,000,000 ₽' },
         },
       ],
     },
@@ -267,6 +270,7 @@ window.RESUME = {
             ru: 'Автоматизировал массовое приказное производство: разработал конструктор заявлений о выдаче судебных приказов (ст. 122 ГПК) — шаблонизация, автозаполнение из реестра, пакетная выгрузка для подачи мировым судьям. Трудозатраты отдела сокращены в 3 раза.',
             en: 'Automated high-volume court order proceedings: built a generator for court order applications (art. 122 of the Civil Procedure Code) — templating, autofill from a register, batch export for filing with magistrates. Department routine workload cut threefold.',
           },
+          bold: { ru: 'Трудозатраты отдела сокращены в 3 раза', en: 'Department routine workload cut threefold' },
         },
         {
           text: {
