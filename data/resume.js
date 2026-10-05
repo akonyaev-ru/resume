@@ -321,8 +321,9 @@ window.RESUME = {
       link: 'https://github.com/akonyaev-ru/HunterCLI',
     },
     {
-      // Имя переводится (5.92, владелец: «Давай Sadoviy Pomoshnik»): так же названы репозиторий и файл выпуска.
-      name: { ru: 'Садовый помощник', en: 'Sadoviy Pomoshnik' },
+      // Имя — латиницей на обеих версиях, как у репозитория и файла выпуска (5.94, владелец: «Мы же на англ
+      // договорились»; в 5.92 латиница была только в английской).
+      name: 'Sadoviy Pomoshnik',
       repo: 'akonyaev-ru/Sadoviy-Pomoshnik',
       tagline: {
         ru: 'Помощник для браузерной игры „Садовая империя“',
