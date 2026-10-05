@@ -1388,29 +1388,35 @@ a:not(.btn):hover { color: var(--text); }
 .deck > .project {
   grid-area: card;
   width: min(34rem, 100%);
-  transition: translate 0.4s ease, scale 0.4s ease, opacity 0.4s ease, filter 0.4s ease,
+  transition: translate 0.4s ease, scale 0.4s ease, opacity 0.4s ease, filter 0.4s ease, box-shadow 0.4s ease,
     border-color 0.18s ease, transform 0.18s ease, background 0.18s ease;
 }
 
-.deck > .project.is-front { z-index: 2; }
+/* Передняя бросает тень на боковые (5.93, владелец: «Давай Г» — из пяти видов вместо размытия): у её края
+   боковая темнеет втрое и через ~60 px тень сходит — перекрытие читается как глубина, а не как обрезка текста */
+.deck > .project.is-front {
+  z-index: 2;
+  box-shadow: -56px 0 64px -20px rgba(0, 0, 0, 0.95), 56px 0 64px -20px rgba(0, 0, 0, 0.95);
+}
 
 .deck > .project.is-left,
 .deck > .project.is-right {
   z-index: 1;
   scale: 0.86;
   opacity: 0.7;
-  filter: brightness(0.8);
+  filter: grayscale(1) brightness(0.8);   /* бирюза — только у передней (5.93) */
   cursor: pointer;
 }
 
 .deck > .project.is-left { translate: -42% 0; }
 .deck > .project.is-right { translate: 42% 0; }
 
-/* боковая под курсором — чуть ярче: её можно вынести вперёд; рамку и подъём оставляем передней */
+/* боковая под курсором — чуть ярче и снова в цвете (5.93): её можно вынести вперёд; рамку и подъём оставляем
+   передней */
 .deck > .project.is-left:hover,
 .deck > .project.is-right:hover {
   opacity: 0.85;
-  filter: brightness(0.9);
+  filter: grayscale(0) brightness(0.9);
   border-color: var(--line);
   background: var(--panel);
   transform: none;
@@ -1444,6 +1450,7 @@ a:not(.btn):hover { color: var(--text); }
   .deck-wrap { padding-inline: 0; padding-block-end: 3.5rem; }
   .deck > .project.is-left,
   .deck > .project.is-right { opacity: 0; pointer-events: none; }
+  .deck > .project.is-front { box-shadow: none; }
   .deck__arrow { top: auto; bottom: 0; translate: none; }
   .deck__arrow--prev { left: calc(50% - 3.25rem); }
   .deck__arrow--next { right: calc(50% - 3.25rem); }
@@ -2148,13 +2155,16 @@ body.is-console { overflow: hidden; }
   .term__block.is-off .term__out { display: flex; }
   .cursor { animation: none; }
   .projects { grid-template-columns: 1fr 1fr; }
-  /* колода в печати — сетка всех карточек, как раньше. Боковые перечислены явно: их правила сильнее, а лист A4 за
-     вычетом полей (~688 px) попадает под телефонное правило, которое их прячет */
+  /* колода в печати — сетка всех карточек, как раньше. Передняя и боковые перечислены явно: их правила сильнее
+     (тень передней, фильтры боковых), а лист A4 за вычетом полей (~688 px) попадает под телефонное правило,
+     которое прячет боковые */
   .deck-wrap { padding: 0; }
   .deck { grid-template-areas: none; grid-template-columns: 1fr 1fr; gap: 12pt; overflow: visible; }
   .deck > .project,
+  .deck > .project.is-front,
   .deck > .project.is-left,
-  .deck > .project.is-right { grid-area: auto; width: auto; translate: none; scale: none; opacity: 1; filter: none; transition: none; }
+  .deck > .project.is-right { grid-area: auto; width: auto; translate: none; scale: none; opacity: 1; filter: none; box-shadow: none;
+    transition: none; }
   .deck__arrow { display: none; }
   a { text-decoration: none; color: #000; }
 
