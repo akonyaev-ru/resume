@@ -49,6 +49,8 @@ window.RESUME = {
     approachTitle: { ru: 'Подход', en: 'Approach' },
     experienceTitle: { ru: 'Опыт работы', en: 'Experience' },
     now: { ru: 'сейчас', en: 'now' },
+    // уровень на ледяной шкале опыта (5.98): «ур. 3» у текущего места, в подписи ссылки места — у каждого
+    level: { ru: 'ур.', en: 'Lv' },
     projectsTitle: { ru: 'Собственные продукты', en: 'My own products' },
     projectsNote: {
       ru: 'Программы выросли из настоящих задач: две — из рабочих, сначала для меня, потом для команды; третья — из семейной.',

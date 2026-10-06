@@ -1136,6 +1136,320 @@ a:not(.btn):hover { color: var(--text); }
   .timeline { margin-block-end: 1.75rem; }
 }
 
+/* Ледяная шкала (5.98; владелец: «Давай руны 14 px и выкладывай»). Слой .ice строит app.js (iceTimeline) поверх
+   исходной шкалы: на экране исходная спрятана, в печати — наоборот, печатается она. Лёд — из пещеры за разделом
+   (cave.js: лёд в камне 110/172/200 и 150/205/228, свет кристаллов 140/209/242). Прошлые места — старый лёд,
+   текущее — чистый лёд на свету с холодным сиянием. Кристаллы уровней 20 × 22, руны — гравировка, свет даёт
+   слой движения. Движение — только transform и opacity слоя .ice-fx. */
+@media screen {
+  .timeline.is-ice > :not(.ice) { display: none; }
+}
+
+.ice {
+  --i-tick: rgba(131, 141, 164, 0.42);
+  --i-chan: rgba(110, 180, 214, 0.07);        /* пустое русло: перерыв и хвост */
+  --i-chan-edge: rgba(170, 214, 230, 0.24);
+  /* старый лёд — прошлые места */
+  --i-p-top: #84bad3;
+  --i-p-mid: #3b7899;
+  --i-p-bot: #224d69;
+  --i-p-hl: rgba(214, 240, 250, 0.7);
+  --i-p-ridge: rgba(220, 244, 252, 0.24);
+  --i-p-crack: rgba(220, 244, 252, 0.34);
+  --i-p-speck: rgba(225, 245, 252, 0.6);
+  --i-ph-top: #b7deef;                        /* наведение на прошлое место */
+  --i-ph-mid: #5c9dbf;
+  --i-ph-bot: #336c8b;
+  /* чистый лёд на свету — текущее место */
+  --i-c-top: #f3fbff;
+  --i-c-mid: #aadef2;
+  --i-c-bot: #4b95ba;
+  --i-c-hl: #ffffff;
+  --i-c-ridge: rgba(255, 255, 255, 0.75);
+  --i-c-core: rgba(255, 255, 255, 0.6);
+  --i-c-rim: rgba(226, 248, 255, 0.55);
+  --i-c-crack: rgba(255, 255, 255, 0.5);
+  --i-c-speck: rgba(255, 255, 255, 0.75);
+  --i-ridge-lo: rgba(6, 26, 40, 0.32);
+  --i-glow: rgba(140, 209, 242, 0.42);        /* свет кристаллов пещеры */
+  --i-glow-hot: rgba(170, 226, 250, 0.72);
+  --i-aura: rgba(130, 205, 242, 0.26);
+  /* кристаллы уровней: грани под светом слева сверху */
+  --i-g-edge: rgba(4, 12, 18, 0.7);
+  --i-gp-ul: #d3f0fb;
+  --i-gp-ur: #a3d4e9;
+  --i-gp-l: #77b4d0;
+  --i-gp-r: #4a88aa;
+  --i-gp-dl: #2b5e7e;
+  --i-gp-dr: #1c435e;
+  --i-gp-tab: #2f7096;
+  --i-gp-tab-hot: #3f88b0;
+  --i-gc-ul: #ffffff;
+  --i-gc-ur: #e2f6fd;
+  --i-gc-l: #c2e9f7;
+  --i-gc-r: #92cde5;
+  --i-gc-dl: #5da4c6;
+  --i-gc-dr: #3f86aa;
+  --i-gc-tab: #3a8fb9;
+  --i-g-glow: rgba(160, 225, 250, 0.6);
+  --i-digit: #ffffff;
+  --i-digit-edge: #072131;
+  --i-lv: #a8e2f6;                            /* «ур. 3» в подписи */
+  /* руны: гравировка и свет */
+  --i-rune-cut: rgba(8, 40, 62, 0.5);
+  --i-rune-cut-now: rgba(40, 110, 150, 0.55);
+  --i-rune-lit: #f4fdff;
+
+  position: relative;
+  height: 90px;                               /* точную ставит app.js */
+}
+
+.ice .ice-art {
+  position: absolute;
+  inset-block-start: 0;
+  inset-inline-start: 0;
+  display: block;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.ice .ice-fx {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+/* рисунок */
+.ice .tick { stroke: var(--i-tick); stroke-width: 1; }
+.ice .chan { fill: var(--i-chan); stroke: var(--i-chan-edge); stroke-width: 1; stroke-linejoin: round; }
+.ice .glow { fill: var(--i-glow); transition: fill 0.15s ease; }
+.ice .is-hot .glow { fill: var(--i-glow-hot); }
+
+.ice .f-mid,
+.ice .f-top,
+.ice .f-bot { transition: fill 0.15s ease; }
+.ice .f-mid { fill: var(--i-p-mid); }
+.ice .f-top { fill: var(--i-p-top); }
+.ice .f-bot { fill: var(--i-p-bot); }
+.ice .f-hl { stroke: var(--i-p-hl); stroke-width: 1; }
+.ice .f-ridge { stroke: var(--i-p-ridge); stroke-width: 0.8; }
+.ice .f-ridge-lo { stroke: var(--i-ridge-lo); stroke-width: 0.8; }
+.ice .f-core { stroke: var(--i-c-core); stroke-linecap: round; }
+.ice .f-rim { stroke: var(--i-c-rim); stroke-width: 0.8; stroke-linecap: round; }
+.ice .f-crack {
+  fill: none;
+  stroke: var(--i-p-crack);
+  stroke-width: 0.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.ice .f-speck { fill: var(--i-p-speck); }
+
+.ice .is-hot .f-mid { fill: var(--i-ph-mid); }
+.ice .is-hot .f-top { fill: var(--i-ph-top); }
+.ice .is-hot .f-bot { fill: var(--i-ph-bot); }
+
+.ice .is-now .f-mid { fill: var(--i-c-mid); }
+.ice .is-now .f-top { fill: var(--i-c-top); }
+.ice .is-now .f-bot { fill: var(--i-c-bot); }
+.ice .is-now .f-hl { stroke: var(--i-c-hl); }
+.ice .is-now .f-ridge { stroke: var(--i-c-ridge); }
+.ice .is-now .f-crack { stroke: var(--i-c-crack); }
+.ice .is-now .f-speck { fill: var(--i-c-speck); }
+
+.ice .rune-cut polyline {
+  fill: none;
+  stroke: var(--i-rune-cut);
+  stroke-width: 1.1;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.ice .rune-cut.is-now polyline { stroke: var(--i-rune-cut-now); }
+
+/* кристалл уровня: f0 вверх-вправо, f1 вправо, f2 вниз-вправо, f3 вниз-влево, f4 влево, f5 вверх-влево */
+.ice .g-edge { fill: var(--i-g-edge); stroke: var(--i-g-edge); stroke-width: 1.5; stroke-linejoin: round; }
+.ice .g-f0 { fill: var(--i-gp-ur); }
+.ice .g-f1 { fill: var(--i-gp-r); }
+.ice .g-f2 { fill: var(--i-gp-dr); }
+.ice .g-f3 { fill: var(--i-gp-dl); }
+.ice .g-f4 { fill: var(--i-gp-l); }
+.ice .g-f5 { fill: var(--i-gp-ul); }
+.ice .g-tab { fill: var(--i-gp-tab); transition: fill 0.15s ease; }
+.ice .is-hot .g-tab { fill: var(--i-gp-tab-hot); }
+.ice .is-now .g-f0 { fill: var(--i-gc-ur); }
+.ice .is-now .g-f1 { fill: var(--i-gc-r); }
+.ice .is-now .g-f2 { fill: var(--i-gc-dr); }
+.ice .is-now .g-f3 { fill: var(--i-gc-dl); }
+.ice .is-now .g-f4 { fill: var(--i-gc-l); }
+.ice .is-now .g-f5 { fill: var(--i-gc-ul); }
+.ice .is-now .g-tab { fill: var(--i-gc-tab); }
+.ice .g-glow { fill: var(--i-g-glow); }
+
+/* цифра уровня — шрифт заголовков, белая с тёмной обводкой, как числа на игровых кристаллах */
+.ice .g-d {
+  font-family: var(--font-display);
+  font-weight: 700;
+  fill: var(--i-digit);
+  stroke: var(--i-digit-edge);
+  stroke-width: 2.2px;
+  stroke-linejoin: round;
+  paint-order: stroke;
+}
+
+/* годы и подписи — как у исходной шкалы */
+.ice .ice-year {
+  position: absolute;
+  inset-block-start: 0;
+  font-family: var(--font-mono);
+  font-size: var(--step--2);
+  line-height: 18px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.ice .ice-job {
+  position: absolute;
+  display: block;
+  border-radius: 4px;
+  color: inherit;
+  text-decoration: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.ice .ice-job:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+
+.ice .ice-label {
+  position: absolute;
+  inset-block-start: 0;
+  inset-inline-start: 0;
+  white-space: nowrap;
+  line-height: 16px;
+}
+
+.ice .ice-name {
+  font-size: var(--step--1);
+  line-height: 16px;
+  color: var(--text-dim);
+  transition: color 0.15s ease;
+}
+
+.ice .ice-span {
+  font-family: var(--font-mono);
+  font-size: var(--step--2);
+  line-height: 15px;
+  color: var(--muted);
+}
+
+.ice .ice-lv { color: var(--i-lv); }
+
+.ice .is-measure > span { display: inline-block; }
+.ice .is-two > span { display: block; }
+.ice .is-two > .ice-span { margin-block-start: 2px; }
+.ice .is-end { text-align: right; }
+.ice .is-off { display: none; }
+
+.ice .ice-job.is-now .ice-name { color: var(--text); }
+.ice .ice-job:hover .ice-name,
+.ice .ice-job:focus-visible .ice-name { color: var(--accent); }
+
+/* движение: всё в .ice-fx, только transform и opacity */
+.ice .ice-fx > * { position: absolute; display: block; }
+
+/* широкое сияние вокруг текущего льда — дышит */
+.ice .ice-aura {
+  background: var(--i-aura);
+  filter: blur(6px);
+  opacity: 0.55;
+  will-change: opacity;
+  animation: ice-breathe 4.8s ease-in-out infinite alternate;
+}
+@keyframes ice-breathe {
+  from { opacity: 0.4; }
+  to { opacity: 0.9; }
+}
+
+/* Блик по всей шкале: окно — лёд мест (clip-path), полоса шире окна на ширину блика и едет на 100 % своей длины
+   равномерно — моменты вспышек кристаллов и рун app.js считает от этого (2,4 s прохода через 1,2 s, цикл 8 s). */
+.ice .ice-sweep { overflow: hidden; }
+.ice .ice-sweep__band {
+  position: absolute;
+  inset-block: 0;
+  inset-inline-start: 0;
+  background: linear-gradient(105deg,
+    rgba(255, 255, 255, 0) calc(100% - 40px),
+    rgba(255, 255, 255, 0.92) calc(100% - 20px),
+    rgba(255, 255, 255, 0) 100%);
+  transform: translateX(-100%);
+  will-change: transform;
+  animation: ice-sweep 8s linear 1.2s infinite;
+}
+@keyframes ice-sweep {
+  0% { transform: translateX(-100%); }
+  30%, 100% { transform: translateX(0); }
+}
+
+/* острие светится; вспыхивает, когда доходит блик (задержку ставит app.js) */
+.ice .ice-tip {
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.95) 0, rgba(196, 238, 255, 0.6) 22%, rgba(140, 209, 242, 0) 62%);
+  opacity: 0.5;
+  will-change: transform, opacity;
+  animation: ice-tip 8s cubic-bezier(0.23, 1, 0.32, 1) infinite;
+}
+@keyframes ice-tip {
+  0% { opacity: 0.5; transform: scale(1); }
+  4% { opacity: 1; transform: scale(1.4); }
+  16%, 100% { opacity: 0.5; transform: scale(1); }
+}
+
+/* кристаллы вспыхивают и руны загораются, когда проходит блик (задержки ставит app.js) */
+.ice .ice-flare {
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(220, 246, 255, 0) 18%, rgba(200, 240, 255, 0.75) 36%, rgba(140, 209, 242, 0) 68%);
+  opacity: 0;
+  will-change: transform, opacity;
+  animation: ice-flare 8s cubic-bezier(0.23, 1, 0.32, 1) infinite;
+}
+@keyframes ice-flare {
+  0% { opacity: 0; transform: scale(0.6); }
+  3% { opacity: 1; transform: scale(1.1); }
+  15%, 100% { opacity: 0; transform: scale(1.2); }
+}
+.ice .ice-rune {
+  overflow: visible;
+  opacity: 0;
+  filter: drop-shadow(0 0 2px rgba(170, 230, 255, 0.95));
+  will-change: opacity;
+  animation: ice-rune 8s ease-out infinite;
+}
+.ice .ice-rune polyline {
+  fill: none;
+  stroke: var(--i-rune-lit);
+  stroke-width: 1.2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+@keyframes ice-rune {
+  0% { opacity: 0; }
+  2% { opacity: 1; }
+  24%, 100% { opacity: 0; }
+}
+
+/* за экраном и в скрытой вкладке — пауза (is-away / is-hidden ставит app.js) */
+.ice.is-away .ice-fx *,
+.ice.is-hidden .ice-fx * { animation-play-state: paused; }
+
+/* «уменьшить движение» — неподвижный кадр: сияние стоит, блика, вспышек и света рун нет */
+@media (prefers-reduced-motion: reduce) {
+  .ice .ice-fx * { animation: none !important; }
+  .ice .ice-aura { opacity: 0.75; }
+  .ice .ice-tip { opacity: 0.5; transform: none; }
+  .ice .ice-sweep,
+  .ice .ice-flare,
+  .ice .ice-rune { display: none; }
+}
+
 /* --- Опыт --------------------------------------------------------------- */
 
 .jobs { display: grid; }
@@ -1268,6 +1582,8 @@ a:not(.btn):hover { color: var(--text); }
      быть этой полоски». Цвет сверяет tools/check_cave.js. */
   html.cave #experience .job__duration,
   html.cave #experience .timeline__year,
+  html.cave #experience .ice-year,
+  html.cave #experience .ice-span,
   html.cave #experience .timeline__span { color: #a9b1c4; }
 
   /* Маркеры пунктов опыта — тем же серым (5.97, владелец: «квадратики давай сделаем серыми» — из четырёх видов):
@@ -2198,6 +2514,7 @@ body.is-console { overflow: hidden; }
   /* подписи шкалы опыта — и на листе: A4 за полями (~688 px) попадает под телефонное правило, которое их прячет
      (найдено 2026-10-05 при проверке вариантов шкалы — до 5.97 в печати шкала была без подписей) */
   .timeline__labels { display: block; }
+  .ice { display: none !important; }        /* ледяная шкала — только на экране, печатается исходная (5.98) */
   /* полосы шкалы нарисованы фоном, а фон браузер по умолчанию не печатает — без этого на листе одни подписи */
   .timeline__track,
   .timeline__seg { -webkit-print-color-adjust: exact; print-color-adjust: exact; }

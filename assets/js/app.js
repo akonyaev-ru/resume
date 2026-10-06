@@ -631,9 +631,476 @@
     ringWatch.observe(seg);
   }
 
+  /* Ледяная шкала (5.98; владелец: «Давай руны 14 px и выкладывай» — из видов доработанного «Инея», XP-бара из
+     льда, четвёртая пачка Дизайнера). Исходная шкала остаётся в разметке — печать и данные идут от неё, — а поверх
+     строится слой .ice: гранёный ледяной стержень 14 px; прошлые места — старый мутный лёд в трещинах, текущее —
+     чистый лёд со светом внутри и дышащим сиянием; у начала каждого места — гранёный кристалл с номером уровня
+     (уровень = место по порядку), во льду — руны-гравировки. Раз в 8 s свет бежит по всей шкале от первого
+     кристалла: кристаллы по очереди вспыхивают, руны загораются, острие вспыхивает. Перерыв и хвост после «сейчас»
+     — пустое ледяное русло. Подписи — как у исходной, лесенкой, если наезжают. Колонка уже 600 px: значки меньше,
+     подписей и рун нет. Движение — только transform и opacity слоя .ice-fx; за экраном и в скрытой вкладке —
+     пауза, «уменьшить движение» — неподвижный кадр (style.css). */
+  var iceTimeline = (function () {
+    var NS = 'http://www.w3.org/2000/svg';
+    var ROD = 14;               // толщина стержня
+    var BAND_TOP = 24;          // выше — строка лет (18 px) и засечки
+    var LABEL_GAP = 8;
+    var NAME_H = 16, SPAN_H = 15, LABEL_H = NAME_H + 2 + SPAN_H;
+    var ROW_STEP = LABEL_H + 12;
+    var X_GAP = 16;
+    var NARROW = 600;
+    var END = 3;                // запас справа под острый торец русла
+    var SWEEP_W = 40;           // ширина блика
+    var SWEEP_D = 2.4, SWEEP_DELAY = 1.2;   // проход блика и задержка — как в style.css (ice-sweep: 30 % от 8 s)
+    var RUNES = [               // руны: ломаные в поле 0,6 × 1
+      [[[0, 1], [0, 0]], [[0, 0.16], [0.5, 0]], [[0, 0.42], [0.5, 0.26]]],
+      [[[0, 1], [0, 0], [0.45, 0.22], [0, 0.45], [0.5, 1]]],
+      [[[0.3, 1], [0.3, 0]], [[0, 0.06], [0.3, 0.36], [0.6, 0.06]]],
+      [[[0.3, 0], [0.6, 0.3], [0.3, 0.6], [0, 0.3], [0.3, 0]], [[0.3, 0.6], [0, 1]], [[0.3, 0.6], [0.6, 1]]],
+      [[[0.3, 1], [0.3, 0]], [[0, 0.3], [0.3, 0], [0.6, 0.3]]],
+      [[[0.12, 0], [0.12, 1]], [[0.48, 0], [0.48, 1]], [[0, 0.34], [0.6, 0.66]]],
+    ];
+    var uid = 0;
+    var watch = null, onVis = null;   // наблюдатель экрана и видимости вкладки — один на страницу
+
+    // Размеры от толщины стержня; на узкой колонке значки меньше — шкала не вырастает.
+    function sizes(narrow) {
+      var R = ROD, bw = narrow ? R + 2 : R + 6, bh = narrow ? R + 4 : R + 8;
+      return { R: R, BW: bw, BH: bh, BAND_H: bh + 4, F: Math.round(R * 0.3), PAD: bw / 2 + 1, FS: 10 + (R - 10) / 4 };
+    }
+
+    function num(s) { var v = parseFloat(s); return isFinite(v) ? v : 0; }
+    function hash(n) { var v = Math.sin(n * 127.1 + 311.7) * 43758.5453; return v - Math.floor(v); }
+
+    // Данные — из разметки исходной шкалы: доли, ссылки, подписи, годы.
+    function read(box) {
+      var byHref = {};
+      [].forEach.call(box.querySelectorAll(':scope > .timeline__labels > .timeline__label'), function (a) {
+        var c = a.querySelector('.timeline__company'), sp = a.querySelector('.timeline__span');
+        byHref[a.getAttribute('href')] = { name: c ? c.textContent : '', span: sp ? sp.textContent : '' };
+      });
+      var jobs = [].map.call(box.querySelectorAll(':scope > .timeline__track > .timeline__seg'), function (a) {
+        var href = a.getAttribute('href'), l = byHref[href] || { name: a.getAttribute('aria-label') || '', span: '' };
+        return {
+          href: href, left: num(a.style.left), width: num(a.style.width), cur: a.classList.contains('is-current'),
+          aria: a.getAttribute('aria-label') || l.name, title: a.getAttribute('title') || '', name: l.name, span: l.span,
+        };
+      }).sort(function (a, b) { return a.left - b.left; });
+      var years = [].map.call(box.querySelectorAll(':scope > .timeline__scale > .timeline__year'), function (y) {
+        return { text: y.textContent, left: num(y.style.left) };
+      });
+      return { jobs: jobs, years: years };
+    }
+
+    function measure(j) {
+      j.lab.className = 'ice-label is-measure';
+      j.nameW = Math.ceil(j.nameEl.getBoundingClientRect().width);
+      j.spanW = Math.ceil(j.spanEl.getBoundingClientRect().width);
+    }
+
+    function place(jobs, axis0, axisW) {
+      var end = axis0 + axisW;
+      jobs.forEach(function (j, i) {
+        j.x0 = Math.max(axis0, Math.min(end, axis0 + Math.round(j.left / 100 * axisW)));
+        j.x1 = Math.max(axis0, Math.min(end, axis0 + Math.round((j.left + j.width) / 100 * axisW)));
+        if (i) {
+          var p = jobs[i - 1];
+          if (j.left - (p.left + p.width) <= 0.05) j.x0 = p.x1;
+          else if (j.x0 - p.x1 < 6) j.x0 = p.x1 + 6;
+        }
+        if (j.x1 - j.x0 < 6) j.x1 = j.x0 + 6;
+      });
+    }
+
+    function placeYears(st, axis0, axisW, limit) {
+      var right = -1;
+      st.years.forEach(function (y) {
+        y.x = axis0 + Math.round(y.left / 100 * axisW);
+        var tx = y.x + 5;
+        if (tx + y.w > limit) tx = y.x - 4 - y.w;
+        y.show = tx >= 0 && tx > right + 6;
+        if (y.show) right = tx + y.w;
+        y.node.style.left = tx + 'px';
+        y.node.style.visibility = y.show ? '' : 'hidden';
+      });
+    }
+
+    function stack(jobs) {
+      var rows = [];
+      jobs.slice().sort(function (a, b) { return a.lx - b.lx; }).forEach(function (j) {
+        var r = 0;
+        while (rows[r] && rows[r].some(function (o) { return j.lx < o.lx + o.lw + X_GAP && o.lx < j.lx + j.lw + X_GAP; })) r += 1;
+        (rows[r] || (rows[r] = [])).push(j);
+        j.row = r;
+      });
+      return Math.max(1, rows.length);
+    }
+
+    // Подпись — под кристаллом (с его левого края); текущее место — от правого края оси.
+    function labels(jobs, W3, labTop, narrow, bw) {
+      var n = jobs.length;
+      jobs.forEach(function (j, i) {
+        j.show = !narrow;
+        j.row = 0;
+        j.end = i === n - 1 && j.cur;
+        j.lw = Math.max(j.nameW, j.spanW);
+        j.lx = j.end ? W3 - j.lw : j.x0 - bw / 2;
+        j.lx = Math.max(0, Math.min(j.lx, W3 - j.lw));
+      });
+      if (narrow) return labTop;
+      return labTop + (stack(jobs) - 1) * ROW_STEP + LABEL_H;
+    }
+
+    /* ---- рисунок: SVG-строки ---- */
+
+    function r2(v) { return Math.round(v * 100) / 100; }
+    function pts(list) { return list.map(function (p) { return r2(p[0]) + ',' + r2(p[1]); }).join(' '); }
+    function poly(list, cls, attr) { return '<polygon class="' + cls + '" points="' + pts(list) + '"' + (attr || '') + '/>'; }
+    function pline(list, cls) { return '<polyline class="' + cls + '" points="' + pts(list) + '"/>'; }
+    function seg(x1, y1, x2, y2, cls, attr) {
+      return '<line class="' + cls + '" x1="' + r2(x1) + '" y1="' + r2(y1) + '" x2="' + r2(x2) + '" y2="' + r2(y2) + '"' + (attr || '') + '/>';
+    }
+    function dot(cx, cy, r, cls) { return '<circle class="' + cls + '" cx="' + r2(cx) + '" cy="' + r2(cy) + '" r="' + r2(r) + '"/>'; }
+    function digit(x, y, s, cls, fs) {
+      return '<text class="' + cls + '" x="' + r2(x) + '" y="' + r2(y) + '" text-anchor="middle" style="font-size:' + r2(fs) + 'px">' + s + '</text>';
+    }
+    // Размытие для сияния: область фильтра — весь холст (у горизонтальных линий своя рамка нулевой высоты).
+    function blur(id, sd, g) {
+      return '<filter id="' + id + '" filterUnits="userSpaceOnUse" x="-24" y="-24" width="' + (g.W + 48) + '" height="' + (g.H + 48) + '">' +
+        '<feGaussianBlur stdDeviation="' + sd + '"/></filter>';
+    }
+
+    // Ледяной стержень от a до b: шестигранник с острыми торцами на 45°.
+    function hex(a, b, top, h) {
+      var c = Math.min(h / 2, (b - a) / 2), m = top + h / 2, bot = top + h;
+      return [[a, m], [a + c, top], [b - c, top], [b, m], [b - c, bot], [a + c, bot]];
+    }
+    function edgeX(a, b, top, h, y) {
+      var c = Math.min(h / 2, (b - a) / 2), m = top + h / 2, k = c / (h / 2), d = k * Math.abs(y - m);
+      return [a + d, b - d];
+    }
+    function facet(a, b, top, h, y0, y1) {
+      var p = edgeX(a, b, top, h, y0), q = edgeX(a, b, top, h, y1);
+      return [[p[0], y0], [p[1], y0], [q[1], y1], [q[0], y1]];
+    }
+
+    // Кристалл уровня: шестигранник остриём вверх, шесть граней под светом слева сверху, площадка с цифрой.
+    function gemShape(cx, cy, w, h) {
+      var hw = w / 2, hh = h / 2, q = h / 4;
+      return [[cx, cy - hh], [cx + hw, cy - hh + q], [cx + hw, cy + hh - q], [cx, cy + hh], [cx - hw, cy + hh - q], [cx - hw, cy - hh + q]];
+    }
+    function gem(cx, cy, w, h, d, fs) {
+      var P = gemShape(cx, cy, w, h), k = 0.56, s = poly(P, 'g-edge');
+      var Q = P.map(function (p) { return [cx + (p[0] - cx) * k, cy + (p[1] - cy) * k]; });
+      for (var i = 0; i < 6; i += 1) s += poly([P[i], P[(i + 1) % 6], Q[(i + 1) % 6], Q[i]], 'g-f' + i);
+      s += poly(Q, 'g-tab');
+      if (d) s += digit(cx, cy + 0.36 * fs, d, 'g-d', fs);
+      return s;
+    }
+
+    // Руны: место, размер и знак каждой — для гравировки в рисунке и свечения в слое движения.
+    function runePlaces(st, g) {
+      var k = st.k, R = k.R, rh = Math.max(6, R - 2 * k.F + 2), rw = rh * 0.6, list = [];
+      st.jobs.forEach(function (j, ji) {
+        var now = j === g.cur, ja = j.x0 + k.BW, jb = (now ? g.xNow - R : j.x1 - k.BW / 2) - rw;
+        var step = now ? 96 : 72, count = Math.floor((jb - ja) / step);
+        for (var q = 0; q < count; q += 1) {
+          list.push({ x: ja + step * (q + 0.5) + (hash(ji * 31 + q) - 0.5) * 18, y: g.yc - rh / 2, w: rw, h: rh, now: now,
+            glyph: RUNES[Math.floor(hash(ji * 17 + q * 5 + 2) * RUNES.length)] });
+        }
+      });
+      return list;
+    }
+    function runeLines(r, ox, oy) {
+      return r.glyph.map(function (line) {
+        return '<polyline points="' + line.map(function (p) { return r2(ox + p[0] / 0.6 * r.w) + ',' + r2(oy + p[1] * r.h); }).join(' ') + '"/>';
+      }).join('');
+    }
+
+    function paint(st, g) {
+      var k = st.k, id = st.id, R = k.R, F = k.F, top = g.rodTop, bot = top + R, m = g.yc, s = '';
+      s += '<defs>' + blur(id + '-b2', 2, g) + blur(id + '-b3', 3, g) + '</defs>';
+
+      st.years.forEach(function (yr) { if (yr.show) s += seg(yr.x + 0.5, 3, yr.x + 0.5, top - 3, 'tick'); });
+
+      // пустое русло во всю длину: видно в перерыве и в хвосте после «сейчас»
+      s += poly(hex(g.axis0, g.xEnd, top, R), 'chan');
+
+      st.jobs.forEach(function (j, i) {
+        var a = j.x0, b = j === g.cur ? g.xNow : j.x1, now = j === g.cur, x, e;
+        s += '<g class="ice-seg' + (now ? ' is-now' : '') + '" data-i="' + i + '">';
+        if (now) s += poly(hex(a, b + 2, top - 1.5, R + 3), 'glow', ' filter="url(#' + id + '-b2)"');
+        s += poly(hex(a, b, top, R), 'f-mid');
+        s += poly(facet(a, b, top, R, top, top + F), 'f-top');
+        s += poly(facet(a, b, top, R, bot - F, bot), 'f-bot');
+        // рёбра граней: светлое под верхней гранью, тёмное над нижней — лёд гранёный, как в пещере
+        e = edgeX(a, b, top, R, top + F);
+        if (e[1] - e[0] > 4) s += seg(e[0], top + F, e[1], top + F, 'f-ridge');
+        e = edgeX(a, b, top, R, bot - F);
+        if (e[1] - e[0] > 4) s += seg(e[0], bot - F, e[1], bot - F, 'f-ridge-lo');
+        // свет внутри льда — только у текущего: старый лёд мутный
+        e = edgeX(a, b, top, R, m - R * 0.1);
+        if (now && e[1] - e[0] > 8) s += seg(e[0] + 2, m - R * 0.1, e[1] - 2, m - R * 0.1, 'f-core', ' stroke-width="' + r2(Math.max(1, R * 0.08)) + '"');
+        e = edgeX(a, b, top, R, bot - F - 1.2);
+        if (now && e[1] - e[0] > 10) s += seg(e[0] + 3, bot - F - 1.2, e[1] - 3, bot - F - 1.2, 'f-rim');
+        if (b - a > R + 4) s += seg(a + R / 2 + 1, top + 0.6, b - R / 2 - 1, top + 0.6, 'f-hl');
+        // трещины: старый лёд потрескался, у текущего они редки
+        for (x = a + 24 + hash(i * 13 + 1) * 28; x < b - 18; x += (now ? 150 : 64) + hash(x * 0.37) * (now ? 90 : 56)) {
+          s += pline([[x, top + 1.4], [x + R * 0.24, m - 0.4], [x + R * 0.14, m + 1.6], [x + R * 0.36, bot - 1.4]], 'f-crack');
+          s += seg(x + R * 0.24, m - 0.4, x + R * 0.58, m - R * 0.23, 'f-crack');
+        }
+        // иней по нижней грани
+        for (x = a + 8; x < b - 7; x += 7 + hash(x * 0.91) * 12) {
+          if (hash(x * 1.37 + 7) < (now ? 0.3 : 0.5)) s += dot(x, bot - 1.25, 0.65, 'f-speck');
+        }
+        s += '</g>';
+      });
+
+      // руны: гравировка во льду — тёмные штрихи; свет даёт слой движения
+      if (g.runes) g.runes.forEach(function (r) { s += '<g class="rune-cut' + (r.now ? ' is-now' : '') + '">' + runeLines(r, r.x, r.y) + '</g>'; });
+
+      // кристаллы уровней — поверх стержня, по центру начала каждого места
+      st.jobs.forEach(function (j, i) {
+        var w = g.compact ? 12 : k.BW, h = g.compact ? 13.5 : k.BH;
+        s += '<g class="ice-gem' + (j.cur ? ' is-now' : '') + '" data-i="' + i + '">';
+        if (j.cur) s += poly(gemShape(j.x0, m, w + 4, h + 4), 'g-glow', ' filter="url(#' + id + '-b3)"');
+        s += gem(j.x0, m, w, h, g.compact ? '' : String(i + 1), k.FS);
+        s += '</g>';
+      });
+      return s;
+    }
+
+    /* ---- движение: отдельные слои, только transform и opacity ---- */
+
+    function span(cls, parent) { var n = document.createElement('span'); n.className = cls; parent.appendChild(n); return n; }
+    function px(n) { return Math.round(n * 100) / 100 + 'px'; }
+
+    // Окно по форме льда: многоугольники мест одним путём с подпутями — в перерыве блика нет.
+    function clipPath(list, ox, oy) {
+      return 'path("' + list.map(function (P) {
+        return 'M' + P.map(function (p) { return r2(p[0] - ox) + ' ' + r2(p[1] - oy); }).join(' L') + ' Z';
+      }).join(' ') + '")';
+    }
+
+    function fx(st, g) {
+      var box = st.fx, k = st.k, R = k.R, cur = g.cur, c = R / 2;
+      box.innerHTML = '';
+      if (!cur) return;
+      var top = g.rodTop, m = g.yc, b = g.xNow;
+
+      // широкое холодное сияние вокруг текущего льда — дышит
+      var aura = span('ice-aura', box);
+      aura.style.left = px(cur.x0 - 6);
+      aura.style.top = px(top - 7);
+      aura.style.width = px(b - cur.x0 + 14);
+      aura.style.height = px(R + 14);
+      aura.style.borderRadius = px((R + 14) / 2);
+
+      // блик — по всей шкале от первого кристалла, только по льду
+      var s0 = st.jobs[0].x0, sw = b - s0;
+      if (sw > 24) {
+        var sweep = span('ice-sweep', box), band = span('ice-sweep__band', sweep);
+        sweep.style.left = px(s0);
+        sweep.style.top = px(top);
+        sweep.style.width = px(sw);
+        sweep.style.height = px(R);
+        sweep.style.clipPath = clipPath(st.jobs.map(function (j) { return hex(j.x0, j === cur ? b : j.x1, top, R); }), s0, top);
+        band.style.width = px(sw + SWEEP_W);
+      }
+      // момент прохода блика через точку x (блик идёт равномерно)
+      function when(x) { return SWEEP_DELAY + SWEEP_D * Math.max(0, Math.min(1, (x - s0 + SWEEP_W / 2) / (sw + SWEEP_W))); }
+
+      // острие: свой свет; вспыхивает, когда доходит блик
+      var tip = span('ice-tip', box), ts = R * 2.6;
+      tip.style.left = px(b - c * 0.6 - ts / 2);
+      tip.style.top = px(m - ts / 2);
+      tip.style.width = px(ts);
+      tip.style.height = px(ts);
+      tip.style.animationDelay = (when(b) - 0.25).toFixed(2) + 's';
+
+      // кристаллы уровней вспыхивают по очереди
+      st.jobs.forEach(function (j) {
+        var f = span('ice-flare', box), fs = (g.compact ? 12 : k.BW) * 2.4;
+        f.style.left = px(j.x0 - fs / 2);
+        f.style.top = px(m - fs / 2);
+        f.style.width = px(fs);
+        f.style.height = px(fs);
+        f.style.animationDelay = (when(j.x0) - 0.1).toFixed(2) + 's';
+      });
+      // руны загораются, когда проходит блик
+      (g.runes || []).forEach(function (r) {
+        var rn = document.createElementNS(NS, 'svg');
+        rn.setAttribute('class', 'ice-rune');
+        rn.setAttribute('width', String(Math.ceil(r.w + 4)));
+        rn.setAttribute('height', String(Math.ceil(r.h + 4)));
+        rn.innerHTML = runeLines(r, 2, 2);
+        rn.style.left = px(r.x - 2);
+        rn.style.top = px(r.y - 2);
+        rn.style.animationDelay = (when(r.x + r.w / 2) - 0.05).toFixed(2) + 's';
+        box.appendChild(rn);
+      });
+    }
+
+    /* ---- раскладка ---- */
+
+    function layout(st) {
+      var root = st.root, jobs = st.jobs, n = jobs.length;
+      if (!root.isConnected || !n) return;
+      var W = root.getBoundingClientRect().width;
+      if (!(W > 0)) return;
+      var W3 = Math.floor(W);
+      var last = jobs[n - 1];
+      var narrow = W < NARROW;
+      var k = st.k = sizes(narrow);
+
+      jobs.forEach(measure);
+      st.years.forEach(function (y) { y.w = Math.ceil(y.node.getBoundingClientRect().width); });
+
+      // после «сейчас» — пустой хвост: уровень продолжается
+      var tail = last.cur ? Math.round(Math.min(28, Math.max(14, W * 0.022))) : 0;
+      var axis0 = k.PAD, axisW = W3 - k.PAD - END - tail;
+      place(jobs, axis0, axisW);
+
+      var g = {
+        W: W3, H: 0, narrow: narrow, axis0: axis0, xEnd: W3 - END, xNow: last.x1,
+        rodTop: BAND_TOP + (k.BAND_H - k.R) / 2, yc: BAND_TOP + k.BAND_H / 2, cur: last.cur ? last : null,
+      };
+      var minD = Infinity;
+      for (var i = 1; i < n; i += 1) minD = Math.min(minD, jobs[i].x0 - jobs[i - 1].x0);
+      g.compact = minD < k.BW + 3;      // места сжались — кристаллы меньше и без цифр
+      g.runes = narrow ? null : runePlaces(st, g);
+
+      placeYears(st, axis0, axisW, W3);
+      var labTop = BAND_TOP + k.BAND_H + LABEL_GAP;
+      var bottom = labels(jobs, W3, labTop, narrow, k.BW);
+      g.H = narrow ? BAND_TOP + k.BAND_H + 2 : bottom;
+
+      st.svg.setAttribute('width', String(W3));
+      st.svg.setAttribute('height', String(g.H));
+      st.svg.setAttribute('viewBox', '0 0 ' + W3 + ' ' + g.H);
+      st.svg.innerHTML = paint(st, g);
+      root.style.height = g.H + 'px';
+
+      // ссылка места — по полосе от левого края кристалла; на телефоне выше и ниже — под палец
+      var linkTop = narrow ? BAND_TOP - 8 : BAND_TOP, linkH = narrow ? k.BAND_H + 16 : k.BAND_H;
+      jobs.forEach(function (j) {
+        var a = j.a, L = Math.max(0, j.x0 - k.BW / 2);
+        var R = j === g.cur ? Math.min(W3, g.xNow + 6) : j.x1;
+        a.style.left = L + 'px';
+        a.style.top = linkTop + 'px';
+        a.style.width = Math.max(8, R - L) + 'px';
+        a.style.height = linkH + 'px';
+        j.lab.className = 'ice-label ' + (j.show ? 'is-two' : 'is-off') + (j.end ? ' is-end' : '');
+        j.lab.style.left = (j.lx - L) + 'px';
+        j.lab.style.top = (labTop + j.row * ROW_STEP - linkTop) + 'px';
+      });
+
+      fx(st, g);
+    }
+
+    function hot(st, i, on) {
+      [].forEach.call(st.root.querySelectorAll('[data-i="' + i + '"]'), function (n) { n.classList.toggle('is-hot', on); });
+    }
+
+    return function (box) {
+      if (!box || !box.querySelector('.timeline__seg')) return;
+      [].forEach.call(box.querySelectorAll(':scope > .ice'), function (n) { n.remove(); });
+      if (box.__iceRo) { box.__iceRo.disconnect(); box.__iceRo = null; }
+      uid += 1;
+
+      var data = read(box);
+      var word = u('level');
+      var root = document.createElement('div');
+      root.className = 'ice';
+      var svg = document.createElementNS(NS, 'svg');
+      svg.setAttribute('class', 'ice-art');
+      svg.setAttribute('aria-hidden', 'true');
+      svg.setAttribute('focusable', 'false');
+      root.appendChild(svg);
+      var fxBox = document.createElement('div');
+      fxBox.className = 'ice-fx';
+      fxBox.setAttribute('aria-hidden', 'true');
+      root.appendChild(fxBox);
+
+      var st = { root: root, svg: svg, fx: fxBox, jobs: data.jobs, years: data.years, id: 'ice' + uid };
+
+      data.years.forEach(function (y) {
+        y.node = document.createElement('span');
+        y.node.className = 'ice-year';
+        y.node.textContent = y.text;
+        root.appendChild(y.node);
+      });
+
+      data.jobs.forEach(function (j, i) {
+        var a = document.createElement('a');
+        a.className = 'ice-job' + (j.cur ? ' is-now' : '');
+        a.href = j.href;
+        a.setAttribute('aria-label', j.aria + ', ' + word + ' ' + (i + 1) + (j.span ? ', ' + j.span : ''));
+        if (j.title) a.title = j.title;
+        var lab = document.createElement('span');
+        var nm = document.createElement('span');
+        nm.className = 'ice-name';
+        nm.textContent = j.name;
+        var sp = document.createElement('span');
+        sp.className = 'ice-span';
+        if (j.cur) {
+          var lv = document.createElement('span');
+          lv.className = 'ice-lv';
+          lv.textContent = word + ' ' + (i + 1);
+          sp.appendChild(lv);
+          sp.appendChild(document.createTextNode(' · ' + j.span));
+        } else {
+          sp.textContent = j.span;
+        }
+        lab.appendChild(nm);
+        lab.appendChild(sp);
+        a.appendChild(lab);
+        a.addEventListener('mouseenter', function () { hot(st, i, true); });
+        a.addEventListener('mouseleave', function () { hot(st, i, false); });
+        a.addEventListener('focus', function () { hot(st, i, true); });
+        a.addEventListener('blur', function () { hot(st, i, false); });
+        j.a = a; j.lab = lab; j.nameEl = nm; j.spanEl = sp;
+        root.appendChild(a);
+      });
+
+      box.appendChild(root);
+      box.classList.add('is-ice');
+      layout(st);
+
+      if ('ResizeObserver' in window) {
+        var lastW = root.getBoundingClientRect().width;
+        var ro = new ResizeObserver(function () {
+          if (!root.isConnected) { ro.disconnect(); return; }
+          var w = root.getBoundingClientRect().width;
+          if (Math.abs(w - lastW) < 0.5) return;
+          lastW = w;
+          layout(st);
+        });
+        ro.observe(root);
+        box.__iceRo = ro;
+      }
+      // шкала за экраном или вкладка скрыта — движение на паузе
+      if (watch) watch.disconnect();
+      if ('IntersectionObserver' in window) {
+        watch = new IntersectionObserver(function (entries) {
+          entries.forEach(function (e) { e.target.classList.toggle('is-away', !e.isIntersecting); });
+        });
+        watch.observe(root);
+      }
+      if (onVis) document.removeEventListener('visibilitychange', onVis);
+      onVis = function () { root.classList.toggle('is-hidden', document.hidden); };
+      document.addEventListener('visibilitychange', onVis);
+      onVis();
+      if (document.fonts && document.fonts.ready && document.fonts.ready.then) {
+        document.fonts.ready.then(function () { if (root.isConnected) layout(st); });
+      }
+    };
+  })();
+
   function initTimeline() {
     stackLabels();
     watchRing();
+    $$('.timeline').forEach(iceTimeline);
     if (document.fonts && document.fonts.ready && document.fonts.ready.then) {
       document.fonts.ready.then(stackLabels);
     }
