@@ -1270,6 +1270,10 @@ a:not(.btn):hover { color: var(--text); }
   html.cave #experience .timeline__year,
   html.cave #experience .timeline__span { color: #a9b1c4; }
 
+  /* Маркеры пунктов опыта — тем же серым (5.97, владелец: «квадратики давай сделаем серыми» — из четырёх видов):
+     обычный `--line` (30, 37, 52) на тёмном камне пещеры почти не виден. */
+  html.cave #experience .bullet::before { background: #a9b1c4; }
+
   html.cave-away .floor { opacity: 0; transition: opacity 475ms ease-in 430ms; }
 
   html.cave-away .pet,
@@ -2191,6 +2195,12 @@ body.is-console { overflow: hidden; }
   .deck > .project.is-right { grid-area: auto; width: auto; translate: none; scale: none; opacity: 1; filter: none; box-shadow: none;
     transition: none; }
   .deck__arrow { display: none; }
+  /* подписи шкалы опыта — и на листе: A4 за полями (~688 px) попадает под телефонное правило, которое их прячет
+     (найдено 2026-10-05 при проверке вариантов шкалы — до 5.97 в печати шкала была без подписей) */
+  .timeline__labels { display: block; }
+  /* полосы шкалы нарисованы фоном, а фон браузер по умолчанию не печатает — без этого на листе одни подписи */
+  .timeline__track,
+  .timeline__seg { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   a { text-decoration: none; color: #000; }
 
   .print-only { display: block !important; }
