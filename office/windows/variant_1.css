@@ -1,0 +1,220 @@
+/* Окна разделов офиса — вариант 1 «Карусель». Дизайнер (консультация), 2026-10-14.
+   Всё под body.win-v1. Разметку строит variant_1.js (window.WIN_V1).
+   Шрифты сайта: Unbounded — заголовки и числа, Golos Text — текст (assets/css/fonts.css).
+   Если стиль вклеивается в страницу, а не подключается <link>, — подключите fonts.css отдельно:
+   путь в @import считается от этого файла. */
+@import url("../../../assets/css/fonts.css");
+
+/* ---------- Окно ---------- */
+body.win-v1 .win { background: rgba(6, 7, 9, .6); }
+body.win-v1 .win__panel {
+  --w1-max: min(82%, 640px);
+  --w1-bg: #1b1e23; --w1-raise: #23272d; --w1-line: #30353d; --w1-edge: #3a4049;
+  --w1-ink: #f2f4f6; --w1-body: #c6ccd3; --w1-muted: #9aa1ab;
+  --w1-acc: #2dd4bf; --w1-acc-hi: #5ee6d4; --w1-acc-ink: #062b27;
+  --w1-font: 'Golos Text', 'Segoe UI', system-ui, sans-serif;
+  --w1-display: 'Unbounded', 'Golos Text', 'Segoe UI', system-ui, sans-serif;
+  --w1-ease: cubic-bezier(.22, 1, .36, 1);
+  container: w1 / inline-size;
+  display: flex; flex-direction: column;
+  width: min(680px, calc(100% - 32px)); max-height: var(--w1-max); overflow: hidden;
+  padding: 20px 24px 18px;
+  background: var(--w1-bg); color: var(--w1-ink);
+  border: 1px solid var(--w1-edge); border-radius: 14px;
+  box-shadow: 0 22px 48px rgba(0, 0, 0, .5);
+  font: 400 14.5px/1.55 var(--w1-font);
+  animation: w1-in .22s var(--w1-ease);
+}
+@keyframes w1-in { from { opacity: 0; transform: translateY(6px); } }
+/* Маленькие разделы (показатели, образование, курсы, языки) — окно уже. */
+body.win-v1 .win__panel:has(.w1--narrow) { width: min(560px, calc(100% - 32px)); }
+/* Замер страниц карусели: окно на время замера — во всю допустимую высоту (ставит и снимает variant_1.js
+   в одном кадре; анимацию не трогаем — иначе появление окна перезапускалось бы). */
+body.win-v1 .win__panel.w1-measure { height: var(--w1-max); }
+
+/* Заголовок раздела, под ним — предмет офиса строчными (не надпись над заголовком). */
+body.win-v1 .win__title {
+  order: 1; margin: 0 48px 0 0;
+  font: 600 19px/1.3 var(--w1-display); letter-spacing: -0.01em; color: var(--w1-ink); text-wrap: balance;
+}
+body.win-v1 .win__sub {
+  order: 2; margin: 3px 48px 0 0;
+  font-size: 12.5px; line-height: 1.4; letter-spacing: 0; text-transform: none; color: var(--w1-muted);
+}
+body.win-v1 .win__body {
+  order: 3; flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column;
+  margin-top: 16px; overflow-y: auto; overscroll-behavior: contain;
+  scrollbar-width: thin; scrollbar-color: #3b424b transparent;   /* запасной путь: своя тонкая тёмная полоса */
+}
+body.win-v1 .win__body > p { margin: 0 0 10px; }   /* окна без своей разметки (тетрис, агенты) */
+
+/* Крестик: рисуется двумя чертами, знак «×» в кнопке скрыт (подпись для чтения с экрана остаётся). */
+body.win-v1 .win__close {
+  top: 14px; right: 14px; width: 36px; height: 36px; padding: 0;
+  border: 1px solid transparent; border-radius: 10px; background: transparent; color: var(--w1-muted);
+  font-size: 0; cursor: pointer; transition: background-color .15s ease-out, color .15s ease-out;
+}
+body.win-v1 .win__close::before, body.win-v1 .win__close::after {
+  content: ""; position: absolute; left: 50%; top: 50%; width: 16px; height: 2px; margin: -1px 0 0 -8px;
+  border-radius: 1px; background: currentColor; transform: rotate(45deg);
+}
+body.win-v1 .win__close::after { transform: rotate(-45deg); }
+body.win-v1 .win__close:hover { background: var(--w1-raise); color: var(--w1-ink); }
+
+body.win-v1 .win__panel :focus-visible { outline: 2px solid var(--w1-acc); outline-offset: 2px; }
+body.win-v1 .win__panel ::selection { background: rgba(45, 212, 191, .3); color: #fff; }
+body.win-v1 .win__body a { color: var(--w1-acc); text-decoration-thickness: 1px; text-underline-offset: 3px; }
+body.win-v1 .win__body::-webkit-scrollbar, body.win-v1 .w1__slide::-webkit-scrollbar { width: 6px; }
+body.win-v1 .win__body::-webkit-scrollbar-thumb, body.win-v1 .w1__slide::-webkit-scrollbar-thumb { background: #3b424b; border-radius: 3px; }
+
+/* Телефон: лист снизу; листается пальцем, полосы прокрутки не видно (решение владельца по офису).
+   max-height и padding повторены здесь: правило страницы body.is-phone .win__panel той же силы,
+   и без повтора исход зависел бы от порядка подключения (замер страниц разошёлся бы с окном). */
+body.win-v1.is-phone .win__panel {
+  --w1-max: 84%;
+  width: 100%; max-height: var(--w1-max); border-radius: 18px 18px 0 0; border-bottom: 0; padding: 18px 16px 16px;
+}
+body.win-v1.is-phone .win__body, body.win-v1.is-phone .w1__slide { scrollbar-width: none; }
+body.win-v1.is-phone .win__body::-webkit-scrollbar, body.win-v1.is-phone .w1__slide::-webkit-scrollbar { display: none; }
+
+/* ---------- Карусель ---------- */
+body.win-v1 .w1 { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
+body.win-v1 .w1__view { flex: 1 1 auto; min-height: 0; display: flex; overflow: hidden; touch-action: pan-y; }
+body.win-v1 .w1__track {
+  flex: 0 0 100%; min-width: 0; display: flex;
+  transition: transform .36s var(--w1-ease); will-change: transform;
+}
+body.win-v1 .w1__slide {
+  flex: 0 0 100%; min-width: 0; overflow-y: auto; overscroll-behavior: contain;
+  scrollbar-width: thin; scrollbar-color: #3b424b transparent;
+  transition: opacity .36s var(--w1-ease);
+}
+body.win-v1 .w1__slide[inert] { opacity: .3; }
+body.win-v1 .w1__in { padding: 2px 6px 6px 2px; }   /* место под кольцо фокуса у краёв */
+
+body.win-v1 .w1__nav {
+  flex: none; display: none; align-items: center; justify-content: space-between; gap: 12px;
+  margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--w1-line);
+}
+body.win-v1 .w1.is-multi .w1__nav { display: flex; }
+body.win-v1 .w1__dots { display: flex; align-items: center; flex-wrap: wrap; min-width: 0; margin-left: -6px; }
+body.win-v1 .w1__dot { position: relative; flex: none; width: 20px; height: 28px; padding: 0; border: 0; background: none; cursor: pointer; }
+body.win-v1 .w1__dot.is-gap { margin-left: 10px; }   /* страницы одного места работы — вплотную, места — врозь */
+body.win-v1 .w1__dot span {
+  position: absolute; left: 50%; top: 50%; width: 8px; height: 8px; margin: -4px 0 0 -4px;
+  background: #48505a; transition: width .25s var(--w1-ease), margin-left .25s var(--w1-ease), background-color .2s ease-out;
+}
+body.win-v1 .w1__dot:hover span { background: #6d7682; }
+body.win-v1 .w1__dot[aria-current="true"] span { width: 16px; margin-left: -8px; background: var(--w1-acc); }
+body.win-v1 .w1__arrows { display: flex; gap: 8px; flex: none; }
+body.win-v1 .w1__btn {
+  display: grid; place-items: center; width: 38px; height: 38px; padding: 0;
+  border: 1px solid var(--w1-edge); border-radius: 10px; background: var(--w1-raise); color: var(--w1-ink);
+  cursor: pointer; transition: background-color .15s ease-out, border-color .15s ease-out, opacity .15s ease-out;
+}
+body.win-v1 .w1__btn:hover { border-color: #56606b; background: #2a2f36; }
+body.win-v1 .w1__btn:active { transform: translateY(1px); }
+body.win-v1 .w1__btn[aria-disabled="true"] { opacity: .35; cursor: default; transform: none; }
+body.win-v1 .w1__btn[aria-disabled="true"]:hover { border-color: var(--w1-edge); background: var(--w1-raise); }
+body.win-v1 .w1__status {
+  position: absolute; width: 1px; height: 1px; margin: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap;
+}
+
+/* ---------- Содержимое карточек ---------- */
+body.win-v1 .w1__head {
+  display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 16px; align-items: baseline; margin: 0 0 14px;
+}
+body.win-v1 .w1__name { margin: 0; font: 600 16.5px/1.3 var(--w1-display); letter-spacing: -0.01em; color: var(--w1-ink); }
+body.win-v1 .w1__when { margin: 0; font-size: 12.5px; color: var(--w1-muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+body.win-v1 .w1__role { grid-column: 1 / -1; margin: 3px 0 0; font-size: 14px; color: var(--w1-body); }
+body.win-v1 .w1__part {
+  margin-left: 10px; padding: 1px 7px; border: 1px solid var(--w1-line); border-radius: 6px;
+  font: 500 11.5px/1.5 var(--w1-font); letter-spacing: 0; color: var(--w1-muted); vertical-align: 2px; font-variant-numeric: tabular-nums;
+}
+body.win-v1 .w1__tag {
+  display: inline-block; margin-left: 6px; padding: 0 7px; border-radius: 6px;
+  background: #262b31; font-size: 12px; line-height: 1.6; color: var(--w1-muted);
+}
+
+/* Пункты опыта: квадратный маркер — пиксель офиса; у пункта с измеримым результатом он бирюзовый. */
+body.win-v1 .w1__list { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
+body.win-v1 .w1__list li { position: relative; padding-left: 20px; color: var(--w1-body); text-wrap: pretty; }
+body.win-v1 .w1__list li::before {
+  content: ""; position: absolute; left: 3px; top: calc(.775em - 3px); width: 6px; height: 6px; background: #4b545e;
+}
+body.win-v1 .w1__list li.has-result::before { background: var(--w1-acc); }
+body.win-v1 .w1__list b, body.win-v1 .w1__text b { color: #fff; font-weight: 600; }
+body.win-v1 .w1__text { margin: 0 0 14px; font-size: 15px; line-height: 1.6; color: var(--w1-body); text-wrap: pretty; }
+
+body.win-v1 .w1-chips { list-style: none; display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 16px; padding: 0; }
+body.win-v1 .w1-chips li {
+  padding: 3px 10px; border: 1px solid var(--w1-line); border-radius: 8px; font-size: 13px; line-height: 1.45; color: var(--w1-body);
+}
+body.win-v1 .w1-chips--lg { gap: 8px; margin: 0; }
+body.win-v1 .w1-chips--lg li { padding: 6px 12px; border-color: transparent; background: var(--w1-raise); font-size: 14px; color: var(--w1-ink); }
+body.win-v1 .win__body .w1-link {
+  display: inline-flex; align-items: center; gap: 8px; padding: 7px 12px;
+  border: 1px solid var(--w1-edge); border-radius: 10px; color: var(--w1-ink); text-decoration: none; font-size: 13.5px;
+  transition: border-color .15s ease-out;
+}
+body.win-v1 .win__body .w1-link svg { flex: none; color: var(--w1-acc); }
+body.win-v1 .win__body .w1-link:hover { border-color: var(--w1-acc); }
+
+/* Обо мне */
+body.win-v1 .w1-who { margin: 0; font: 600 18px/1.3 var(--w1-display); letter-spacing: -0.01em; color: var(--w1-ink); }
+body.win-v1 .w1-role { margin: 4px 0 0; font-size: 14.5px; color: var(--w1-body); }
+body.win-v1 .w1-lede { margin: 16px 0 18px; font-size: 17px; line-height: 1.45; font-weight: 500; color: #fff; text-wrap: balance; }
+body.win-v1 .w1-contacts { display: flex; flex-wrap: wrap; gap: 8px; }
+body.win-v1 .win__body .w1-contact {
+  padding: 8px 13px; border: 1px solid var(--w1-edge); border-radius: 10px;
+  color: var(--w1-ink); text-decoration: none; font-size: 13.5px; transition: border-color .15s ease-out, background-color .15s ease-out;
+}
+body.win-v1 .win__body .w1-contact:hover { border-color: #56606b; background: var(--w1-raise); }
+body.win-v1 .win__body .w1-contact--main { background: var(--w1-acc); border-color: var(--w1-acc); color: var(--w1-acc-ink); font-weight: 600; }
+body.win-v1 .win__body .w1-contact--main:hover { background: var(--w1-acc-hi); border-color: var(--w1-acc-hi); }
+/* border: 0 — снять бирюзовую полосу слева из общих стилей окна (.win__body blockquote). */
+body.win-v1 .w1-quote {
+  margin: 18px 0 0; padding: 14px 0 0; border: 0; border-top: 1px solid var(--w1-line);
+  font-size: 16.5px; line-height: 1.45; font-weight: 500; color: #fff; text-wrap: pretty;
+}
+body.win-v1 .w1-quote::before { content: "\201C"; display: block; height: 22px; font: 600 36px/1 var(--w1-display); color: var(--w1-acc); }
+body.win-v1 .w1-facts { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 0; margin: 0; }
+body.win-v1 .w1-facts dt, body.win-v1 .w1-facts dd { margin: 0; padding: 10px 0; border-top: 1px solid var(--w1-line); }
+body.win-v1 .w1-facts dt { padding-right: 24px; font-size: 13.5px; color: var(--w1-muted); }
+body.win-v1 .w1-facts dd { color: var(--w1-ink); }
+body.win-v1 .w1-facts dt:first-of-type, body.win-v1 .w1-facts dt:first-of-type + dd { border-top: 0; padding-top: 0; }
+
+/* Показатели: табло 2 × 2, линии вместо карточек. */
+body.win-v1 .w1-metrics { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+body.win-v1 .w1-metrics li { padding: 16px 16px 18px 0; border-top: 1px solid var(--w1-line); }
+body.win-v1 .w1-metrics li:nth-child(-n+2) { border-top: 0; padding-top: 2px; }
+body.win-v1 .w1-metrics li:nth-child(even) { padding-left: 20px; border-left: 1px solid var(--w1-line); }
+body.win-v1 .w1-num { display: block; font: 600 34px/1.1 var(--w1-display); letter-spacing: -0.02em; color: var(--w1-acc); font-variant-numeric: tabular-nums; }
+body.win-v1 .w1-num small { margin-left: 2px; font-size: .55em; letter-spacing: 0; }
+body.win-v1 .w1-cap { display: block; margin-top: 6px; font-size: 14px; color: var(--w1-body); }
+
+/* Образование, курсы, языки */
+body.win-v1 .w1-entries { list-style: none; margin: 0; padding: 0; }
+body.win-v1 .w1-entries li {
+  display: grid; grid-template-columns: 64px minmax(0, 1fr); column-gap: 14px; padding: 14px 0; border-top: 1px solid var(--w1-line);
+}
+body.win-v1 .w1-entries li:first-child { border-top: 0; padding-top: 2px; }
+body.win-v1 .w1-year { font: 600 15px/1.45 var(--w1-display); color: var(--w1-acc); font-variant-numeric: tabular-nums; }
+body.win-v1 .w1-deg { display: block; font-size: 15px; font-weight: 600; color: var(--w1-ink); }
+body.win-v1 .w1-place { display: block; margin-top: 2px; font-size: 14px; color: var(--w1-body); }
+body.win-v1 .w1-entries--lang li { grid-template-columns: 150px minmax(0, 1fr); align-items: baseline; }
+body.win-v1 .w1-lang { font: 600 15px/1.45 var(--w1-display); color: var(--w1-ink); }
+body.win-v1 .w1-level { color: var(--w1-body); }
+
+/* Узкое окно (телефон): срок — под названием, языки — столбиком. */
+@container w1 (max-width: 480px) {
+  body.win-v1 .w1__head { grid-template-columns: minmax(0, 1fr); }
+  body.win-v1 .w1__when { margin-top: 2px; white-space: normal; }
+  body.win-v1 .w1-num { font-size: 28px; }
+  body.win-v1 .w1-entries--lang li { grid-template-columns: minmax(0, 1fr); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body.win-v1 .win__panel { animation: none; }
+  body.win-v1 .w1__track, body.win-v1 .w1__slide, body.win-v1 .w1__dot span { transition: none; }
+}

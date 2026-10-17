@@ -1,0 +1,235 @@
+/* Окна разделов офиса — вариант 3 «Картотека». Дизайнер (консультация), 2026-10-14.
+   Всё под body.win-v3. Разметку строит variant_3.js (window.WIN_V3).
+   Окно — игровое окно офиса: пиксельная рамка (шаг 4 CSS px = 5 точек экрана владельца при 125 %, без мыла),
+   строка заголовка с «!» и пиксельным крестиком. Внутри: слева список (места работы, продукты, группы
+   навыков), справа выбранное. Основной текст — Golos Text, не пиксельный шрифт.
+   Шрифты сайта: Unbounded — заголовки и числа, Golos Text — текст (assets/css/fonts.css).
+   Если стиль вклеивается в страницу, а не подключается <link>, — подключите fonts.css отдельно. */
+@import url("../../../assets/css/fonts.css");
+
+/* ---------- Окно ---------- */
+body.win-v3 .win { background: rgba(6, 7, 9, .6); }
+body.win-v3 .win__panel {
+  --w3-max: min(84%, 660px);
+  --w3-bg: #181b20; --w3-bar: #22262d; --w3-rim: #3d4652; --w3-out: #0b0c0e;
+  --w3-well: #13161a; --w3-raise: #262b33; --w3-hover: #1e2228; --w3-chip: #23282f; --w3-line: #2c3139;
+  --w3-ink: #f2f4f6; --w3-body: #c6ccd3; --w3-muted: #9aa1ab;
+  --w3-acc: #2dd4bf; --w3-acc-hi: #5ee6d4; --w3-acc-ink: #062b27; --w3-mark: rgba(45, 212, 191, .17);
+  --w3-font: 'Golos Text', 'Segoe UI', system-ui, sans-serif;
+  --w3-display: 'Unbounded', 'Golos Text', 'Segoe UI', system-ui, sans-serif;
+  --w3-notch: polygon(4px 0, calc(100% - 4px) 0, 100% 4px, 100% calc(100% - 4px), calc(100% - 4px) 100%, 4px 100%, 0 calc(100% - 4px), 0 4px);
+  container: w3 / inline-size;
+  display: grid; grid-template-columns: auto minmax(0, 1fr); grid-template-rows: 44px minmax(0, 1fr);
+  width: min(880px, calc(100% - 48px)); max-height: var(--w3-max); overflow: hidden;
+  padding: 0; border: 0; border-radius: 0;
+  background: var(--w3-bg); color: var(--w3-ink);
+  /* Пиксельная рамка: светлый обод 4 px со срезанными углами + тёмный контур 4 px со ступенькой. */
+  box-shadow:
+    0 -4px 0 0 var(--w3-rim), 0 4px 0 0 var(--w3-rim), -4px 0 0 0 var(--w3-rim), 4px 0 0 0 var(--w3-rim),
+    0 -8px 0 0 var(--w3-out), 0 8px 0 0 var(--w3-out), -8px 0 0 0 var(--w3-out), 8px 0 0 0 var(--w3-out),
+    -4px -4px 0 0 var(--w3-out), 4px -4px 0 0 var(--w3-out), -4px 4px 0 0 var(--w3-out), 4px 4px 0 0 var(--w3-out),
+    0 26px 56px rgba(0, 0, 0, .45);
+  font: 400 14.5px/1.55 var(--w3-font);
+  animation: w3-open .18s cubic-bezier(.22, 1, .36, 1);
+}
+/* Открытие — как меню в игре: окно раскрывается от середины. Разработчик 14.10: было четырьмя ступенями steps(4) —
+   5 кадров по 56 мс, владелец: «будто подлагивает»; теперь плавно (кадр 17 мс), форма та же. */
+@keyframes w3-open {
+  from { clip-path: inset(50% -10px 50% -10px); }
+  to { clip-path: inset(-10px -10px -10px -10px); }
+}
+body.win-v3 .win__panel:has(.w3--narrow) { width: min(600px, calc(100% - 48px)); }
+/* Замер высоты частей (ставит и снимает variant_3.js в одном кадре). */
+body.win-v3 .win__panel.w3-measure { height: var(--w3-max); }
+
+/* Строка заголовка. */
+body.win-v3 .win__panel::before {
+  content: ""; position: absolute; left: 0; right: 0; top: 0; height: 40px;
+  background: var(--w3-bar); box-shadow: 0 4px 0 0 var(--w3-out);
+}
+body.win-v3 .win__title {
+  position: relative; z-index: 1; grid-row: 1; grid-column: 1; align-self: center;
+  display: flex; align-items: center; gap: 12px; margin: 0; padding: 0 0 4px 16px;
+  font: 600 14.5px/1.2 var(--w3-display); letter-spacing: 0; color: var(--w3-ink); white-space: nowrap;
+}
+/* «!» из офиса: столбик 4 × 12 и точка 4 × 4 — клетки по 4 px. */
+body.win-v3 .win__title::before {
+  content: ""; flex: none; width: 4px; height: 20px;
+  background: linear-gradient(var(--w3-acc) 0 12px, transparent 12px 16px, var(--w3-acc) 16px 20px);
+}
+body.win-v3 .win__sub {
+  position: relative; z-index: 1; grid-row: 1; grid-column: 2; align-self: center; min-width: 0;
+  margin: 0; padding: 0 56px 4px 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  font-size: 12.5px; line-height: 1.2; letter-spacing: 0; text-transform: none; color: var(--w3-muted);
+}
+body.win-v3 .win__sub::before {
+  content: ""; display: inline-block; width: 4px; height: 4px; margin: 0 12px 0 0; vertical-align: 2px; background: #4b545e;
+}
+body.win-v3 .win__body {
+  grid-row: 2; grid-column: 1 / -1; min-height: 0; display: flex; flex-direction: column;
+  padding: 18px 20px 20px; overflow-y: auto; overscroll-behavior: contain;
+  scrollbar-width: thin; scrollbar-color: var(--w3-rim) transparent;   /* запасной путь: своя тонкая тёмная полоса */
+}
+body.win-v3 .win__body > p { margin: 0 0 10px; }   /* окна без своей разметки (тетрис, агенты) */
+body.win-v3 .win__body::-webkit-scrollbar, body.win-v3 .w3-pane::-webkit-scrollbar { width: 4px; }
+body.win-v3 .win__body::-webkit-scrollbar-thumb, body.win-v3 .w3-pane::-webkit-scrollbar-thumb { background: var(--w3-rim); }
+
+body.win-v3 .win__panel :focus-visible { outline: 2px solid var(--w3-acc); outline-offset: 2px; }
+body.win-v3 .win__panel ::selection { background: rgba(45, 212, 191, .3); color: #fff; }
+body.win-v3 .win__body a { color: var(--w3-acc); text-decoration-thickness: 1px; text-underline-offset: 3px; }
+
+/* Пиксельный крестик: девять клеток по 4 px. Знак «×» скрыт, подпись для чтения с экрана остаётся. */
+body.win-v3 .win__close {
+  z-index: 2; top: 2px; right: 4px; width: 36px; height: 36px; padding: 0;
+  border: 0; border-radius: 0; background: transparent; color: var(--w3-muted); font-size: 0; cursor: pointer;
+  clip-path: var(--w3-notch); transition: background-color .12s ease-out, color .12s ease-out;
+}
+body.win-v3 .win__close::before {
+  content: ""; position: absolute; left: 8px; top: 8px; width: 4px; height: 4px; background: currentColor;
+  box-shadow: 4px 4px 0 currentColor, 8px 8px 0 currentColor, 12px 12px 0 currentColor, 16px 16px 0 currentColor,
+    16px 0 0 currentColor, 12px 4px 0 currentColor, 4px 12px 0 currentColor, 0 16px 0 currentColor;
+}
+body.win-v3 .win__close:hover { background: #2f353e; color: var(--w3-ink); }
+/* Кольцо фокуса внутрь: снаружи его срезал бы clip-path. */
+body.win-v3 .win__panel .win__close:focus-visible { outline: 2px solid var(--w3-acc); outline-offset: -4px; }
+
+/* Телефон: то же окно с рамкой, прижато к низу; листается пальцем без видимой полосы.
+   padding, радиус и max-height повторены: правило страницы body.is-phone .win__panel той же силы. */
+body.win-v3.is-phone .win__panel {
+  --w3-max: 84%;
+  width: calc(100% - 16px); max-height: var(--w3-max); margin-bottom: 8px; padding: 0; border-radius: 0;
+}
+body.win-v3.is-phone .win__body, body.win-v3.is-phone .w3-pane { scrollbar-width: none; }
+body.win-v3.is-phone .win__body::-webkit-scrollbar, body.win-v3.is-phone .w3-pane::-webkit-scrollbar { display: none; }
+
+/* ---------- Картотека: список слева, выбранное справа ---------- */
+body.win-v3 .w3 {
+  flex: 1 1 auto; min-height: 0;
+  display: grid; grid-template-columns: 208px minmax(0, 1fr); grid-template-rows: minmax(0, 1fr); column-gap: 22px;
+}
+body.win-v3 .w3-rail {
+  display: flex; flex-direction: column; gap: 4px; min-height: 0; padding: 4px;
+  overflow-y: auto; scrollbar-width: none; background: var(--w3-well); clip-path: var(--w3-notch);
+}
+body.win-v3 .w3-rail::-webkit-scrollbar { display: none; }
+body.win-v3 .w3-tab {
+  position: relative; display: block; width: 100%; padding: 9px 10px 10px 24px;
+  border: 0; border-radius: 0; background: transparent; color: var(--w3-body);
+  text-align: left; font: inherit; cursor: pointer; clip-path: var(--w3-notch);
+  transition: background-color .12s ease-out, color .12s ease-out;
+}
+body.win-v3 .w3-tab:hover { background: var(--w3-hover); color: var(--w3-ink); }
+body.win-v3 .w3-tab[aria-selected="true"] { background: var(--w3-raise); color: #fff; }
+/* Курсор выбора, как в меню игры: треугольник из четырёх клеток 4 px. */
+body.win-v3 .w3-tab[aria-selected="true"]::before {
+  content: ""; position: absolute; left: 8px; top: 13px; width: 4px; height: 4px; background: var(--w3-acc);
+  box-shadow: 0 4px 0 var(--w3-acc), 0 8px 0 var(--w3-acc), 4px 4px 0 var(--w3-acc);
+}
+body.win-v3 .w3-tab:focus-visible { outline: 2px solid var(--w3-acc); outline-offset: -3px; }
+body.win-v3 .w3-tab__name { display: block; font-size: 14px; line-height: 1.35; font-weight: 600; }
+body.win-v3 .w3-tab__sub {
+  display: -webkit-box; margin-top: 2px; overflow: hidden; -webkit-box-orient: vertical; -webkit-line-clamp: 2;
+  font-size: 12px; line-height: 1.35; color: var(--w3-muted); font-variant-numeric: tabular-nums;
+}
+body.win-v3 .w3-pane {
+  min-width: 0; min-height: 0; padding: 2px 10px 4px 2px; overflow-y: auto; overscroll-behavior: contain;
+  scrollbar-width: thin; scrollbar-color: var(--w3-rim) transparent;
+}
+body.win-v3 .w3-pane:focus-visible { outline: 2px solid var(--w3-acc); outline-offset: -2px; }
+/* Разработчик 14.10: было steps(2) от прозрачности 0 — первые 80 мс пункт пропадал целиком; теперь плавно и не с нуля. */
+body.win-v3 .w3-pane.is-in > * { animation: w3-pane .14s ease-out; }
+@keyframes w3-pane { from { opacity: .35; transform: translateX(4px); } }
+
+/* ---------- Содержимое ---------- */
+body.win-v3 .w3-head { margin: 0 0 14px; }
+body.win-v3 .w3-name { margin: 0; font: 600 18px/1.3 var(--w3-display); letter-spacing: -0.01em; color: var(--w3-ink); }
+body.win-v3 .w3-meta { margin: 4px 0 0; font-size: 14px; line-height: 1.45; color: var(--w3-body); }
+body.win-v3 .w3-when { margin: 2px 0 0; font-size: 12.5px; color: var(--w3-muted); font-variant-numeric: tabular-nums; }
+body.win-v3 .w3-tag { display: inline-block; margin-left: 6px; padding: 0 6px; background: #2a3038; font-size: 12px; line-height: 1.6; color: var(--w3-muted); }
+
+/* Пункты: результат — полужирным и маркером (квадратная подсветка, как пиксели офиса). */
+body.win-v3 .w3-points { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
+body.win-v3 .w3-points li { position: relative; padding-left: 20px; color: var(--w3-body); text-wrap: pretty; }
+body.win-v3 .w3-points li::before {
+  content: ""; position: absolute; left: 4px; top: calc(.775em - 2px); width: 4px; height: 4px; background: #4b545e;
+}
+body.win-v3 .w3-points li.has-result::before { background: var(--w3-acc); box-shadow: 4px 0 0 var(--w3-acc); }
+body.win-v3 .w3-points b {
+  padding: 1px 3px; margin: 0 -1px; font-weight: 600; color: #fff; background: var(--w3-mark);
+  -webkit-box-decoration-break: clone; box-decoration-break: clone;
+}
+body.win-v3 .w3-text { margin: 0 0 14px; font-size: 15px; line-height: 1.6; color: var(--w3-body); text-wrap: pretty; }
+
+body.win-v3 .w3-chips { list-style: none; display: flex; flex-wrap: wrap; gap: 4px; margin: 0 0 16px; padding: 0; }
+body.win-v3 .w3-chips li { padding: 3px 9px; background: var(--w3-chip); font-size: 13px; line-height: 1.45; color: var(--w3-body); }
+body.win-v3 .w3-chips--lg { margin: 0; }
+body.win-v3 .w3-chips--lg li { padding: 6px 11px; font-size: 14px; color: var(--w3-ink); }
+
+/* Кнопки-ссылки со срезанными углами. */
+body.win-v3 .win__body .w3-btn {
+  display: inline-flex; align-items: center; gap: 8px; padding: 8px 14px;
+  background: var(--w3-raise); color: var(--w3-ink); text-decoration: none; font-size: 13.5px;
+  clip-path: var(--w3-notch); transition: background-color .12s ease-out;
+}
+body.win-v3 .win__body .w3-btn:hover { background: #2f353e; }
+body.win-v3 .win__body .w3-btn svg { flex: none; color: var(--w3-acc); }
+body.win-v3 .win__body .w3-btn--main { background: var(--w3-acc); color: var(--w3-acc-ink); font-weight: 600; }
+body.win-v3 .win__body .w3-btn--main:hover { background: var(--w3-acc-hi); }
+body.win-v3 .win__body .w3-btn:focus-visible { outline-offset: -3px; }
+body.win-v3 .w3-btns { display: flex; flex-wrap: wrap; gap: 8px; }
+
+/* Обо мне */
+body.win-v3 .w3-who { margin: 0; font: 600 19px/1.3 var(--w3-display); letter-spacing: -0.01em; color: var(--w3-ink); }
+body.win-v3 .w3-lede { margin: 16px 0 18px; font-size: 17px; line-height: 1.45; font-weight: 500; color: #fff; text-wrap: balance; }
+/* border: 0 — снять полосу слева из общих стилей окна (.win__body blockquote). */
+body.win-v3 .w3-quote {
+  margin: 18px 0 0; padding: 14px 16px 16px; border: 0; background: var(--w3-well);
+  font-size: 16px; line-height: 1.45; font-weight: 500; color: #fff; clip-path: var(--w3-notch); text-wrap: pretty;
+}
+body.win-v3 .w3-facts { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 4px; margin: 0; }
+body.win-v3 .w3-facts dt, body.win-v3 .w3-facts dd { margin: 0; padding: 10px 14px; background: var(--w3-well); }
+body.win-v3 .w3-facts dt { font-size: 13.5px; color: var(--w3-muted); }
+body.win-v3 .w3-facts dd { color: var(--w3-ink); }
+
+/* Показатели — как большой экран офиса: ячейки табло через тёмные 4 px. */
+body.win-v3 .w3-screen {
+  list-style: none; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px;
+  margin: 0; padding: 4px; background: var(--w3-out);
+}
+body.win-v3 .w3-screen li { padding: 16px 18px 18px; background: #12171b; }
+body.win-v3 .w3-num { display: block; font: 600 34px/1.1 var(--w3-display); letter-spacing: -0.02em; color: var(--w3-acc); font-variant-numeric: tabular-nums; }
+body.win-v3 .w3-num small { margin-left: 2px; font-size: .55em; letter-spacing: 0; }
+body.win-v3 .w3-cap { display: block; margin-top: 8px; font-size: 14px; color: var(--w3-body); }
+
+/* Образование, курсы, языки — строки-карточки картотеки. */
+body.win-v3 .w3-entries { list-style: none; display: grid; gap: 4px; margin: 0; padding: 0; }
+body.win-v3 .w3-entries li {
+  display: grid; grid-template-columns: 72px minmax(0, 1fr); column-gap: 16px; align-items: baseline;
+  padding: 14px 16px; background: var(--w3-hover);
+}
+body.win-v3 .w3-year { font: 600 15px/1.5 var(--w3-display); color: var(--w3-acc); font-variant-numeric: tabular-nums; }
+body.win-v3 .w3-deg { display: block; font-size: 15px; font-weight: 600; color: var(--w3-ink); }
+body.win-v3 .w3-place { display: block; margin-top: 2px; font-size: 14px; color: var(--w3-body); }
+body.win-v3 .w3-entries--lang li { grid-template-columns: 160px minmax(0, 1fr); }
+body.win-v3 .w3-lang { font: 600 15px/1.5 var(--w3-display); color: var(--w3-ink); }
+body.win-v3 .w3-level { color: var(--w3-body); }
+
+/* Узкое окно (телефон): список — строкой вкладок сверху, листается вбок. */
+@container w3 (max-width: 560px) {
+  body.win-v3 .win__body { padding: 14px 14px 16px; }
+  body.win-v3 .w3 { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); row-gap: 14px; }
+  body.win-v3 .w3-rail { flex-direction: row; overflow-x: auto; overflow-y: hidden; }
+  body.win-v3 .w3-tab { flex: none; width: auto; padding: 8px 12px 9px 22px; white-space: nowrap; }
+  body.win-v3 .w3-tab__sub { display: none; }
+  body.win-v3 .w3-tab[aria-selected="true"]::before { top: 12px; left: 8px; }
+  body.win-v3 .w3-entries li, body.win-v3 .w3-entries--lang li { grid-template-columns: minmax(0, 1fr); row-gap: 2px; }
+  body.win-v3 .w3-screen li { padding: 14px 12px 14px; }
+  body.win-v3 .w3-num { font-size: 28px; }
+  body.win-v3 .w3-facts { grid-template-columns: minmax(0, 1fr); }
+  body.win-v3 .w3-facts dt { padding-bottom: 2px; }
+  body.win-v3 .w3-facts dd { margin-top: -4px; padding-top: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body.win-v3 .win__panel, body.win-v3 .w3-pane.is-in > * { animation: none; }
+}

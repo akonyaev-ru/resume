@@ -14,24 +14,26 @@
        со скриптом не видит даже мгновение: её прячут стили, а app.js убирает. -->
   <script>document.documentElement.classList.add('js');</script>
 
-  <!-- Английская версия — отдельная страница `en.html`, ее собирает
+  <!-- Классическая версия резюме: с 17.10.2026 она по адресу /resume/old/ (на /resume/ — пиксельный офис), поэтому
+       адреса страницы — /resume/old/; человек и его сайт в описании schema.org — по-прежнему /resume/.
+       Английская версия — отдельная страница `en.html`, ее собирает
        tools/build_en.py. Раньше версии различались только параметром ?lang=en,
        и поисковик с превью ссылки видели русские заголовок и описание в обеих. -->
-  <link rel="canonical" href="https://akonyaev-ru.github.io/resume/" />
-  <link rel="alternate" hreflang="ru" href="https://akonyaev-ru.github.io/resume/" />
-  <link rel="alternate" hreflang="en" href="https://akonyaev-ru.github.io/resume/en.html" />
-  <link rel="alternate" hreflang="x-default" href="https://akonyaev-ru.github.io/resume/" />
+  <link rel="canonical" href="https://akonyaev-ru.github.io/resume/old/" />
+  <link rel="alternate" hreflang="ru" href="https://akonyaev-ru.github.io/resume/old/" />
+  <link rel="alternate" hreflang="en" href="https://akonyaev-ru.github.io/resume/old/en.html" />
+  <link rel="alternate" hreflang="x-default" href="https://akonyaev-ru.github.io/resume/old/" />
 
   <meta property="og:type" content="profile" />
   <meta property="og:title" content="Резюме Алексея Коняева" />
   <meta property="og:description" content="Специалист по LegalOPS и внедрению AI-агентов: юрист по практике, автоматизация юридической функции." />
-  <meta property="og:url" content="https://akonyaev-ru.github.io/resume/" />
+  <meta property="og:url" content="https://akonyaev-ru.github.io/resume/old/" />
   <meta property="og:locale" content="ru_RU" />
   <meta property="og:locale:alternate" content="en_US" />
   <!-- Картинка превью ссылки — первый экран страницы, 1200×630, у каждого языка
        своя. Снимает tools/make_og.js с настоящей страницы; при правке роли —
        переснять. -->
-  <meta property="og:image" content="https://akonyaev-ru.github.io/resume/assets/img/og-ru.jpg" />
+  <meta property="og:image" content="https://akonyaev-ru.github.io/resume/old/assets/img/og-ru.jpg" />
   <meta property="og:image:width" content="1200" />
   <meta property="og:image:height" content="630" />
   <meta property="og:image:alt" content="Алексей Коняев — специалист по LegalOPS и внедрению AI-агентов" />

@@ -1491,6 +1491,12 @@
             text: u('sourceCode'),
           }),
         ]),
+        el('span', {}, [
+          el('a', {
+            href: 'https://github.com/akonyaev-ru/resume/blob/main/LICENSE', target: '_blank', rel: 'noopener license',
+            text: u('license'),
+          }),
+        ]),
         el('span', { text: u('updatedAt') + ' ' + t(R.person.updated) }),
       ]),
     ]);

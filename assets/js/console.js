@@ -899,7 +899,14 @@
     return node;
   }
 
-  var ui = null;        // разметка окна, строится один раз
+  var ui = null;        // разметка окна, в котором идёт игра
+  var own = null;       // своё окно-консоль: строится один раз
+  /* Чужое окно (офис, «Аркада», 2026-10-15): игра та же — ядро, отрисовка, клавиши, пауза, ник, рекорды, — а окно
+     хозяина. skin = { ui, boot(nick), play(), fit(applyCell), stats(game), over(score, table), close(), send }:
+     ui — его элементы с теми же ролями (dialog, field, preview, overlay, stats, legend, keys, closeBtn, again);
+     вместо печати загрузки — boot (стартовый экран), вместо третьего экрана — over, подгонку клетки делает fit,
+     закрывает и возвращает фокус хозяин (close). send: false — в общую таблицу не слать. Без skin — как было. */
+  var skin = null;
   var game = null;
   var opener = null;    // куда вернуть фокус
   var quietReturn = false;  // открыли мышью — фокус вернуть без кольца
@@ -996,7 +1003,7 @@
   }
 
   function build() {
-    if (ui) return ui;
+    if (own) return own;
     // Стакан — картинка с именем: у холста без роли имя читают не все дикторы (5.86).
     var field = el('canvas', { class: 'console__field', role: 'img', 'aria-label': 'Tetris' });
     var preview = el('canvas', { class: 'console__next', 'aria-hidden': 'true' });
@@ -1082,8 +1089,8 @@
     veil.addEventListener('mousedown', function (event) { if (event.target === veil) close(); });
     document.body.appendChild(veil);
 
-    ui = { veil: veil, dialog: dialog, log: log, play: play, scores: scores, again: again, field: field, preview: preview, stats: stats, legend: legend, overlay: overlay, keys: keys, keyRow: keyRow, closeBtn: closeBtn };
-    return ui;
+    own = { veil: veil, dialog: dialog, log: log, play: play, scores: scores, again: again, field: field, preview: preview, stats: stats, legend: legend, overlay: overlay, keys: keys, keyRow: keyRow, closeBtn: closeBtn };
+    return own;
   }
 
   /* --- загрузка ------------------------------------------------------------ */
@@ -1103,6 +1110,7 @@
 
   function boot() {
     phase = 'boot';
+    if (skin) { waiting = false; issueNick(); skin.boot(nick); return; }   // чужое окно: стартовый экран вместо загрузки
     /* Журнал — живой регион, а печатается по букве: диктор получал десятки
        объявлений подряд. Пока печать идёт, регион занят (`aria-busy`), и
        прочитан он будет разом, когда в greet() занятость снимется (5.86). */
@@ -1145,6 +1153,7 @@
   // Домотать загрузку: все строки разом, полоса полная, ник напечатан — и к игре.
   function finishBoot() {
     clearTimers();
+    if (skin) { startGame(); return; }   // со стартового экрана — сразу в игру
     issueNick();
     ui.log.textContent = BOOT.slice(0, 3).join('\n') + '\n' + BOOT[3] + '██████████ 100%\n' + TEXT.login;
     ui.log.appendChild(el('span', { class: 'console__nick', text: nick }));
@@ -1186,7 +1195,7 @@
     cell = size;
     sizeCanvas(ui.field, COLS * cell, ROWS * cell);
     sizeCanvas(ui.preview, PREVIEW_W * cell, PREVIEW_H * cell);
-    fitKeys();
+    if (!skin) fitKeys();   // у чужого окна свои клавиши
   }
 
   // Ряд клавиш — в одну строку под стаканом: колпачок убавляется, пока ряд не
@@ -1212,6 +1221,7 @@
   // без легенды; берётся первая ступень, которая её не портит: полная легенда,
   // сжатая (значок и название, без подписей), без легенды.
   function fitWindow() {
+    if (skin) { skin.fit(applyCell); return; }   // клетку под своё окно подбирает хозяин
     var tiers = ['', 'console--compact', 'console--bare'];
     var reset = function () { ui.dialog.classList.remove('console--compact', 'console--bare'); };
     reset();
@@ -1258,9 +1268,12 @@
     waiting = false;
     jamAt = -1;           // приступ заедания и пыль прошлой партии сюда не переходят
     dust = [];
-    ui.log.hidden = true;
-    ui.scores.hidden = true;
-    ui.play.hidden = false;
+    if (skin) skin.play();
+    else {
+      ui.log.hidden = true;
+      ui.scores.hidden = true;
+      ui.play.hidden = false;
+    }
     ui.overlay.hidden = true;
     fitWindow();
     // «Ещё раз» с третьего экрана прячется вместе с ним — фокус не должен
@@ -1284,6 +1297,7 @@
 
   function updateStats() {
     ui.stats.score.textContent = String(game.score);
+    if (skin && skin.stats) skin.stats(game);   // у чужого окна могут быть и уровень, и линии
     updateLegend();
     ui.keys.rotate.classList.toggle('is-locked', infected(game));   // 5.75: при вирусе ↻ приглушена
   }
@@ -1915,8 +1929,10 @@
     if (phase !== 'play') return;
     phase = 'scores';
     root.cancelAnimationFrame(raf);
-    ui.play.hidden = true;
     ui.overlay.hidden = true;
+    // чужое окно: стакан остаётся, конец партии и таблица — у хозяина
+    if (skin) { skin.over(game.score, mergeScores(readTop(), readRecord())); return; }
+    ui.play.hidden = true;
 
     var pane = ui.scores;
     pane.textContent = '';
@@ -1958,7 +1974,7 @@
         announceRecord({ nick: nick, best: game.score });
         ui.stats.best.textContent = bestLabel();
       }
-      shareRecord();
+      if (!skin || skin.send !== false) shareRecord();
       showScores();   // сразу, без плашки над стаканом — решение владельца
       return;         // без кадров: дальше таблица, R или Esc
     }
@@ -1977,6 +1993,7 @@
 
   function act(name) {
     if (phase === 'boot') { finishBoot(); return; }
+    if (phase === 'scores' && name === 'restart') { startGame(); return; }   // «Еще раз» после партии — кнопкой чужого окна
     if (phase !== 'play') return;
     if (name === 'pause') {
       if (game.over) return;
@@ -2101,12 +2118,15 @@
 
   function open(returnTo, options) {
     if (phase !== 'closed') return;
-    build();
+    skin = options && options.skin || null;
+    ui = skin ? skin.ui : build();
     opener = returnTo || document.activeElement;
     quietReturn = !!(options && options.quiet);
-    ui.veil.hidden = false;
-    document.body.classList.add('is-console');
-    announce(true);
+    if (!skin) {
+      ui.veil.hidden = false;
+      document.body.classList.add('is-console');
+      announce(true);
+    }
     document.addEventListener('keydown', onKey, true);
     root.addEventListener('blur', onBlur);
     root.addEventListener('resize', onResize);
@@ -2125,6 +2145,13 @@
     root.removeEventListener('blur', onBlur);
     root.removeEventListener('resize', onResize);
     document.removeEventListener('visibilitychange', onVisibility);
+    if (skin) {   // окно хозяина: закрывает и возвращает фокус он сам
+      var host = skin;
+      skin = null;
+      opener = null;
+      if (host.close) host.close();
+      return;
+    }
     ui.veil.hidden = true;
     document.body.classList.remove('is-console');
     announce(false);
@@ -2167,5 +2194,13 @@
     nick: function () { return nick; },
     act: act,
     Tetris: Tetris,
+    /* Для чужого окна (skin): размеры стакана и «далее» в клетках, спецклетки с подписями из правил ядра, значок
+       спецклетки тем же рисунком, что в стакане, общая таблица со своей записью. */
+    geometry: function () { return { cols: COLS, rows: ROWS, previewW: PREVIEW_W, previewH: PREVIEW_H }; },
+    blocks: function () {
+      return Object.keys(SPECIALS).map(function (type) { return { type: type, name: t(TEXT.blocks[type].name), text: blockText(type) }; });
+    },
+    icon: function (canvas, type, size) { drawSpecial(sizeCanvas(canvas, size, size), 0, 0, size, type, null); },
+    table: function () { return mergeScores(readTop(), readRecord()); },
   };
 })(typeof window !== 'undefined' ? window : null);

@@ -52,8 +52,8 @@ STRINGS = [
     (">К содержанию<", ">Skip to content<"),
     # Картинка превью — своя у каждого языка (5.87), подпись к ней тоже.
     (
-        'content="https://akonyaev-ru.github.io/resume/assets/img/og-ru.jpg"',
-        'content="https://akonyaev-ru.github.io/resume/assets/img/og-en.jpg"',
+        'content="https://akonyaev-ru.github.io/resume/old/assets/img/og-ru.jpg"',
+        'content="https://akonyaev-ru.github.io/resume/old/assets/img/og-en.jpg"',
     ),
     (
         'content="Алексей Коняев — специалист по LegalOPS и внедрению AI-агентов"',

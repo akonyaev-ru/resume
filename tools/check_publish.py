@@ -187,7 +187,10 @@ def stamp_twice():
 
 # --- папка сайта ---------------------------------------------------------------
 
-SITE = {"index.html", "en.html", "404.html", "sitemap.xml", "assets", "data", "dist"}
+# С 17.10.2026: в корне — офис (index.html, og.jpg), 404, карта сайта, переадресации прежних адресов (en.html,
+# dist/resume.html); классическая версия со своими папками — в old/.
+SITE = {"index.html", "og.jpg", "404.html", "sitemap.xml", "en.html", "dist", "old"}
+OLD = {"index.html", "en.html", "assets", "data", "dist"}
 
 
 def project_copy() -> Path:
@@ -201,8 +204,12 @@ def project_copy() -> Path:
     (work / "dist").mkdir()
     (work / "dist" / "resume.html").write_text("<!doctype html><title>один файл</title>", encoding="utf-8")
     (work / "dist" / "fragment.html").write_text("старая сборка", encoding="utf-8")
-    for junk in ("PROJECT_SPEC.md", "README.md", "MEMORY.md", ".gitignore", "Mask-group.png",
-                 "tools/check_pet.js", "scripts/fetch_records.py", "scripts/__pycache__/x.pyc"):
+    (work / "office" / "dist").mkdir(parents=True)
+    (work / "office" / "dist" / "index.html").write_text("<!doctype html><title>офис</title>", encoding="utf-8")
+    (work / "office" / "og.jpg").write_bytes(b"\xff\xd8\xff\xd9")
+    for junk in ("PROJECT_SPEC.md", "README.md", "MEMORY.md", ".gitignore", "Mask-group.png", "LICENSE",
+                 "tools/check_pet.js", "scripts/fetch_records.py", "scripts/__pycache__/x.pyc",
+                 "office/greybox.html", "office/pix/build_demo.py", "office/README.md"):
         path = work / junk
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text("служебное", encoding="utf-8")
@@ -222,15 +229,16 @@ def site_only_pages():
     try:
         out, problems = build(work)
         top = {p.name for p in out.iterdir()}
-        dist = {p.name for p in (out / "dist").iterdir()}
+        old = {p.name for p in (out / "old").iterdir()}
+        dist = {p.name for p in (out / "old" / "dist").iterdir()}
         shutil.rmtree(out.parent)
     finally:
         shutil.rmtree(work)
     if problems:
         fail("; ".join(problems))
-    if top != SITE or dist != {"resume.html"}:
-        fail(f"в папке: {sorted(top)}, в dist: {sorted(dist)}")
-    return "страницы, assets, data и dist/resume.html — служебного нет"
+    if top != SITE or old != OLD or dist != {"resume.html"}:
+        fail(f"в папке: {sorted(top)}, в old: {sorted(old)}, в old/dist: {sorted(dist)}")
+    return "офис и превью в корне, классическая версия с assets, data и однофайловой — в old, служебного нет"
 
 
 def site_missing_reference():
@@ -270,6 +278,40 @@ def single_file_self_contained():
     if not any("dist/resume.html" in p for p in problems):
         fail("ссылка одиночной копии наружу не замечена: " + "; ".join(problems))
     return "одиночная копия со ссылкой на файл рядом — отказ"
+
+
+def site_missing_office():
+    work = project_copy()
+    try:
+        (work / "office" / "dist" / "index.html").unlink()
+        out, problems = build(work)
+        shutil.rmtree(out.parent)
+    finally:
+        shutil.rmtree(work)
+    if not any("office/dist/index.html" in p for p in problems):
+        fail("пропажа страницы офиса не замечена: " + "; ".join(problems))
+    return "офис не собран — отказ"
+
+
+def site_moved():
+    """Розданные ссылки на английскую и однофайловую версии (до 17.10.2026 — в корне) не ведут в 404: на их месте —
+    переадресация на old/, и цель переадресации есть в папке (иначе отказ сборки)."""
+    work = project_copy()
+    try:
+        out, problems = build(work)
+        got = {}
+        for src, dst in (("en.html", "old/en.html"), ("dist/resume.html", "old/dist/resume.html")):
+            html = (out / src).read_text(encoding="utf-8")
+            rel = html.split('url=', 1)[1].split('"', 1)[0] if 'url=' in html else ""
+            got[src] = rel
+            if not rel or not ((out / src).parent / rel).resolve().is_file() or (out / dst).resolve() != ((out / src).parent / rel).resolve():
+                fail(f"{src}: переадресация «{rel}» не ведёт на {dst}")
+        shutil.rmtree(out.parent)
+    finally:
+        shutil.rmtree(work)
+    if problems:
+        fail("; ".join(problems))
+    return "en.html → " + got["en.html"] + ", dist/resume.html → " + got["dist/resume.html"]
 
 
 # --- рисовалка кадров ------------------------------------------------------------
@@ -312,6 +354,8 @@ check("папка сайта: только страницы и их файлы",
 check("папка сайта: битая ссылка из скрипта — отказ", site_missing_reference)
 check("папка сайта: нет страницы — отказ", site_missing_page)
 check("папка сайта: одиночная копия ни на что не ссылается", single_file_self_contained)
+check("папка сайта: нет страницы офиса — отказ", site_missing_office)
+check("папка сайта: прежние адреса ведут на новые", site_moved)
 check("рисовалка кадров: повторный прогон не меняет pet.js", draw_pet_idempotent)
 
 failed = results.count(False)

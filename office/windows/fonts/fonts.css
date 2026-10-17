@@ -1,0 +1,8 @@
+/* Пиксельные шрифты для акцентов окон «Картотеки» (владелец 14.10: «акцентный шрифт пиксельный, а текст обычным»).
+   Оба — OFL (лицензии рядом: *-OFL.txt), из github.com/google/fonts; кириллица проверена по файлу и отрисовкой.
+   Чётко при 125 %: у обоих сетка 8 пикселей на em (замер по отрисовке: отрезки чернил 1 : 2 : 3 : 4 : 5 пикселя;
+   у Tiny5 разбор файла давал 16 — буквы собраны из составных глифов, их точки разбор не видит), размеры кратные
+   6,4 px: 12,8 (2 точки экрана на пиксель шрифта) / 19,2 (3) / 25,6 (4).
+   Выбыли: Pixelify Sans (нет своих «О», «П», «ы» как «bl»), Silkscreen и Jersey 10 (кириллицы нет). */
+@font-face { font-family: 'Tiny5'; src: url(Tiny5.ttf) format('truetype'); font-weight: 400; font-style: normal; font-display: swap; }
+@font-face { font-family: 'Press Start 2P'; src: url(PressStart2P.ttf) format('truetype'); font-weight: 400; font-style: normal; font-display: swap; }

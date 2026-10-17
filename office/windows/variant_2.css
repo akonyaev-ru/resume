@@ -1,0 +1,231 @@
+/* Окна разделов офиса — вариант 2 «Блоки». Дизайнер (консультация), 2026-10-14.
+   Всё под body.win-v2. Разметку строит variant_2.js (window.WIN_V2).
+   Окно шире (до 960 px), содержание — сеткой блоков без длинного сплошного текста:
+   «Опыт» показывает места работы и их измеримые результаты; полный текст места — по нажатию, внутри окна.
+   Шрифты сайта: Unbounded — заголовки и числа, Golos Text — текст (assets/css/fonts.css).
+   Если стиль вклеивается в страницу, а не подключается <link>, — подключите fonts.css отдельно. */
+@import url("../../../assets/css/fonts.css");
+
+/* ---------- Окно ---------- */
+body.win-v2 .win { background: rgba(6, 7, 9, .62); }
+body.win-v2 .win__panel {
+  --w2-max: min(86%, 680px);
+  --w2-bg: #16191d; --w2-tile: #1f2329; --w2-tile-hi: #262b32; --w2-chip: #2a2f36; --w2-line: #2e333a; --w2-edge: #383e47;
+  --w2-ink: #f2f4f6; --w2-body: #c6ccd3; --w2-muted: #9aa1ab;
+  --w2-acc: #2dd4bf; --w2-acc-hi: #5ee6d4; --w2-acc-ink: #062b27;
+  --w2-font: 'Golos Text', 'Segoe UI', system-ui, sans-serif;
+  --w2-display: 'Unbounded', 'Golos Text', 'Segoe UI', system-ui, sans-serif;
+  --w2-ease: cubic-bezier(.22, 1, .36, 1);
+  container: w2 / inline-size;
+  display: flex; flex-direction: column;
+  width: min(960px, calc(100% - 32px)); max-height: var(--w2-max); overflow: hidden;
+  padding: 20px 22px 22px;
+  background: var(--w2-bg); color: var(--w2-ink);
+  border: 1px solid var(--w2-edge); border-radius: 16px;
+  box-shadow: 0 24px 56px rgba(0, 0, 0, .5);
+  font: 400 14.5px/1.55 var(--w2-font);
+  animation: w2-in .22s var(--w2-ease);
+}
+@keyframes w2-in { from { opacity: 0; transform: translateY(6px); } }
+body.win-v2 .win__panel:has(.w2--mid) { width: min(760px, calc(100% - 32px)); }
+body.win-v2 .win__panel:has(.w2--narrow) { width: min(640px, calc(100% - 32px)); }
+
+body.win-v2 .win__title {
+  order: 1; margin: 0 48px 0 2px;
+  font: 600 19px/1.3 var(--w2-display); letter-spacing: -0.01em; color: var(--w2-ink); text-wrap: balance;
+}
+body.win-v2 .win__sub {
+  order: 2; margin: 3px 48px 0 2px;
+  font-size: 12.5px; line-height: 1.4; letter-spacing: 0; text-transform: none; color: var(--w2-muted);
+}
+body.win-v2 .win__body {
+  order: 3; flex: 1 1 auto; min-height: 0; margin-top: 16px;
+  overflow-y: auto; overscroll-behavior: contain;
+  scrollbar-width: thin; scrollbar-color: #3b424b transparent;   /* запасной путь: своя тонкая тёмная полоса */
+}
+body.win-v2 .win__body > p { margin: 0 0 10px; }   /* окна без своей разметки (тетрис, агенты) */
+body.win-v2 .win__body::-webkit-scrollbar { width: 6px; }
+body.win-v2 .win__body::-webkit-scrollbar-thumb { background: #3b424b; border-radius: 3px; }
+
+/* Подробности места работы: заголовок окна уступает место строке «← Все места · Компания». */
+body.win-v2 .win__panel:has(.w2.is-deep) .win__title,
+body.win-v2 .win__panel:has(.w2.is-deep) .win__sub { display: none; }
+body.win-v2 .win__panel:has(.w2.is-deep) .win__body { margin-top: 0; }
+
+body.win-v2 .win__close {
+  top: 14px; right: 14px; width: 36px; height: 36px; padding: 0;
+  border: 1px solid transparent; border-radius: 10px; background: transparent; color: var(--w2-muted);
+  font-size: 0; cursor: pointer; transition: background-color .15s ease-out, color .15s ease-out;
+}
+body.win-v2 .win__close::before, body.win-v2 .win__close::after {
+  content: ""; position: absolute; left: 50%; top: 50%; width: 16px; height: 2px; margin: -1px 0 0 -8px;
+  border-radius: 1px; background: currentColor; transform: rotate(45deg);
+}
+body.win-v2 .win__close::after { transform: rotate(-45deg); }
+body.win-v2 .win__close:hover { background: var(--w2-tile-hi); color: var(--w2-ink); }
+
+body.win-v2 .win__panel :focus-visible { outline: 2px solid var(--w2-acc); outline-offset: 2px; }
+body.win-v2 .win__panel ::selection { background: rgba(45, 212, 191, .3); color: #fff; }
+body.win-v2 .win__body a { color: var(--w2-acc); text-decoration-thickness: 1px; text-underline-offset: 3px; }
+
+/* Телефон: лист снизу, блоки столбиком, листается пальцем без видимой полосы.
+   max-height и padding повторены: правило страницы body.is-phone .win__panel той же силы. */
+body.win-v2.is-phone .win__panel {
+  --w2-max: 86%;
+  width: 100%; max-height: var(--w2-max); border-radius: 18px 18px 0 0; border-bottom: 0; padding: 18px 14px 16px;
+}
+body.win-v2.is-phone .win__body { scrollbar-width: none; }
+body.win-v2.is-phone .win__body::-webkit-scrollbar { display: none; }
+
+/* ---------- Блоки ---------- */
+body.win-v2 .w2-tile { min-width: 0; padding: 15px 16px 16px; border-radius: 12px; background: var(--w2-tile); }
+body.win-v2 .w2-h { margin: 0; font: 600 15.5px/1.35 var(--w2-display); letter-spacing: -0.01em; color: var(--w2-ink); }
+body.win-v2 .w2-chips { list-style: none; display: flex; flex-wrap: wrap; gap: 5px; margin: 0; padding: 0; }
+body.win-v2 .w2-chips li { padding: 3px 9px; border-radius: 7px; background: var(--w2-chip); font-size: 13px; line-height: 1.45; color: var(--w2-body); }
+body.win-v2 .win__body .w2-link {
+  display: inline-flex; align-items: center; gap: 8px; padding: 7px 12px;
+  border: 1px solid var(--w2-edge); border-radius: 10px; color: var(--w2-ink); text-decoration: none; font-size: 13.5px;
+  transition: border-color .15s ease-out;
+}
+body.win-v2 .win__body .w2-link svg { flex: none; color: var(--w2-acc); }
+body.win-v2 .win__body .w2-link:hover { border-color: var(--w2-acc); }
+body.win-v2 .w2-tag {
+  display: inline-block; margin-left: 6px; padding: 0 7px; border-radius: 6px;
+  background: var(--w2-chip); font-size: 12px; line-height: 1.6; color: var(--w2-muted); vertical-align: 1px;
+}
+
+/* Опыт — обзор: место работы = блок; в блоке только измеримые результаты (фразы `bold` из данных). */
+body.win-v2 .w2-jobs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+body.win-v2 .w2-job { cursor: pointer; transition: background-color .15s ease-out; }
+body.win-v2 .w2-job:hover { background: var(--w2-tile-hi); }
+body.win-v2 .w2-job--static { cursor: auto; }   /* блок и так показывает всё — нажимать нечего */
+body.win-v2 .w2-job--static:hover { background: var(--w2-tile); }
+body.win-v2 .w2-job__top { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+body.win-v2 .w2-more {
+  flex: none; display: inline-flex; align-items: center; gap: 4px; margin: -4px -6px 0 0; padding: 4px 6px 4px 10px;
+  border: 1px solid var(--w2-edge); border-radius: 8px; background: transparent; color: var(--w2-body);
+  font: 500 12.5px/1.35 var(--w2-font); white-space: nowrap; cursor: pointer;
+  transition: border-color .15s ease-out, color .15s ease-out;
+}
+body.win-v2 .w2-more svg { color: var(--w2-acc); transition: transform .2s var(--w2-ease); }
+body.win-v2 .w2-job:hover .w2-more { border-color: var(--w2-acc); color: var(--w2-ink); }
+body.win-v2 .w2-job:hover .w2-more svg { transform: translateX(2px); }
+body.win-v2 .w2-job__role { margin: 5px 0 0; font-size: 13.5px; line-height: 1.4; color: var(--w2-body); }
+body.win-v2 .w2-job__when { margin: 2px 0 12px; font-size: 12.5px; color: var(--w2-muted); font-variant-numeric: tabular-nums; }
+body.win-v2 .w2-res { list-style: none; display: grid; gap: 7px; margin: 0; padding: 0; }
+body.win-v2 .w2-res li {
+  padding-left: 18px; font-size: 14.5px; line-height: 1.38; font-weight: 600; color: #fff; text-wrap: pretty;
+  background: linear-gradient(var(--w2-acc), var(--w2-acc)) no-repeat 2px calc(.69em - 3px) / 6px 6px;   /* пиксель офиса */
+}
+body.win-v2 .w2-res li::first-letter { text-transform: uppercase; }   /* фраза вырезана из середины пункта */
+body.win-v2 .w2-gist { margin: 0; font-size: 14px; line-height: 1.5; color: var(--w2-body); text-wrap: pretty; }
+
+/* Опыт — подробности одного места: все пункты, результат полужирным внутри текста. */
+body.win-v2 .w2-detail { animation: w2-slide .24s var(--w2-ease); }
+body.win-v2 .w2.was-deep .w2-over { animation: w2-fade .2s var(--w2-ease); }
+@keyframes w2-slide { from { opacity: 0; transform: translateX(10px); } }
+@keyframes w2-fade { from { opacity: 0; } }
+body.win-v2 .w2-detail__bar { display: flex; align-items: center; gap: 14px; min-height: 36px; margin: 0 52px 16px 0; }
+body.win-v2 .w2-back {
+  flex: none; display: inline-flex; align-items: center; gap: 6px; height: 36px; padding: 0 12px 0 8px;
+  border: 1px solid var(--w2-edge); border-radius: 10px; background: var(--w2-tile); color: var(--w2-ink);
+  font: 500 13.5px/1 var(--w2-font); cursor: pointer; transition: border-color .15s ease-out, background-color .15s ease-out;
+}
+body.win-v2 .w2-back:hover { border-color: #56606b; background: var(--w2-tile-hi); }
+body.win-v2 .w2-back svg { color: var(--w2-acc); }
+body.win-v2 .w2-detail__id { min-width: 0; }
+body.win-v2 .w2-detail__name { margin: 0; font: 600 16.5px/1.3 var(--w2-display); letter-spacing: -0.01em; color: var(--w2-ink); }
+body.win-v2 .w2-detail__meta { margin: 2px 0 0; font-size: 13px; line-height: 1.4; color: var(--w2-muted); }
+body.win-v2 .w2-points { list-style: none; margin: 0; padding: 0 2px; columns: 2; column-gap: 28px; }
+body.win-v2 .w2-points--one { columns: 1; max-width: 70ch; }
+body.win-v2 .w2-points li {
+  position: relative; break-inside: avoid; margin: 0 0 12px; padding-left: 18px;
+  font-size: 13.5px; line-height: 1.5; color: var(--w2-body); text-wrap: pretty;
+}
+body.win-v2 .w2-points li::before { content: ""; position: absolute; left: 2px; top: calc(.75em - 3px); width: 6px; height: 6px; background: #4b545e; }
+body.win-v2 .w2-points li.has-result::before { background: var(--w2-acc); }
+body.win-v2 .w2-points b { color: #fff; font-weight: 600; }
+
+/* Обо мне: визитка · условия / рассказ · цитата. */
+body.win-v2 .w2-about { display: grid; grid-template-columns: minmax(0, 1.12fr) minmax(0, .88fr); gap: 10px; }
+body.win-v2 .w2-who { margin: 0; font: 600 19px/1.3 var(--w2-display); letter-spacing: -0.01em; color: var(--w2-ink); }
+body.win-v2 .w2-role { margin: 4px 0 0; font-size: 14px; color: var(--w2-body); }
+body.win-v2 .w2-lede { margin: 14px 0 16px; font-size: 16.5px; line-height: 1.45; font-weight: 500; color: #fff; text-wrap: balance; }
+body.win-v2 .w2-contacts { display: flex; flex-wrap: wrap; gap: 8px; }
+body.win-v2 .win__body .w2-contact {
+  padding: 8px 13px; border: 1px solid var(--w2-edge); border-radius: 10px; color: var(--w2-ink); text-decoration: none; font-size: 13.5px;
+  transition: border-color .15s ease-out, background-color .15s ease-out;
+}
+body.win-v2 .win__body .w2-contact:hover { border-color: #56606b; background: var(--w2-tile-hi); }
+body.win-v2 .win__body .w2-contact--main { background: var(--w2-acc); border-color: var(--w2-acc); color: var(--w2-acc-ink); font-weight: 600; }
+body.win-v2 .win__body .w2-contact--main:hover { background: var(--w2-acc-hi); border-color: var(--w2-acc-hi); }
+/* gap: 0 — снять зазоры из общих стилей окна (.win__body dl), иначе линии строк рвутся. */
+body.win-v2 .w2-facts { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 0; margin: 0; }
+body.win-v2 .w2-facts dt, body.win-v2 .w2-facts dd { margin: 0; padding: 9px 0; border-top: 1px solid var(--w2-line); }
+body.win-v2 .w2-facts dt { padding-right: 20px; font-size: 13px; color: var(--w2-muted); }
+body.win-v2 .w2-facts dd { font-size: 14px; color: var(--w2-ink); }
+body.win-v2 .w2-facts dt:first-of-type, body.win-v2 .w2-facts dt:first-of-type + dd { border-top: 0; padding-top: 2px; }
+body.win-v2 .w2-story { margin: 0; font-size: 14.5px; line-height: 1.6; color: var(--w2-body); text-wrap: pretty; }
+/* Разработчик 14.10: в обзоре — первая фраза рассказа и «Читать полностью», весь рассказ — в подробностях, в две колонки. */
+body.win-v2 .w2-teaser { display: flex; flex-direction: column; align-items: flex-start; justify-content: center; gap: 12px; }
+body.win-v2 .w2-teaser .w2-more { margin: 0; }
+body.win-v2 .w2-story--full { columns: 2; column-gap: 28px; padding: 0 2px; }
+body.win-v2 .w2-quote { display: flex; flex-direction: column; justify-content: center; }
+/* padding и border: 0 — снять полосу слева из общих стилей окна (.win__body blockquote). */
+body.win-v2 .w2-quote blockquote {
+  margin: 0; padding: 0; border: 0; font-size: 17px; line-height: 1.45; font-weight: 500; color: #fff; text-wrap: pretty;
+}
+body.win-v2 .w2-quote blockquote::before {
+  content: "\201C"; display: block; height: 24px; font: 600 40px/1 var(--w2-display); color: var(--w2-acc);
+}
+
+/* Показатели: четыре блока в ряд. */
+body.win-v2 .w2-metrics { list-style: none; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin: 0; padding: 0; }
+body.win-v2 .w2-num { display: block; font: 600 32px/1.05 var(--w2-display); letter-spacing: -0.02em; color: var(--w2-acc); font-variant-numeric: tabular-nums; }
+body.win-v2 .w2-num small { margin-left: 1px; font-size: .55em; letter-spacing: 0; }
+body.win-v2 .w2-cap { display: block; margin-top: 10px; font-size: 13.5px; line-height: 1.4; color: var(--w2-body); }
+
+/* Продукты: три блока в ряд, ссылка прижата к низу. */
+body.win-v2 .w2-prods { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+body.win-v2 .w2-prod { display: flex; flex-direction: column; }
+body.win-v2 .w2-prod__tag { margin: 4px 0 12px; font-size: 13.5px; line-height: 1.4; color: var(--w2-muted); }
+body.win-v2 .w2-prod__text { margin: 0 0 14px; font-size: 14px; line-height: 1.55; color: var(--w2-body); text-wrap: pretty; }
+body.win-v2 .w2-prod .w2-chips { margin-bottom: 16px; }
+body.win-v2 .win__body .w2-prod .w2-link { margin-top: auto; align-self: flex-start; }
+
+/* Навыки: группы блоками, ровными рядами; пятая группа дотягивает ряд. */
+body.win-v2 .w2-skills { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; align-items: start; }
+body.win-v2 .w2-skill:last-child:nth-child(3n + 2) { grid-column: span 2; }
+body.win-v2 .w2-skill .w2-h { margin-bottom: 12px; font-size: 14.5px; }
+body.win-v2 .w2-skill .w2-chips li { font-size: 13.5px; color: var(--w2-ink); }
+
+/* Образование, курсы, языки: два блока рядом. */
+body.win-v2 .w2-pair { list-style: none; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin: 0; padding: 0; }
+body.win-v2 .w2-year { display: block; margin-bottom: 12px; font: 600 26px/1.1 var(--w2-display); color: var(--w2-acc); font-variant-numeric: tabular-nums; }
+body.win-v2 .w2-deg { display: block; font-size: 15px; line-height: 1.35; font-weight: 600; color: var(--w2-ink); }
+body.win-v2 .w2-place { display: block; margin-top: 4px; font-size: 13.5px; line-height: 1.45; color: var(--w2-body); }
+body.win-v2 .w2-lang { display: block; font: 600 17px/1.3 var(--w2-display); color: var(--w2-ink); }
+body.win-v2 .w2-level { display: block; margin-top: 6px; font-size: 14px; color: var(--w2-body); }
+
+/* Ширина под планшет (внутри окна ≤ 700 px): продукты и навыки — по два.
+   Окно «Показатели» (760) сюда не попадает; в узких окнах (640) этих сеток нет. */
+@container w2 (max-width: 700px) {
+  body.win-v2 .w2-prods, body.win-v2 .w2-skills { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  body.win-v2 .w2-skill:last-child:nth-child(3n + 2) { grid-column: auto; }
+  body.win-v2 .w2-skill:last-child:nth-child(odd) { grid-column: span 2; }
+}
+/* Узкое окно (телефон): всё столбиком, показатели 2 × 2. */
+@container w2 (max-width: 560px) {
+  body.win-v2 .w2-jobs, body.win-v2 .w2-prods, body.win-v2 .w2-skills,
+  body.win-v2 .w2-about, body.win-v2 .w2-pair { grid-template-columns: minmax(0, 1fr); }
+  body.win-v2 .w2-skill:last-child:nth-child(odd) { grid-column: auto; }
+  body.win-v2 .w2-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  body.win-v2 .w2-points, body.win-v2 .w2-story--full { columns: 1; }
+  body.win-v2 .w2-num { font-size: 28px; }
+  body.win-v2 .w2-detail__bar { align-items: flex-start; flex-direction: column; gap: 10px; margin-right: 44px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body.win-v2 .win__panel, body.win-v2 .w2-detail, body.win-v2 .w2.was-deep .w2-over { animation: none; }
+  body.win-v2 .w2-more svg { transition: none; }
+}

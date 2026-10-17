@@ -1,0 +1,387 @@
+/* «Картотека» — варианты «Обо мне» и «Навыков» (W3X из v3x.js) и пиксельный шрифт акцентов.
+   Разработчик 14–15.10, в стиле «Картотеки» Дизайнера: её токены (--w3-*), срезанные углы, клетки 4 px.
+   Всё под body.win-v3. Шрифты-файлы — fonts/fonts.css. */
+
+/* ---------- Ширина окна: варианты на одном экране шире прежних 880 (владелец: окно шире офиса — можно) ---------- */
+body.win-v3 .win__panel:has(.w3x-about-b), body.win-v3 .win__panel:has(.w3x-skills-a) { width: min(1000px, calc(100% - 48px)); }
+/* «Обо мне» А — выбор владельца 15.10; карточка 300, чтобы имя Press Start 19,2 px встало одной строкой (269 px) */
+body.win-v3 .win__panel:has(.w3x-about-a) { width: min(1080px, calc(100% - 48px)); }
+body.win-v3 .win__panel:has(.w3x-skills-b) { width: min(960px, calc(100% - 48px)); }
+
+/* ---------- Обо мне, А — карточка персонажа ---------- */
+body.win-v3 .w3x-about-a { display: grid; grid-template-columns: 300px minmax(0, 1fr); column-gap: 26px; align-items: start; }
+body.win-v3 .w3x-card { display: flex; flex-direction: column; padding: 12px; background: var(--w3-well); clip-path: var(--w3-notch); }
+/* Портрет в пиксельной рамке: обод 4 px цвета рамки окна, срезанные углы. */
+body.win-v3 .w3x-photo {
+  position: relative; aspect-ratio: 707 / 768; overflow: hidden; background: #1d222a; clip-path: var(--w3-notch);
+}
+body.win-v3 .w3x-photo::after { content: ""; position: absolute; inset: 0; box-shadow: inset 0 0 0 4px var(--w3-rim); clip-path: var(--w3-notch); }
+body.win-v3 .w3x-photo img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: 50% 0; }
+/* Портрет из знаков, как на нынешнем сайте: знаки на холсте, фото поверх проступает в круге под курсором. */
+body.win-v3 .w3x-glyph { --mx: 50%; --my: 40%; background: var(--w3-bg); }
+/* в карточке 300 px портрет ниже своей пропорции — лицо и плечи, низ обрезан (иначе кнопки уходят под край окна) */
+body.win-v3 .w3x-about-a .w3x-photo { aspect-ratio: auto; height: 250px; }
+body.win-v3 .w3x-glyph .w3x-glyphs, body.win-v3 .w3x-glyph .w3x-photo__img { position: absolute; inset: 0; display: block; width: 100%; height: 100%; }
+body.win-v3 .w3x-glyph .w3x-photo__img {
+  object-fit: cover; object-position: 50% 0; opacity: 0; transition: opacity .35s ease;
+  -webkit-mask-image: radial-gradient(circle 110px at var(--mx) var(--my), #000 20%, transparent 70%);
+  mask-image: radial-gradient(circle 110px at var(--mx) var(--my), #000 20%, transparent 70%);
+}
+body.win-v3 .w3x-glyph.is-live .w3x-photo__img { opacity: 1; }
+body.win-v3 .w3x-glyph.is-plain .w3x-photo__img { opacity: 1; -webkit-mask-image: none; mask-image: none; }
+body.win-v3 .w3x-glyph.is-plain .w3x-glyphs { display: none; }
+body.win-v3 .w3x-photo::after { z-index: 1; }
+@media (prefers-reduced-motion: reduce) { body.win-v3 .w3x-glyph .w3x-photo__img { transition: none; } }
+body.win-v3 .w3x-photo--none { display: grid; place-items: center; font: 600 64px/1 var(--w3-display); color: var(--w3-muted); }
+body.win-v3 .w3x-name { margin: 14px 0 0; font: 600 19px/1.3 var(--w3-display); letter-spacing: -0.01em; color: var(--w3-ink); white-space: nowrap; }
+body.win-v3 .w3x-role { margin: 4px 0 14px; font-size: 13.5px; line-height: 1.45; color: var(--w3-body); }
+body.win-v3 .w3x-btns { display: flex; flex-direction: column; gap: 6px; }
+body.win-v3 .win__body .w3x-btns .w3-btn { justify-content: center; }
+body.win-v3 .w3x-btns--row { flex-direction: row; flex-wrap: wrap; margin: 0 0 16px; }
+body.win-v3 .w3x-main { min-width: 0; }
+body.win-v3 .w3x-lede { margin: 0 0 10px; font-size: 18px; line-height: 1.4; font-weight: 500; color: #fff; text-wrap: balance; }
+body.win-v3 .w3x-story { margin: 0 0 14px; font-size: 14.5px; line-height: 1.5; color: var(--w3-body); text-wrap: pretty; }
+/* Условия — плитками, как характеристики персонажа: подпись над значением. */
+body.win-v3 .w3x-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; margin: 0 0 14px; }
+body.win-v3 .w3x-stats div { padding: 7px 12px 8px; background: var(--w3-well); }
+body.win-v3 .w3x-stats dt { font-size: 12px; line-height: 1.35; color: var(--w3-muted); }
+body.win-v3 .w3x-stats dd { margin: 3px 0 0; font-size: 14px; line-height: 1.35; color: var(--w3-ink); }
+body.win-v3 .w3x-quote { margin: 0; }
+
+/* ---------- Обо мне, Б — досье в две колонки ---------- */
+body.win-v3 .w3x-about-b { display: grid; grid-template-columns: minmax(0, .9fr) minmax(0, 1.1fr); column-gap: 28px; align-items: start; }
+body.win-v3 .w3x-about-b .w3x-name { margin: 0; }
+body.win-v3 .w3x-about-b .w3x-lede { margin: 14px 0 16px; }
+body.win-v3 .w3x-facts { margin: 0 0 16px; }
+body.win-v3 .w3x-facts dt, body.win-v3 .w3x-facts dd { padding: 8px 12px; }
+body.win-v3 .w3x-about-b .w3x-story { margin: 0; font-size: 14px; line-height: 1.55; }
+
+/* ---------- Навыки, А — инвентарь: все группы сразу, ячейками в три колонки ---------- */
+body.win-v3 .w3x-skills-a { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; align-items: start; }
+body.win-v3 .w3x-colslot { display: grid; gap: 8px; }
+body.win-v3 .w3x-slot {
+  padding: 12px 12px 14px;
+  background: var(--w3-well); clip-path: var(--w3-notch);
+}
+body.win-v3 .w3x-group { margin: 0; font: 600 14.5px/1.35 var(--w3-display); letter-spacing: 0; color: var(--w3-ink); }
+body.win-v3 .w3x-count { margin: 2px 0 10px; font-size: 12px; color: var(--w3-muted); font-variant-numeric: tabular-nums; }
+body.win-v3 .w3x-chips { margin: 0; }
+body.win-v3 .w3x-chips li { padding: 4px 9px; font-size: 13.5px; color: var(--w3-ink); }
+
+/* ---------- Навыки, Б — таблица: группа слева, навыки справа ---------- */
+body.win-v3 .w3x-skills-b { display: grid; gap: 4px; }
+body.win-v3 .w3x-row {
+  display: grid; grid-template-columns: 210px minmax(0, 1fr); column-gap: 18px; align-items: start;
+  padding: 12px 14px; background: var(--w3-well);
+}
+body.win-v3 .w3x-row .w3x-group { padding-top: 4px; }
+/* маркер группы — клетка 4 px, как у пунктов опыта */
+body.win-v3 .w3x-row .w3x-group::before { content: ""; display: inline-block; width: 4px; height: 4px; margin: 0 10px 0 0; vertical-align: 3px; background: var(--w3-acc); }
+
+/* ---------- Пиксельный шрифт акцентов (владелец: «акцентный шрифт пиксельный, а текст обычным») ----------
+   Обе гарнитуры — сетка 8 пикселей на em: чётко при 125 % только размеры, кратные 6,4 px (12,8 / 19,2 / 25,6 / 38,4).
+   Насыщенность 400 и без синтеза — иначе браузер утолщает клетки и мылит; межбуквенный — 0. */
+body.win-v3.w3-font-press .win__title, body.win-v3.w3-font-press .w3-name, body.win-v3.w3-font-press .w3x-name,
+body.win-v3.w3-font-press .w3-who, body.win-v3.w3-font-press .w3x-group, body.win-v3.w3-font-press .w3-num,
+body.win-v3.w3-font-press .w3-year, body.win-v3.w3-font-press .w3-lang,
+body.win-v3.w3-font-tiny5 .win__title, body.win-v3.w3-font-tiny5 .w3-name, body.win-v3.w3-font-tiny5 .w3x-name,
+body.win-v3.w3-font-tiny5 .w3-who, body.win-v3.w3-font-tiny5 .w3x-group, body.win-v3.w3-font-tiny5 .w3-num,
+body.win-v3.w3-font-tiny5 .w3-year {
+  font-weight: 400; font-synthesis: none; letter-spacing: 0; -webkit-font-smoothing: none;
+  filter: url(#w3x-crisp);   /* порог прозрачности: без цветной бахромы ClearType (v3x.js) */
+}
+/* Press Start 2P — широкий, «восьмибитный»: 12,8 для строк, 19,2 для имени, 25,6 для чисел. */
+body.win-v3.w3-font-press .win__title { font-family: 'Press Start 2P', monospace; font-size: 12.8px; line-height: 1.5; }
+body.win-v3.w3-font-press .w3-name, body.win-v3.w3-font-press .w3x-group, body.win-v3.w3-font-press .w3-year,
+body.win-v3.w3-font-press .w3-lang {   /* «Русский», «Английский» — тоже акцент (владелец 15.10) */
+  font-family: 'Press Start 2P', monospace; font-size: 12.8px; line-height: 1.5;
+}
+body.win-v3.w3-font-press .w3x-name, body.win-v3.w3-font-press .w3-who { font-family: 'Press Start 2P', monospace; font-size: 19.2px; line-height: 1.25; }
+body.win-v3.w3-font-press .w3-num { font-family: 'Press Start 2P', monospace; font-size: 25.6px; line-height: 1.25; }
+body.win-v3.w3-font-press .w3-num small { font-size: 12.8px; margin-left: 4px; }
+/* Tiny5 — узкий и мельче на глаз: 19,2 для строк, 25,6 для имени и мест, 38,4 для чисел. */
+body.win-v3.w3-font-tiny5 .win__title, body.win-v3.w3-font-tiny5 .w3x-group, body.win-v3.w3-font-tiny5 .w3-year {
+  font-family: 'Tiny5', monospace; font-size: 19.2px; line-height: 1.25;
+}
+body.win-v3.w3-font-tiny5 .w3-name, body.win-v3.w3-font-tiny5 .w3x-name, body.win-v3.w3-font-tiny5 .w3-who {
+  font-family: 'Tiny5', monospace; font-size: 25.6px; line-height: 1.25;
+}
+body.win-v3.w3-font-tiny5 .w3-num { font-family: 'Tiny5', monospace; font-size: 38.4px; line-height: 1; }
+body.win-v3.w3-font-tiny5 .w3x-about-a .w3x-name { font-size: 19.2px; }   /* в карточке 300 px — иначе окно выше места на 7 px */
+body.win-v3.w3-font-tiny5 .w3-num small { font-size: 19.2px; margin-left: 4px; }
+
+/* ---------- Телефон (узкое окно) — столбиком ---------- */
+@container w3 (max-width: 560px) {
+  body.win-v3 .w3x-about-a, body.win-v3 .w3x-about-b { grid-template-columns: minmax(0, 1fr); row-gap: 16px; }
+  body.win-v3 .w3x-card { display: grid; grid-template-columns: 96px minmax(0, 1fr); column-gap: 14px; align-items: start; }
+  body.win-v3 .w3x-photo { grid-row: 1 / span 2; }
+  body.win-v3 .w3x-card .w3x-name { margin-top: 2px; }
+  body.win-v3 .w3x-card .w3x-btns { grid-column: 1 / -1; margin-top: 12px; }
+  body.win-v3 .w3x-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  body.win-v3 .w3x-skills-a { grid-template-columns: minmax(0, 1fr); }
+  body.win-v3 .w3x-row { grid-template-columns: minmax(0, 1fr); row-gap: 8px; }
+}
+
+/* ---------- Тетрис в автомате (макет, 15.10): стакан + сведения; рекорды вместо табло, видны во время игры ---------- */
+body.win-v3 .win__panel:has(.w3x-tetris-a) { width: min(840px, calc(100% - 48px)); }   /* А — выбор владельца 15.10; шире ради пояснений спецклеток */
+body.win-v3 .win__panel:has(.w3x-tetris-b) { width: min(860px, calc(100% - 48px)); }
+body.win-v3 .w3x-tetris { display: grid; column-gap: 20px; align-items: start; }
+body.win-v3 .w3x-tetris-a { grid-template-columns: auto minmax(0, 1fr); }
+body.win-v3 .w3x-tetris-b { grid-template-columns: 220px auto minmax(0, 1fr); }
+body.win-v3 .w3x-board { padding: 4px; background: var(--w3-out); line-height: 0; }
+body.win-v3 .w3x-board img, body.win-v3 .w3x-next, body.win-v3 .w3x-legend img { image-rendering: pixelated; }
+body.win-v3 .w3x-tcol { display: grid; gap: 10px; min-width: 0; }
+body.win-v3 .w3x-tblock { margin: 0; padding: 10px 12px; background: var(--w3-well); }
+body.win-v3 .w3x-tblock .w3x-group { margin: 0 0 8px; }
+body.win-v3 .w3x-stats-t { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; }
+body.win-v3 .w3x-stats-t div { min-width: 0; }
+body.win-v3 .w3x-stats-t dt { font-size: 12px; color: var(--w3-muted); }
+body.win-v3 .w3x-stats-t dd { margin: 4px 0 0; }
+body.win-v3 .w3x-tnum { font: 600 18px/1.2 var(--w3-display); color: var(--w3-acc); font-variant-numeric: tabular-nums; }
+body.win-v3 .w3x-top { list-style: none; margin: 0; padding: 0; display: grid; gap: 0; }
+body.win-v3 .w3x-top li { display: grid; grid-template-columns: 22px minmax(0, 1fr) auto; column-gap: 8px; align-items: baseline; padding: 1px 6px; }
+body.win-v3 .w3x-top li.is-mine { background: var(--w3-mark); }
+body.win-v3 .w3x-place { color: var(--w3-muted); font-size: 12px; font-variant-numeric: tabular-nums; }
+body.win-v3 .w3x-nick { color: var(--w3-ink); font-size: 13px; }
+body.win-v3 .w3x-best { color: var(--w3-acc); font-size: 13px; font-variant-numeric: tabular-nums; }
+body.win-v3 .w3x-own { margin: 8px 0 0; font-size: 12.5px; color: var(--w3-body); }
+body.win-v3 .w3x-note, body.win-v3 .w3x-mock { margin: 4px 0 0; font-size: 11.5px; color: var(--w3-muted); }
+body.win-v3 .w3x-mock { margin-top: 10px; }
+body.win-v3 .w3x-legend { list-style: none; margin: 0; padding: 0; display: grid; gap: 3px; }
+body.win-v3 .w3x-legend li { display: grid; grid-template-columns: 16px minmax(0, 1fr); column-gap: 8px; align-items: start; font-size: 12px; line-height: 1.35; color: var(--w3-body); }
+body.win-v3 .w3x-legend b { font-weight: 600; color: var(--w3-ink); }
+/* Press Start 2P: цифры счёта 19,2; ники, места и очки 12,8 */
+body.win-v3.w3-font-press .w3x-tnum, body.win-v3.w3-font-press .w3x-nick, body.win-v3.w3-font-press .w3x-best, body.win-v3.w3-font-press .w3x-place {
+  font-family: 'Press Start 2P', monospace; font-weight: 400; font-synthesis: none; letter-spacing: 0; filter: url(#w3x-crisp);
+}
+body.win-v3.w3-font-press .w3x-tnum { font-size: 19.2px; line-height: 1.25; }
+body.win-v3.w3-font-press .w3x-nick, body.win-v3.w3-font-press .w3x-best, body.win-v3.w3-font-press .w3x-place { font-size: 12.8px; line-height: 1.25; }
+@container w3 (max-width: 560px) {
+  body.win-v3 .w3x-tetris-a, body.win-v3 .w3x-tetris-b { grid-template-columns: minmax(0, 1fr); row-gap: 12px; justify-items: center; }
+  body.win-v3 .w3x-tcol { width: 100%; }
+  body.win-v3 .w3x-tpair { grid-template-columns: minmax(0, 1fr); }
+}
+
+/* стакан — 448 px: клетка 22,4 px = 28 точек экрана при 125 %; иначе окно выше места (594 / 692 при 531) */
+/* стакан 208×416 — клетка 20,8 px = 26 точек экрана при 125 %; под ним ряд клавиш (вернул 15.10), всё в высоту окна */
+body.win-v3 .w3x-board img { width: 208px; height: 416px; }
+body.win-v3 .w3x-boardcol { display: grid; gap: 8px; justify-items: start; }
+body.win-v3 .w3x-keys { display: flex; gap: 6px; align-items: stretch; }
+body.win-v3 .w3x-keys__group { display: flex; gap: 3px; }
+body.win-v3 .w3x-key {
+  position: relative; display: grid; place-items: center; min-width: 30px; height: 34px; padding: 0 4px 6px;
+  border: 0; border-radius: 0; background: var(--w3-raise); color: var(--w3-ink); cursor: pointer;
+  box-shadow: inset 0 -4px 0 var(--w3-out); clip-path: var(--w3-notch); font: 600 15px/1 var(--w3-font);
+  transition: background-color .12s ease-out;
+}
+body.win-v3 .w3x-key:hover { background: #2f353e; }
+body.win-v3 .w3x-key:active { box-shadow: inset 0 -2px 0 var(--w3-out); padding-bottom: 4px; }
+body.win-v3 .w3x-key--wide { min-width: 58px; }
+body.win-v3 .w3x-key small { position: absolute; right: 4px; bottom: 6px; font: 400 9px/1 var(--w3-font); color: var(--w3-muted); }
+body.win-v3 .w3x-key--wide small { right: auto; left: 50%; transform: translateX(-50%); }
+body.win-v3 .w3x-key:focus-visible { outline: 2px solid var(--w3-acc); outline-offset: -3px; }
+body.win-v3 .w3x-key__glyph { transform: translateY(-2px); }
+body.win-v3 .w3x-trow { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 10px; align-items: stretch; }
+body.win-v3 .w3x-trow > * { margin: 0; }
+body.win-v3 .w3x-tetris-a .w3x-stats-t { align-content: center; }
+/* рекорды и спецклетки рядом: в одну колонку с пояснениями не влезает уже при 6 рекордах, а их бывает 10 */
+body.win-v3 .w3x-tpair { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 10px; align-items: start; }
+body.win-v3 .w3x-tpair > * { margin: 0; }
+body.win-v3 .w3x-tetris-b .w3x-stats-t { grid-template-columns: minmax(0, 1fr); }
+body.win-v3 .w3x-tetris-b .w3x-stats-t div { display: flex; justify-content: space-between; align-items: baseline; }
+body.win-v3 .w3x-tetris-b .w3x-stats-t dd { margin: 0; }
+/* телефон: окно «Картотеки» во всю ширину — правила ширины широких окон (min(…, 100% − 48px)) его перебивали */
+body.win-v3.is-phone .win__panel:has(.w3x) { width: calc(100% - 16px); }
+
+/* ---------- Тетрис, 15.10 вечер: «Аркада» и «Пульт» — колонки по высоте стакана, пиксельные клавиши (tetris/keys.js) ----------
+   Владелец о раскладке А: «не нравится, как расположены блоки, и кнопки управления» — справа блоки разной высоты,
+   под ними пустота, клавиши мелкие. --pk — клетка рисунка клавиш в CSS-пикселях (ставит PixKeys.mount). */
+body.win-v3 .win__panel:has(.w3x-tetris-arcade) { width: min(900px, calc(100% - 48px)); }
+body.win-v3 .win__panel:has(.w3x-tetris-deck) { width: min(900px, calc(100% - 48px)); }
+body.win-v3 .w3x-tetris-arcade { grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); column-gap: 16px; align-items: stretch; }
+body.win-v3 .w3x-tetris-deck { grid-template-columns: auto minmax(0, 1fr); column-gap: 16px; align-items: stretch; }
+body.win-v3 .w3x-tetris-arcade > .w3x-board, body.win-v3 .w3x-tetris-deck > .w3x-board { align-self: start; }
+body.win-v3 .w3x-side { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+body.win-v3 .w3x-side > * { margin: 0; }
+body.win-v3 .w3x-tetris-arcade .w3x-side > :last-child { flex: 1 1 auto; }   /* низ колонок — по дну стакана */
+/* клавиша: холст без рамок кнопки; нажатие рисует сам холст (верх опускается на бортик) */
+body.win-v3 .w3x-pkey { display: block; position: relative; padding: 0; border: 0; background: none; line-height: 0; cursor: pointer; }
+body.win-v3 .w3x-pkey canvas { display: block; position: relative; image-rendering: pixelated; }
+body.win-v3 .w3x-pkey:hover canvas { filter: brightness(1.14); }
+body.win-v3 .w3x-pkey:focus-visible { outline: 2px solid var(--w3-acc); outline-offset: 2px; }
+/* «Аркада»: пульт буквой «Т», P над ←, пробел во всю ширину; рядом — что делает каждая клавиша */
+body.win-v3 .w3x-ctl__in { display: flex; align-items: center; gap: 16px; }
+body.win-v3 .w3x-pad {
+  display: grid; grid-template-areas: "p u ." "l d r" "s s s"; gap: calc(var(--pk, 1.6px) * 3);   /* 3 клетки, как на референсе */ justify-content: start;
+}
+body.win-v3 .w3x-how { list-style: none; margin: 0; padding: 0; display: grid; gap: 3px; font-size: 12px; line-height: 1.35; color: var(--w3-body); }
+body.win-v3 .w3x-how b { font-weight: 600; color: var(--w3-ink); }
+body.win-v3 .w3x-nexthud { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 10px; }
+body.win-v3 .w3x-nexthud > * { margin: 0; }
+body.win-v3 .w3x-hud { margin: 0; display: grid; gap: 6px; }
+body.win-v3 .w3x-hud dt { font-size: 12px; line-height: 1.3; color: var(--w3-muted); }
+body.win-v3 .w3x-hud dd { margin: 2px 0 0; }
+/* «Пульт»: табло строкой, рекорды и спецклетки рядом, клавиши одним рядом с подписями */
+body.win-v3 .w3x-tetris-deck .w3x-tpair { flex: 1 1 auto; align-items: stretch; }
+body.win-v3 .w3x-board-hud { display: flex; align-items: center; gap: 28px; }
+body.win-v3 .w3x-hudnext { display: flex; align-items: center; gap: 12px; }
+body.win-v3 .w3x-hudlbl { font-size: 12px; color: var(--w3-muted); }
+body.win-v3 .w3x-hud--row { display: flex; gap: 28px; }
+body.win-v3 .w3x-deck { display: flex; align-items: center; gap: 20px; }
+body.win-v3 .w3x-tblock.w3x-deck .w3x-group { margin: 0; }
+body.win-v3 .w3x-deck__keys { display: flex; align-items: flex-start; gap: calc(var(--pk, 1.6px) * 8); }
+body.win-v3 .w3x-deck__grp { display: flex; align-items: flex-start; gap: calc(var(--pk, 1.6px) * 3); }
+body.win-v3 .w3x-cap { display: grid; justify-items: center; gap: 4px; }
+body.win-v3 .w3x-cap small { font-size: 11px; line-height: 1.2; color: var(--w3-muted); white-space: nowrap; }
+/* телефон: стакан, сразу под ним клавиши, потом остальное */
+@container w3 (max-width: 560px) {
+  body.win-v3 .w3x-tetris-arcade, body.win-v3 .w3x-tetris-deck { grid-template-columns: minmax(0, 1fr); row-gap: 12px; justify-items: stretch; }
+  body.win-v3 .w3x-tetris-arcade .w3x-side, body.win-v3 .w3x-tetris-deck .w3x-side { display: contents; }
+  body.win-v3 .w3x-tetris-arcade > .w3x-board, body.win-v3 .w3x-tetris-deck > .w3x-board { justify-self: center; order: 1; }
+  body.win-v3 .w3x-ctl, body.win-v3 .w3x-deck { order: 2; }
+  body.win-v3 .w3x-deck { flex-wrap: wrap; }
+  body.win-v3 .w3x-tetris-arcade .w3x-side > *, body.win-v3 .w3x-tetris-deck .w3x-side > * { order: 3; }
+  body.win-v3 .w3x-tetris-arcade .w3x-ctl, body.win-v3 .w3x-tetris-deck .w3x-deck { order: 2; }
+  body.win-v3 .w3x-tetris-deck .w3x-tpair { grid-template-columns: minmax(0, 1fr); }
+}
+/* табло — своей сеткой: общее правило окна «.win__body dl» (подпись | значение) ставило счёт и уровень впритык */
+body.win-v3 .w3x-hud--col { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); column-gap: 10px; }
+body.win-v3 .w3x-hud--col > div:first-child { grid-column: 1 / -1; }   /* счёт — во всю ширину, уровень и линии под ним */
+/* «Пульт» с десяткой рекордов: строки плотнее и промежутки 8 — иначе правая колонка на 22 px ниже стакана (замер 15.10) */
+body.win-v3 .w3x-tetris-deck .w3x-side { gap: 8px; }
+body.win-v3 .w3x-tetris-deck .w3x-top li { padding: 0 6px; }
+@container w3 (max-width: 560px) {
+  body.win-v3 .w3x-deck__keys { flex-wrap: wrap; row-gap: 10px; }   /* на телефоне клавиши крупнее (палец) — в два ряда */
+}
+/* «Обо мне» А на телефоне — без портрета (владелец 15.10: «из мобильной версии убрать мой портрет»; рядом с портретом имя
+   резалось — 269 px при колонке ~180). Карточка в одну колонку: имя одной строкой Press Start 19,2, роль, кнопки связи.
+   Уже 340 px имя 19,2 не влезает — 12,8 (тоже кратно сетке шрифта). */
+@container w3 (max-width: 560px) {
+  body.win-v3 .w3x-about-a .w3x-card { display: flex; flex-direction: column; }
+  body.win-v3 .w3x-about-a .w3x-photo { display: none; }
+  body.win-v3 .w3x-about-a .w3x-card .w3x-name { margin-top: 2px; }
+}
+@container w3 (max-width: 340px) {
+  body.win-v3.w3-font-press .w3x-about-a .w3x-name { font-size: 12.8px; line-height: 1.5; }
+}
+
+/* ---------- Окно раздела на телефоне (15.10, варианты на выбор; поведение — phone.js) ----------
+   Владелец: «телефонная версия не нравится, конкретно как отображается окно». Общее у вариантов: одна прокрутка
+   (части «Картотеки» подряд, без вкладок и прокрутки внутри прокрутки), без подписи предмета, текст крупнее. */
+body.win-v3.is-phone .win__sub { display: none; }
+body.win-v3.is-phone .win__body { font-size: 15px; line-height: 1.55; }
+body.win-v3.is-phone .w3-when, body.win-v3.is-phone .w3x-stats dt, body.win-v3.is-phone .w3-tag { font-size: 13.5px; }
+body.win-v3.is-phone .w3-chips li, body.win-v3.is-phone .w3x-chips li { font-size: 14px; }
+body.win-v3.is-phone .w3.is-stacked { display: block; }
+body.win-v3.is-phone .w3.is-stacked > .w3-rail, body.win-v3.is-phone .w3.is-stacked > .w3-pane { display: none; }
+body:not(.is-phone) .w3p-stack { display: none; }
+body.win-v3 .w3p-stack { display: grid; gap: 20px; }
+body.win-v3 .w3p-item + .w3p-item { padding-top: 20px; border-top: 4px solid var(--w3-line); }
+body.win-v3 .w3p-nav, body.win-v3 .w3p-grab { display: none; }
+
+/* 1 — шторка: одной высоты для всех разделов (не прыгает), ручка сверху; потянуть за шапку вниз — закрыть */
+body.win-v3.is-phone.pw-sheet .win__panel { --w3-max: 88%; height: 88%; margin-bottom: 0; }
+body.win-v3.is-phone.pw-sheet .w3p-grab {
+  display: block; position: absolute; z-index: 3; top: 4px; left: 50%; width: 32px; height: 4px; margin-left: -16px;
+  background: var(--w3-rim); pointer-events: none;
+}
+body.win-v3.is-phone.pw-sheet .win__panel::before { height: 44px; }
+
+/* 2 и 3 — страница на весь экран: без рамки и затемнённого офиса вокруг */
+body.win-v3.is-phone.pw-page .win, body.win-v3.is-phone.pw-flip .win { align-items: stretch; padding: 0; }
+body.win-v3.is-phone.pw-page .win__panel, body.win-v3.is-phone.pw-flip .win__panel {
+  --w3-max: 100%; width: 100%; height: 100%; max-height: 100%; margin: 0; box-shadow: none;
+}
+
+/* 3 — листание: внизу соседние разделы и номер; смахивание вбок — то же */
+body.win-v3.is-phone.pw-flip .win__panel { grid-template-rows: 44px minmax(0, 1fr) auto; }
+body.win-v3.is-phone.pw-flip .w3p-nav {
+  grid-row: 3; grid-column: 1 / -1; display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center;
+  gap: 8px; padding: 8px 10px calc(8px + env(safe-area-inset-bottom, 0px)); background: var(--w3-bar); box-shadow: 0 -4px 0 0 var(--w3-out);
+}
+body.win-v3 .w3p-go {
+  min-height: 44px; min-width: 0; padding: 0 12px; border: 0; background: var(--w3-raise); color: var(--w3-ink);
+  font: 600 14px/1.2 var(--w3-font); clip-path: var(--w3-notch); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer;
+}
+body.win-v3 .w3p-go span { color: var(--w3-acc); font-weight: 700; }
+body.win-v3 .w3p-go--prev { justify-self: start; text-align: left; }
+body.win-v3 .w3p-go--next { justify-self: end; text-align: right; }
+body.win-v3 .w3p-count { font: 400 12.8px/1 'Press Start 2P', monospace; color: var(--w3-muted); filter: url(#w3x-crisp); }
+@keyframes w3p-in-r { from { opacity: 0; transform: translateX(28px); } }
+@keyframes w3p-in-l { from { opacity: 0; transform: translateX(-28px); } }
+body.win-v3 .w3p-in-r { animation: w3p-in-r .2s cubic-bezier(.22, 1, .36, 1); }
+body.win-v3 .w3p-in-l { animation: w3p-in-l .2s cubic-bezier(.22, 1, .36, 1); }
+@media (prefers-reduced-motion: reduce) { body.win-v3 .w3p-in-r, body.win-v3 .w3p-in-l { animation: none; } }
+
+/* ---------- «Аркада» на настоящей игре (15.10): стакан и «далее» — холсты console.js, поверх стакана — стартовый экран,
+   пауза и конец партии. Клетка стакана — целое число точек экрана (подбирает tetrisStart), холсты сдвинуты на целые
+   точки (snap), поэтому без сглаживания. Окно держит фокус само (tabindex −1) — без кольца. */
+body.win-v3 .win__panel:focus { outline: none; }
+body.win-v3 .w3x-live .w3x-board { position: relative; }
+body.win-v3 .w3x-field, body.win-v3 .w3x-nextc { display: block; position: relative; }
+body.win-v3 .w3x-screen, body.win-v3 .w3x-over {
+  position: absolute; inset: 4px; display: grid; place-content: center; justify-items: center; gap: 16px; padding: 16px;
+  text-align: center; line-height: 1.4; background: rgba(11, 12, 14, .84); color: var(--w3-body);
+}
+body.win-v3 .w3x-over { gap: 8px; }
+body.win-v3 .w3x-screen[hidden], body.win-v3 .w3x-over[hidden] { display: none; }
+body.win-v3 .w3x-screen p { margin: 0; }
+body.win-v3 .w3x-screen__title, body.win-v3 .w3x-over b { font: 600 16px/1.3 var(--w3-display); color: var(--w3-acc); }
+body.win-v3 .w3x-over span { font-size: 13px; }
+/* подпись и значение двумя строками по центру («игрок» / ник, «счёт» / число) — в одну строку два шрифта вставали криво */
+body.win-v3 .w3x-screen__who { display: grid; justify-items: center; gap: 6px; }
+body.win-v3 .w3x-screen__lbl { font-size: 12px; line-height: 1.2; color: var(--w3-muted); }
+body.win-v3 .w3x-screen__rec { font-size: 13px; font-weight: 600; color: var(--w3-ink); }
+body.win-v3 .w3x-screen__hint { font-size: 12px; color: var(--w3-muted); }
+body.win-v3.w3-font-press .w3x-screen__title, body.win-v3.w3-font-press .w3x-over b {
+  font-family: 'Press Start 2P', monospace; font-weight: 400; font-synthesis: none; font-size: 12.8px; line-height: 1.5; filter: url(#w3x-crisp);
+}
+body.win-v3.w3-font-press .w3x-screen__title--big { font-size: 19.2px; line-height: 1.25; }   /* кратно сетке шрифта (6,4) */
+
+/* Кнопка экрана, вид «кнопка»: бирюза окна, углы ступеньками и скосы — клетками клавиш (--pk, целые точки экрана),
+   как у пиксельных клавиш пульта: обводка, светлый верх, тёмный низ, средние бока. Нажата — скосы наоборот, надпись ниже. */
+body.win-v3 .w3x-pbtn {
+  --u: var(--pk, 1.6px);
+  position: relative; display: block; margin: 0; border: 0; cursor: pointer; background: var(--w3-acc); color: var(--w3-acc-ink);
+  font: 600 14px/1 var(--w3-display); text-transform: uppercase; letter-spacing: 0;
+  padding: calc(var(--u) * 9) calc(var(--u) * 14);
+  clip-path: polygon(calc(var(--u) * 2) 0, calc(100% - var(--u) * 2) 0, calc(100% - var(--u) * 2) var(--u), calc(100% - var(--u)) var(--u),
+    calc(100% - var(--u)) calc(var(--u) * 2), 100% calc(var(--u) * 2), 100% calc(100% - var(--u) * 2), calc(100% - var(--u)) calc(100% - var(--u) * 2),
+    calc(100% - var(--u)) calc(100% - var(--u)), calc(100% - var(--u) * 2) calc(100% - var(--u)), calc(100% - var(--u) * 2) 100%, calc(var(--u) * 2) 100%,
+    calc(var(--u) * 2) calc(100% - var(--u)), var(--u) calc(100% - var(--u)), var(--u) calc(100% - var(--u) * 2), 0 calc(100% - var(--u) * 2),
+    0 calc(var(--u) * 2), var(--u) calc(var(--u) * 2), var(--u) var(--u), calc(var(--u) * 2) var(--u));
+  --ring: #05060a; --hi: #7eeadb; --lo: #137a6e; --mid: #1fa898;
+  box-shadow: inset 0 0 0 var(--u) var(--ring), inset 0 calc(var(--u) * 4) 0 var(--hi), inset 0 calc(var(--u) * -4) 0 var(--lo),
+    inset calc(var(--u) * 4) 0 0 var(--mid), inset calc(var(--u) * -4) 0 0 var(--mid);
+}
+body.win-v3 .w3x-pbtn:hover { background: var(--w3-acc-hi); }
+body.win-v3 .w3x-pbtn:active { --hi: #137a6e; --lo: #7eeadb; padding-top: calc(var(--u) * 10); padding-bottom: calc(var(--u) * 8); }
+body.win-v3 .w3x-pbtn:focus-visible { outline: none; --ring: #f2f4f6; }   /* рамка фокуса внутри: снаружи её срезали бы углы */
+body.win-v3 .w3x-btxt { display: block; position: relative; }
+body.win-v3.w3-font-press .w3x-pbtn .w3x-btxt, body.win-v3.w3-font-press .w3x-press {
+  font-family: 'Press Start 2P', monospace; font-weight: 400; font-synthesis: none; font-size: 12.8px; line-height: 1;
+}
+/* фильтр чёткости — только на тексте: на всей кнопке «надпись» он рвал рамку фокуса в пунктир */
+body.win-v3.w3-font-press .w3x-pbtn .w3x-btxt, body.win-v3.w3-font-press .w3x-press > span { filter: url(#w3x-crisp); }
+/* вид «клавиша»: ENTER / R тем же рисунком, что пульт, бирюзой (tetris/keys.js, data-pal="acc"); подпись под ней */
+body.win-v3 .w3x-startcap { display: grid; justify-items: center; gap: 8px; }
+body.win-v3 .w3x-startcap small { font-size: 12px; line-height: 1.2; color: var(--w3-muted); }
+body.win-v3 .w3x-startkey:focus-visible { outline: 2px solid var(--w3-ink); outline-offset: 3px; }
+/* вид «надпись»: «▶ ИГРАТЬ» мигает, как PRESS START на автоматах; мигает цвет (кнопку видно и нажать можно всегда),
+   ступенью — без плавного перехода; наведение и фокус останавливают мигание */
+body.win-v3 .w3x-press {
+  position: relative; display: flex; align-items: center; gap: 0.75em; margin: 0; padding: 8px 10px; border: 0; background: none; cursor: pointer;
+  color: var(--w3-acc); font: 600 15px/1 var(--w3-display); text-transform: uppercase; animation: w3x-blink 1.2s steps(1, end) infinite;
+}
+body.win-v3 .w3x-press:hover, body.win-v3 .w3x-press:focus-visible { animation: none; color: var(--w3-acc-hi); }
+body.win-v3 .w3x-press:focus-visible { outline: 2px solid var(--w3-ink); outline-offset: 2px; }
+body.win-v3 .w3x-press__mark { position: relative; }
+@keyframes w3x-blink { 50% { color: transparent; } }
+@media (prefers-reduced-motion: reduce) { body.win-v3 .w3x-press { animation: none; } }
+/* спецклетки: значок той же отрисовкой, что в стакане; та, что сейчас в игре, — акцентом (как на сайте, is-live) */
+body.win-v3 .w3x-licon { display: block; width: 16px; height: 16px; opacity: .85; }
+body.win-v3 .w3x-legend li.is-live .w3x-licon { opacity: 1; }
+body.win-v3 .w3x-legend li.is-live b { color: var(--w3-acc); }
+/* вирус в стакане — поворот не работает: клавиша приглушена (как ↻ на сайте, is-locked) */
+body.win-v3 .w3x-pkey.is-locked canvas { opacity: .4; }
+

@@ -1,0 +1,56 @@
+Copyright (c) 2026 Алексей Коняев (Alexey Konyaev)
+
+В репозитории три вида содержимого под разными условиями.
+
+1. Графика — CC BY-NC 4.0 (Creative Commons «Атрибуция — Некоммерческое использование» 4.0 Международная)
+   https://creativecommons.org/licenses/by-nc/4.0/legalcode.ru
+
+   Графика — все изображения и пиксельные рисунки, где бы они ни лежали, в том числе записанные строками внутри
+   скриптов: пиксельный офис и его предметы (office/), костюмы агентов и их каталог (office/octopus/, office/pix/agents.js),
+   существа, мебель и предметы старой страницы (assets/js/pet.js), пещера и её персонажи, иконка вкладки, картинки
+   превью ссылки.
+
+   Использовать можно только в некоммерческих целях и только с указанием автора и ссылкой:
+   «Алексей Коняев, https://akonyaev-ru.github.io/resume/».
+
+2. Код — лицензия MIT (текст ниже): всё остальное в репозитории, кроме графики (раздел 1) и содержимого раздела 3.
+
+3. Не лицензируется, все права защищены: тексты резюме и личные данные (data/resume.js, страницы резюме),
+   фотография (assets/img/portrait.*).
+
+Чужое — под своими лицензиями: шрифты в assets/fonts/ и office/windows/fonts/ — SIL Open Font License (текст лицензии
+лежит рядом со шрифтом или у его автора). Расстановка предметов офиса (office/art/work/) снята с эскиза, сгенерированного
+Gemini; сами предметы нарисованы заново (office/pix/objects.js).
+
+-------------------------------------------------------------------------------
+
+Copyright (c) 2026 Alexey Konyaev
+
+This repository contains three kinds of content under different terms:
+graphics (all images and pixel art, including pixel art stored as strings inside scripts) — CC BY-NC 4.0, attribution
+"Alexey Konyaev, https://akonyaev-ru.github.io/resume/"; code — MIT (below); résumé texts, personal data and the
+portrait photo — all rights reserved. Fonts are under their own SIL Open Font License.
+
+-------------------------------------------------------------------------------
+
+MIT License
+
+Copyright (c) 2026 Alexey Konyaev
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
