@@ -3103,6 +3103,20 @@
     '...####...................####...',
     '....###...................###....'
   ];
+  /* «AI-AGENTS» — вшитыми рядами (18.10: «почему логотип с надписью появляется на сайте не сразу?»): растр шрифтом
+     в браузере ждал шрифт, а потом офис пересобирался заново — вывеска появлялась на 0,4 с позже офиса (длинная задача
+     0,40–0,42 с). Ряды — ровно то, что даёт textRows('AI-AGENTS') с Press Start 2P 8 px (одинаково при 100 / 125 / 200 %),
+     вместе с тёмными просветами «А» ('x'); сверяет с живым растром проверка office_adds_prod_check.js. Вывеска с
+     логотипом шрифта не ждёт и стоит в первом же кадре офиса. */
+  var AGENTS_ROWS = [
+    '..###....######...........###.....#####.#######.##...##..######..#####.',
+    '.##x##.....##............##x##...##.....##......###..##....##...##...##',
+    '##xxx##....##...........##xxx##.##......##......####.##....##...##.....',
+    '##xxx##....##....######.##xxx##.##..###.######..##.####....##....#####.',
+    '#######....##...........#######.##...##.##......##..###....##........##',
+    '##xxx##....##...........##xxx##..##..##.##......##...##....##...##...##',
+    '##xxx##..######.........##xxx##...#####.#######.##...##....##....#####.'
+  ];
   function sgScale(rows, k) { return rows.map(function (r) { var s = ''; for (var i = 0; i < r.length; i++) for (var q = 0; q < k; q++) s += r[i]; var a = []; for (q = 0; q < k; q++) a.push(s); return a; }).reduce(function (x, y) { return x.concat(y); }, []); }
   function sgStack(a, gap, b) {
     var w = Math.max(a[0].length, b[0].length), pad = function (r) { while (r.length < w) r += '.'; return r; }, e = pad(''), out = a.map(pad);
@@ -3172,10 +3186,10 @@
   // места (точки мира): лицо верхней стены опенспейса — y 8..31, свободно по x 44..611; экран — x 418..606, середина 512,5
   function addsObjs() {
     var v = state.sg, metal = v === 'silver' || v === 'shimmer' || v === 'relief';
-    if (!(SIGN_PAL[v] || metal) || !psOk) return [];
-    var logo = metal && state.st !== 'name';
+    var logo = metal && state.st !== 'name';   // логотип | AI-AGENTS — из вшитых рядов, шрифт не нужен
+    if (!(SIGN_PAL[v] || metal) || (!logo && !psOk)) return [];
     // промежутки у черты — 8: вывеска 198 точек и над экраном целиком в окне телефона (он видит стену с 412) до растения (612)
-    var g = logo ? sgBlocks([LOGO_ROWS, { sep: state.st === 'slash' ? 'slash' : 'bar' }, sgScale(textRows('AI-AGENTS'), 2)], v === 'relief', 8)
+    var g = logo ? sgBlocks([LOGO_ROWS, { sep: state.st === 'slash' ? 'slash' : 'bar' }, sgScale(AGENTS_ROWS, 2)], v === 'relief', 8)
       : metal ? sgSilver(textRows(SIGN_TXT.name), textRows(SIGN_TXT.r1), textRows(SIGN_TXT.r2), v === 'relief')
       : v === 'letters' ? sgLetters(textRows(SIGN_TXT.name), textRows(SIGN_TXT.r1), textRows(SIGN_TXT.r2))
       : sgPlate(textRows(SIGN_TXT.name), textRows(SIGN_TXT.role), v);
@@ -3205,7 +3219,7 @@
     var cs = SPOTS.filter(function (s) { return s.id === 'contacts'; })[0];
     if (cs && CT_OBJ[state.ct]) cs.obj = OT(CT_OBJ[state.ct]);
     if (!PC || !PC.list) return;
-    psLoad();
+    if (SIGN_PAL[state.sg] || state.st === 'name') psLoad();   // логотип | AI-AGENTS — вшитые ряды, шрифт не ждём
     PC.list = pcList(); pcBuild(); PC.rects = PC.mask = null;
     if (PC.ag && PC.ovs) buildOverlays();   // слои ссылаются на номер предмета (par) — список другой, слои заново
     if (spotsBuilt) { layer.querySelectorAll('.spot').forEach(function (e) { e.remove(); }); buildSpots(); }
@@ -3601,6 +3615,8 @@
     agentPoses: function () { if (!(PC && PC.ag)) return null; var ps = agents.map(agentPose); talkOf(ps); return ps.map(function (p) { var a = p.a; return { id: a.d.id, SX: p.SX, SY: p.SY, W: p.W, H: p.H, s: p.s, w: p.w, h: p.h, fr: p.fr.id, foot: p.foot, face: p.face, seat: p.seat ? p.seat.key : null, group: p.seat ? p.seat.group : null, work: p.work, talk: p.talk, talkIcon: p.talk ? TALK[p.talk - 1] : null, emote: p.emote, hold: !!a.hold, state: a.state, sit: !!((a.home.chair || a.home.seat) && a.state === 'sit'), tx: a.tx, ty: a.ty, px: a.px, py: a.py, hx: a.home.x, hy: a.home.y, n: PC.n, wpx: PC.wpx }; }); },
     composes: function () { return PC ? PC.composes || 0 : 0; },
     // живые экраны: прямоугольник в точках рисунка, кадр (null — выключен), какой монитор чей
+    textRows: function (t) { return textRows(t); },   // растр строки шрифтом вывески — сверка вшитых рядов (AGENTS_ROWS) со шрифтом
+    agentsRows: function () { return AGENTS_ROWS.slice(); },
     signInfo: function () {   // вывеска (18.10): вариант, блеск, место и шаг на экранном холсте
       var s = PC && PC.objs && PC.objs.filter(function (it) { return it.o.dyn && it.o.dyn.screen; })[0];
       return s ? { sg: state.sg, st: state.st, sp: state.sp, anim: s.o.dyn.anim, scr: s.o.dyn.scr || null, w: s.o.w, h: s.o.h } : null;
