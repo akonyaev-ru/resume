@@ -25,8 +25,8 @@ DEST = ROOT / "office"
 FILES = {
     "office": [
         "greybox.html",
-        "pix/build_demo.py", "pix/objects.py", "pix/agents.py",
-        "pix/pix.js", "pix/rooms.js", "pix/objects.js", "pix/agents.js", "pix/field.js", "pix/drift.js", "pix/office3d.js",
+        "pix/build_demo.py", "pix/objects.py", "pix/agents.py", "pix/medals.py",
+        "pix/pix.js", "pix/rooms.js", "pix/objects.js", "pix/agents.js", "pix/medals.js", "pix/field.js", "pix/drift.js", "pix/office3d.js",
         "pix/traced/showcase_office.json",
         "art/work/t16/art.js", "art/work/plan.json", "art/work/a/objects.json",
     ],
@@ -82,7 +82,7 @@ def main() -> int:
         (sand / "assets" / "js").mkdir(parents=True)
         shutil.copy2(ROOT / "assets" / "js" / "pet.js", sand / "assets" / "js" / "pet.js")
         ok = same
-        for gen, made in (("objects.py", "objects.js"), ("agents.py", "agents.js")):
+        for gen, made in (("objects.py", "objects.js"), ("agents.py", "agents.js"), ("medals.py", "medals.js")):
             subprocess.run([sys.executable, str(sand / "office" / "pix" / gen)], check=True, capture_output=True)
             eq = filecmp.cmp(sand / "office" / "pix" / made, DEST / "pix" / made, shallow=False)
             print(f"{gen} даёт тот же {made}:", "да" if eq else "НЕТ")
