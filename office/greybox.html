@@ -92,9 +92,11 @@
   .agcard__side { flex: none; display: flex; flex-direction: column; align-items: center; gap: 12px; }   /* пирамида — под рамкой, вне её */
   .agcard__awards { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 12px; margin: 10px 0 0; }
   .agcard__awards > b { opacity: .85; }   /* как «Стаж:» */
-  /* медали в строке «Стаж» у правого края; не помещаются (телефон) — переносятся под дату */
-  .agcard__meta { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 6px 16px; margin: 14px 0 0; }
+  /* медали в строке «Стаж»: после даты отступ, «Награды:» и медали (владелец 18.10: «нужно было сделать пробел от стажа,
+     написать награды: „медали“»); не помещаются (телефон) — подпись с медалями переносится под дату целиком */
+  .agcard__meta { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 28px; margin: 14px 0 0; }
   .agcard__meta > .agcard__since { margin: 0; }
+  .agcard__meta > .agcard__awards { margin: 0; gap: 6px 10px; }   /* на телефоне медали — под подписью: в строку не влезали */
   .agmed { position: relative; line-height: 0; }
   .agmed__cv { image-rendering: pixelated; }
   .agcard__pic, .agmed__cv { position: relative; }   /* W3X.snap ставит холсты на целую точку экрана сдвигом left/top */
@@ -2527,7 +2529,7 @@
     var html = '<div class="agcard agcard--md-' + (row ? 'r' : 'p') + '">' +
       (row || !shelf ? pic : '<div class="agcard__side">' + pic + shelf + '</div>') +
       '<div class="agcard__txt"><h3 class="w3-name agcard__role">' + esc(d.secret ? SECRET.title : d.role) + '</h3>' + text +
-      (state.md === 'l' && shelf ? '<div class="agcard__meta">' + since + shelf + '</div>' : since) +
+      (state.md === 'l' && shelf ? '<div class="agcard__meta">' + since + '<div class="agcard__awards"><b>Награды:</b>' + shelf + '</div></div>' : since) +
       (state.md === 'r' && shelf ? '<div class="agcard__awards"><b>Награды:</b>' + shelf + '</div>' : '') + '</div>' +
       '<div class="agmed__tip" role="status" hidden></div></div>';
     openWin('ИИ-агент', agentName(d), html, from);
@@ -2551,7 +2553,8 @@
   var MEDAL_ORDER = ['m3', 'm6', 'y1', 'disk', 'val'];   // стаж по порядку, затем «Золотой диск» и «Ценный агент»
   var MEDAL_NAME = { m3: 'Испытательный срок', m6: 'Полгода', y1: 'Год', disk: 'Золотой диск', val: 'Ценный агент' };
   var MEDAL_MONTHS = { m3: 3, m6: 6, y1: 12 };
-  var VALUABLE = 'disp';        // «Ценный агент» — одна на весь офис (владелец 18.10: «Да, давай Оливии»)
+  // «Ценный агент» — владелец 18.10: «Да, давай Оливии», затем «Добавь медаль ценного Отто»
+  var VALUABLE = ['disp', 'dev'];
   // «Золотой диск» — папка агента от 1 ГБ, по списку владельца 18.10. Точных размеров в странице нет (владелец 18.10:
   // «чтобы лишний раз не обновлять данные — убери точные данные размера диска»); перерастёт кто-то ещё — дописать сюда.
   var DISK = ['dev', 'sud'];
@@ -2577,8 +2580,8 @@
         m.got = DISK.indexOf(d.id) >= 0;
         m.text = m.got ? 'Папка агента перевалила за гигабайт.' : 'Когда папка агента перерастёт 1 ГБ.';
       } else {
-        m.got = d.id === VALUABLE;
-        m.text = m.got ? 'Главная награда офиса — одна на всех.' : 'Одна на весь офис — она у Оливии.';
+        m.got = VALUABLE.indexOf(d.id) >= 0;
+        m.text = m.got ? 'Главная награда офиса.' : 'Главная награда офиса — пока у Оливии и Отто.';
       }
       return m;
     });
