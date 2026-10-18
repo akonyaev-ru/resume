@@ -39,6 +39,7 @@ INLINE = {   # скрипты страницы: путь в <script src> → ф�
     'art/work/t16/art.js': os.path.join(OFFICE, 'art', 'work', 't16', 'art.js'),
     'pix/objects.js': os.path.join(HERE, 'objects.js'),
     'pix/agents.js': os.path.join(HERE, 'agents.js'),   # агенты: костюм по роли, тело цветом агента (pix/agents.py)
+    'pix/medals.js': os.path.join(HERE, 'medals.js'),   # медали агентов (pix/medals.py, 18.10)
     'pix/field.js': os.path.join(HERE, 'field.js'),   # фон — поле знаков, как на сайте
     'pix/drift.js': os.path.join(HERE, 'drift.js'),
     'pix/office3d.js': os.path.join(HERE, 'office3d.js'),   # 2.5D-демо (16.10, ночь)   # фон — рисунки из знаков (16.10, варианты «Фон за офисом»)
@@ -71,7 +72,7 @@ def script(m):
 
 
 html, n = re.subn(r'<script src="([^"]+)"></script>', script, html)
-assert n == 23, n   # в странице 22 подключения; вставлено 17, выкинуто 5
+assert n == 24, n   # подключений скриптов в странице (18.10: +1 — медали); вставляются из INLINE, прочие выкидываются
 
 # стили окон: @import шрифтов сайта заменяется самими шрифтами (Golos Text, Unbounded — кириллица и латиница) данными в файле
 RES = SITE

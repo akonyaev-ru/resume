@@ -85,6 +85,25 @@
   .agcard__pic { flex: none; image-rendering: pixelated; background: #2b3039; border-radius: 6px; }
   .agcard__txt { min-width: 0; }
   .agcard__txt > p:first-child { margin-top: 0; }
+  /* должность — первой строкой (18.10), переносится, а не режется; сильнее «body.win-v3 .w3-name { margin: 0 }» окон */
+  .agcard__txt > .w3-name.agcard__role { margin: 0 0 10px; }
+  /* медали (18.10): строка «Награды:» под текстом или пирамида 3 + 2 под рамкой портрета; описание — по нажатию */
+  .agcard { position: relative; }
+  .agcard__side { flex: none; display: flex; flex-direction: column; align-items: center; gap: 12px; }   /* пирамида — под рамкой, вне её */
+  .agcard__awards { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 12px; margin: 10px 0 0; }
+  .agcard__awards > b { opacity: .85; }   /* как «Стаж:» */
+  /* медали в строке «Стаж» у правого края; не помещаются (телефон) — переносятся под дату */
+  .agcard__meta { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 6px 16px; margin: 14px 0 0; }
+  .agcard__meta > .agcard__since { margin: 0; }
+  .agmed { position: relative; line-height: 0; }
+  .agmed__cv { image-rendering: pixelated; }
+  .agcard__pic, .agmed__cv { position: relative; }   /* W3X.snap ставит холсты на целую точку экрана сдвигом left/top */
+  .agmed__slot { position: absolute; padding: 0; border: 0; border-radius: 50%; background: transparent; cursor: pointer; }
+  .agmed__slot:focus-visible { outline: 2px solid #2dd4bf; outline-offset: 1px; }
+  .agmed__tip { position: absolute; z-index: 3; padding: 8px 10px 9px; background: #13161a; color: #c6ccd3;
+    font-size: 13.5px; line-height: 1.4; box-shadow: 0 0 0 2px #3d4652, 0 8px 20px rgba(0, 0, 0, .45); }
+  .agmed__tip .agmed__name { display: block; margin: 0 0 4px; color: #f2f4f6; }
+  .agmed__tip.is-locked .agmed__name { color: #9aa1ab; }
   .agcard__since { opacity: .85; }
   /* имён на карте нет — только в карточке агента (владелец 16.10: «имена агентов давай не будем показывать») */
   body.pix.pc-ag .ag .tag { display: none !important; }
@@ -314,6 +333,11 @@
     <button data-v="btn">1 кнопка</button><button data-v="key">2 клавиша «ИГРАТЬ» ✓</button><button data-v="blink">3 надпись</button></div>
   <div class="grp grp--w3 grp--done" data-group="pk"><span class="grp__name">Клавиши:</span>
     <button data-v="ref">как на референсе</button><button data-v="win">в цветах окна ✓</button></div>
+  <!-- решено владельцем 18.10: «Давай в ряд, меньше», затем «одной строкой со стажем» — в решённых (видны с ?show-all) -->
+  <div class="grp grp--done" data-group="md"><span class="grp__name">Медали:</span>
+    <button data-v="l">в строке «Стаж» ✓</button><button data-v="r">строкой «Награды:»</button><button data-v="p">пирамида под рамкой</button></div>
+  <div class="grp grp--done" data-group="ms"><span class="grp__name">Размер медалей:</span>
+    <button data-v="s">меньше ✓</button><button data-v="m">как было</button><button data-v="l">крупнее</button></div>
   <div class="grp" data-group="screen"><span class="grp__name">Экран:</span>
     <button data-v="desk">компьютер</button><button data-v="phone2">телефон</button></div>
   <div class="grp grp--w3 grp--done" data-group="pw"><span class="grp__name">Окно на телефоне:</span>
@@ -353,6 +377,7 @@
 <script src="art/work/t16c/art.js"></script>
 <script src="pix/objects.js"></script>
 <script src="pix/agents.js"></script>
+<script src="pix/medals.js"></script>
 <script src="pix/field.js"></script>
 <script src="pix/drift.js"></script>
 <script src="pix/office3d.js"></script>
@@ -2488,25 +2513,192 @@
     var p = since.split('-').map(Number);
     return 'с ' + p[2] + ' ' + MONTHS_GEN[p[1] - 1] + ' ' + p[0];
   }
-  var AGCARD_MIN = 560;   // окно агента не уже — портрет 130 и описание в три-четыре строки
+  var AGCARD_W = 560;   // окно агента — портрет 130 и описание в три-четыре строки (16.10: было 880, «лишнее место»)
+  /* 18.10: «у агентов с длинным названием теряется имя». Было: в шапке должность, рядом «ИИ-агент · имя», ширина окна — по
+     замеру шапки. Замер шёл до прихода пиксельного шрифта (он грузится при первом открытии окна) — окно 560, и у
+     «Специалиста по проверке контрагентов» имя уходило в многоточие; на телефоне подписи нет вовсе, а должность залезала
+     под крестик. Теперь в шапке имя (короткое — помещается всегда), должность — первой строкой карточки, переносится. */
   function openAgent(d, from) {
     var text = d.secret ? '<p>' + esc(SECRET.text) + '</p>' : d.desc ? '<p>' + esc(d.desc) + '</p>' : '<p class="stub">Описание — после согласования.</p>';
-    var html = '<div class="agcard">' + (PC && PC.ag ? '<canvas class="agcard__pic" aria-hidden="true"></canvas>' : '') +
-      '<div class="agcard__txt">' + text + (d.since ? '<p class="agcard__since"><b>Стаж:</b> ' + esc(stazh(d.since)) + '</p>' : '') + '</div></div>';
-    openWin('ИИ-агент · ' + agentName(d), d.secret ? SECRET.title : d.role, html, from);
+    var pic = PC && PC.ag ? '<canvas class="agcard__pic" aria-hidden="true"></canvas>' : '', shelf = window.PIX_MEDALS ? medalShelfHtml() : '';
+    var row = state.md !== 'p', since = d.since ? '<p class="agcard__since"><b>Стаж:</b> ' + esc(stazh(d.since)) + '</p>' : '';
+    // l — медали в строке «Стаж» у правого края (владелец 18.10: «для экономии места награды одной строкой со стажем»);
+    // r — отдельной строкой «Награды:»; p — пирамида под рамкой портрета
+    var html = '<div class="agcard agcard--md-' + (row ? 'r' : 'p') + '">' +
+      (row || !shelf ? pic : '<div class="agcard__side">' + pic + shelf + '</div>') +
+      '<div class="agcard__txt"><h3 class="w3-name agcard__role">' + esc(d.secret ? SECRET.title : d.role) + '</h3>' + text +
+      (state.md === 'l' && shelf ? '<div class="agcard__meta">' + since + shelf + '</div>' : since) +
+      (state.md === 'r' && shelf ? '<div class="agcard__awards"><b>Награды:</b>' + shelf + '</div>' : '') + '</div>' +
+      '<div class="agmed__tip" role="status" hidden></div></div>';
+    openWin('ИИ-агент', agentName(d), html, from);
     win.dataset.open = 'agent:' + d.id;
-    // ширина — по заголовку, не уже 560 (16.10, позже: «окно агентов не таким широким, лишнее место»; было 880):
-    // должность и «ИИ-агент · имя» в одну строку без многоточия, описание — в три-четыре строки рядом с портретом
     var panel = $('#winPanel');
-    if (!document.body.classList.contains('is-phone')) {
-      // текст заголовка и подписи — по Range (сами элементы растянуты сеткой окна); плюс их отступы, значки и крестик
-      var textW = function (el) { var rg = document.createRange(); rg.selectNodeContents(el); return rg.getBoundingClientRect().width; };
-      var side = function (el) { var cs = getComputedStyle(el), b = getComputedStyle(el, '::before');
-        return parseFloat(cs.paddingLeft) + parseFloat(cs.paddingRight) + (parseFloat(b.width) || 0) + (parseFloat(b.marginRight) || 0) + (parseFloat(cs.columnGap) || 0); };
-      var need = textW($('#winTitle')) + side($('#winTitle')) + textW($('#winSub')) + side($('#winSub')) + 16;
-      panel.style.width = 'min(' + Math.max(AGCARD_MIN, Math.ceil(need)) + 'px, calc(100% - 32px))';
-    }
+    if (!document.body.classList.contains('is-phone')) panel.style.width = 'min(' + AGCARD_W + 'px, calc(100% - 32px))';
     portrait(d.id);
+    if (shelf) medalShelf(d);
+    // пиксельный шрифт имени и должности, холсты портрета и медалей — на целых точках экрана (после того, как холсты
+    // получили размер: от него зависит раскладка)
+    if (window.W3X && W3X.snap) W3X.snap(panel);
+  }
+
+  /* ---------- Медали агентов (18.10) ----------
+     Владелец 18.10: «Ценный агент» — Оливии; за стаж — три медали; рисунок — руками по образцу Gemini (pix/medals.py);
+     описание — по нажатию, анимация. Вторая редакция (владелец: «1. Медали меньше. 2. Формы под медали должны быть в виде
+     медали. 3. Формы должны быть ниже рамки, но не в самой рамке агента. 4. Убери точные данные размера диска. Можно ещё
+     попробовать внизу текста „Награды:“ и там в ряд медали»): место — на выбор (state.md): r — строка «Награды:» под
+     текстом ★, p — пирамида 3 + 2 под рамкой портрета, вне её; размер — на выбор (state.ms): s меньше ★ / m как было /
+     l крупнее. Пустое место — силуэт медали (PIX_MEDALS.slot). */
+  var MEDAL_ORDER = ['m3', 'm6', 'y1', 'disk', 'val'];   // стаж по порядку, затем «Золотой диск» и «Ценный агент»
+  var MEDAL_NAME = { m3: 'Испытательный срок', m6: 'Полгода', y1: 'Год', disk: 'Золотой диск', val: 'Ценный агент' };
+  var MEDAL_MONTHS = { m3: 3, m6: 6, y1: 12 };
+  var VALUABLE = 'disp';        // «Ценный агент» — одна на весь офис (владелец 18.10: «Да, давай Оливии»)
+  // «Золотой диск» — папка агента от 1 ГБ, по списку владельца 18.10. Точных размеров в странице нет (владелец 18.10:
+  // «чтобы лишний раз не обновлять данные — убери точные данные размера диска»); перерастёт кто-то ещё — дописать сюда.
+  var DISK = ['dev', 'sud'];
+  var MED_W = 23, MED_H = 32, MED_TOP = 1;                       // медаль и её место — один силуэт 23 × 32; сверху точка на подъём
+  var MED_SCALE = { s: 0.8, m: 1.6, l: 2.4 };                    // CSS-пикселей на точку рисунка (до округления до целых точек экрана)
+  var GLINT_EVERY = 6, GLINT_S = 0.7, SPARK_EVERY = 2.4;          // блик раз в 6 с по каждой медали (свои фазы), искорка мерцает
+  function addMonths(s, n) {   // день тот же; если в том месяце его нет — последний день месяца
+    var p = s.split('-').map(Number), m = p[1] - 1 + n, y = p[0] + Math.floor(m / 12);
+    m = ((m % 12) + 12) % 12;
+    return new Date(y, m, Math.min(p[2], new Date(y, m + 1, 0).getDate()));
+  }
+  function dateText(dt) { return dt.getDate() + ' ' + MONTHS_GEN[dt.getMonth()] + ' ' + dt.getFullYear(); }
+  function medalsOf(d) {
+    var n = new Date(), now = new Date(n.getFullYear(), n.getMonth(), n.getDate());
+    return MEDAL_ORDER.map(function (k) {
+      var m = { key: k, name: MEDAL_NAME[k] };
+      if (MEDAL_MONTHS[k]) {
+        var at = addMonths(d.since, MEDAL_MONTHS[k]);
+        m.got = at <= now;
+        m.text = m.got ? { m3: '3 месяца', m6: 'Полгода', y1: 'Год' }[k] + ' в команде — с ' + dateText(at) + '.'
+          : 'Будет ' + dateText(at) + ' — ' + { m3: 'через три месяца', m6: 'через полгода', y1: 'через год' }[k] + ' работы.';
+      } else if (k === 'disk') {
+        m.got = DISK.indexOf(d.id) >= 0;
+        m.text = m.got ? 'Папка агента перевалила за гигабайт.' : 'Когда папка агента перерастёт 1 ГБ.';
+      } else {
+        m.got = d.id === VALUABLE;
+        m.text = m.got ? 'Главная награда офиса — одна на всех.' : 'Одна на весь офис — она у Оливии.';
+      }
+      return m;
+    });
+  }
+  function medalLayout() {   // левый верх мест (точки рисунка) и размер полки: r — в ряд, p — 3 + 2 (нижние — в просветах верхних)
+    var out = [], i;
+    if (state.md === 'p') {
+      for (i = 0; i < 3; i++) out.push([i * (MED_W + 2), MED_TOP]);
+      for (i = 0; i < 2; i++) out.push([Math.round((MED_W + 2) / 2) + i * (MED_W + 2), MED_TOP + MED_H + 2]);
+      return { slots: out, w: 3 * MED_W + 4, h: MED_TOP + 2 * MED_H + 2 };
+    }
+    for (i = 0; i < 5; i++) out.push([i * (MED_W + 4), MED_TOP]);
+    return { slots: out, w: 5 * MED_W + 16, h: MED_TOP + MED_H };
+  }
+  function medalShelfHtml() {
+    return '<div class="agmed" role="group" aria-label="Награды"><canvas class="agmed__cv" aria-hidden="true"></canvas>' +
+      MEDAL_ORDER.map(function (k, i) { return '<button type="button" class="agmed__slot" data-i="' + i + '"></button>'; }).join('') + '</div>';
+  }
+  var medalImgCache = {};
+  function medalImg(key, S) {   // рисунок медали или её места в точках экрана (S точек на точку рисунка), кешируется
+    var id = key + '@' + S;
+    if (medalImgCache[id]) return medalImgCache[id];
+    var sp = PIX_MEDALS[key], c = document.createElement('canvas'), g = c.getContext('2d');
+    c.width = sp.w * S; c.height = sp.h * S;
+    sp.rows.forEach(function (row, y) {
+      for (var x = 0; x < row.length; x++) if (row[x] !== '.') { g.fillStyle = sp.pal[row[x]]; g.fillRect(x * S, y * S, S, S); }
+    });
+    return (medalImgCache[id] = c);
+  }
+  function medalShelf(d) {
+    var box = $('#winBody .agmed'), cv = box && box.querySelector('.agmed__cv');
+    if (!cv) return;
+    var list = medalsOf(d), lay = medalLayout(), slots = lay.slots, dpr = window.devicePixelRatio || 1;
+    // целое число точек экрана на точку рисунка — без мыла при любом масштабе
+    // на телефоне не мельче 1,2 CSS-пикселя на точку: «меньше» давало медаль в 15 пикселей — пальцем не попасть
+    var k = MED_SCALE[state.ms] || MED_SCALE.s;
+    if (document.body.classList.contains('is-phone')) k = Math.max(k, 1.2);
+    var S = Math.max(1, Math.round(k * dpr));
+    cv.width = lay.w * S; cv.height = lay.h * S;
+    cv.style.width = cv.width / dpr + 'px'; cv.style.height = cv.height / dpr + 'px';
+    var g = cv.getContext('2d'), tip = $('#winBody .agmed__tip'), hot = -1, open = -1, t0 = performance.now(), shown = null;
+    g.imageSmoothingEnabled = false;
+    // кнопки поверх мест: нажатие, фокус, подпись для чтения с экрана
+    box.querySelectorAll('.agmed__slot').forEach(function (b, i) {
+      var m = list[i], q = slots[i];
+      b.style.left = q[0] * S / dpr + 'px'; b.style.top = q[1] * S / dpr + 'px';
+      b.style.width = MED_W * S / dpr + 'px'; b.style.height = MED_H * S / dpr + 'px';
+      b.setAttribute('aria-label', m.name + (m.got ? '' : ' — ещё не получена'));
+      b.classList.toggle('is-got', m.got);
+      b.addEventListener('pointerenter', function () { hot = i; });
+      b.addEventListener('pointerleave', function () { if (hot === i) hot = -1; });
+      b.addEventListener('focus', function () { hot = i; });
+      b.addEventListener('blur', function () { if (hot === i) hot = -1; });
+      b.addEventListener('click', function (e) { e.stopPropagation(); showTip(open === i ? -1 : i); });
+    });
+    function showTip(i) {
+      open = i;
+      box.querySelectorAll('.agmed__slot').forEach(function (b, k) { b.setAttribute('aria-expanded', String(k === i)); });
+      if (i < 0) { tip.hidden = true; tip.innerHTML = ''; return; }
+      var m = list[i];
+      tip.innerHTML = '<b class="w3-name agmed__name">' + esc(m.name) + '</b><span>' + esc(m.text) + '</span>';
+      tip.classList.toggle('is-locked', !m.got);
+      tip.hidden = false;
+      // пирамида — справа от неё, вровень с медалью; строка — над строкой, по медали; не за край карточки
+      var card = $('#winBody .agcard').getBoundingClientRect(), bb = box.getBoundingClientRect(), sb = box.querySelectorAll('.agmed__slot')[i].getBoundingClientRect();
+      tip.style.left = ''; tip.style.top = ''; tip.style.maxWidth = '';
+      if (state.md === 'p') {
+        var left = bb.right - card.left + 12;
+        tip.style.left = left + 'px'; tip.style.maxWidth = Math.max(160, card.width - left) + 'px';
+        tip.style.top = Math.max(0, Math.min(sb.top - card.top, card.height - tip.offsetHeight)) + 'px';   // не ниже карточки: уходила за низ окна
+      } else {
+        var tw = Math.min(300, card.width), lx = Math.min(Math.max(0, sb.left + sb.width / 2 - card.left - tw / 2), card.width - tw);
+        tip.style.left = lx + 'px'; tip.style.maxWidth = tw + 'px';
+        tip.style.top = (bb.top - card.top - tip.offsetHeight - 6) + 'px';
+      }
+      if (window.W3X && W3X.snap) W3X.snap($('#winPanel'));
+    }
+    $('#winBody .agcard').addEventListener('click', function () { if (open >= 0) showTip(-1); });   // мимо медалей — закрыть
+    (function tick(now) {
+      if (win.hidden || win.dataset.open !== 'agent:' + d.id || !cv.isConnected) return;
+      var t = Math.max(0, (now - t0) / 1000), keys = [];
+      // кадр: у каждой медали — подъём на точку под курсором, положение блика (по точкам рисунка), у главной — искорка
+      list.forEach(function (m, i) {
+        if (!m.got) { keys.push('-'); return; }
+        var ph = (t + i * 1.3) % GLINT_EVERY, gl = RM || ph > GLINT_S ? -99 : Math.floor(ph / GLINT_S * 36) - 2;   // полоса проходит весь диск и уходит
+        var sp = PIX_MEDALS[m.key].spark, st = !sp ? '' : RM ? 'big' : sparkAt(t % SPARK_EVERY);
+        keys.push((hot === i ? 1 : 0) + ':' + gl + ':' + st);
+      });
+      var key = keys.join('|');
+      if (key !== shown) {
+        shown = key;
+        g.clearRect(0, 0, cv.width, cv.height);
+        list.forEach(function (m, i) {
+          var x = slots[i][0], y = slots[i][1];
+          g.drawImage(medalImg('slot', S), x * S, y * S);
+          if (!m.got) return;
+          var part = keys[i].split(':'), lift = +part[0], gl = +part[1], sp = PIX_MEDALS[m.key];
+          g.drawImage(medalImg(m.key, S), x * S, (y - lift) * S);
+          if (gl > -99) {   // блик: косые «/» — полоса в две точки и тонкая следом, по диску, кромку (обводку) не трогает
+            sp.rows.forEach(function (row, yy) {
+              if (yy < 11) return;
+              for (var xx = 0; xx < row.length; xx++) {
+                var c = row[xx], s = xx + yy - 17 - gl;   // x + y по диску — 17…47: блик идёт сверху-слева вниз-вправо
+                if (c === '.' || c === 'o' || !(s === 0 || s === 1 || s === -3)) continue;
+                g.fillStyle = s === -3 ? 'rgba(255,253,240,.3)' : 'rgba(255,253,240,.5)';
+                g.fillRect((x + xx) * S, (y - lift + yy) * S, S, S);
+              }
+            });
+          }
+          if (sp.spark && part[2]) sp.spark[part[2]].forEach(function (q) {
+            g.fillStyle = sp.pal[q[2]]; g.fillRect((x + sp.spark.x + q[0]) * S, (y - lift + sp.spark.y + q[1]) * S, S, S);
+          });
+        });
+        medalShelf.paints = (medalShelf.paints || 0) + 1;
+      }
+      requestAnimationFrame(tick);
+    })(t0);
+  }
+  function sparkAt(t) {   // мерцание искорки за цикл 2,4 с: большая → малая → точка → нет → точка → малая
+    return t < 0.5 ? 'big' : t < 0.8 ? 'small' : t < 1.0 ? 'dot' : t < 1.9 ? '' : t < 2.1 ? 'dot' : 'small';
   }
   function portrait(id) {   // кадры как в офисе, крупно, без сглаживания, своё время; «уменьшить движение» — поза покоя
     var cv = $('#winBody .agcard__pic'), spr = PC && PC.ag && PC.ag[id];
@@ -2588,14 +2780,14 @@
   // nm — набор имён на бейджах агентов (16.10): 1 на «О» / 2 по делу / 3 по костюму
   // sz — размер агентов (16.10: «не 1,8, а 1,9, и предложи 1,9 и 2»)
   var state = { first: 'card', marks: 'always', classic: 'hover', tags: 'always', nm: '1', sz: '19', screen: 'desk', s: 1,
-    tone: 'mid', outline: 'none', zoom: 'k9', floor: 'slate', walls: 'c4', wt: '8', mk: '1', board: '2', wv: '3', 'w3-about': 'a', 'w3-skills': 'c', 'w3-font': 'press', field: 'office', 'w3-tetris': 'arcade', pk: 'win', pw: 'flip', ts: 'key', bg: 'code' };   // ts — кнопка экрана тетриса: клавиша «ИГРАТЬ»; bg — фон за офисом (16.10: рисунки из знаков; выбраны «знаки сайта»), выбор владельца 15.10   // pw — окно на телефоне: «листание», выбор владельца 15.10   // тетрис: «Аркада», клавиши «в цветах окна» — выбор владельца 15.10   // фон «в цвет офиса» — выбор владельца 15.10   // 15.10: «Обо мне» А, «Навыки» В, Press Start 2P — выбор владельца; фон — варианты   // wv — вид окон разделов: 0 как было, 1–3 — варианты Дизайнера (14.10)   // пол П2, стены С4 (кирпич в цветах переговорной), толщина 8 — выбор владельца 14.10
+    tone: 'mid', outline: 'none', zoom: 'k9', floor: 'slate', walls: 'c4', wt: '8', mk: '1', board: '2', wv: '3', 'w3-about': 'a', 'w3-skills': 'c', 'w3-font': 'press', field: 'office', 'w3-tetris': 'arcade', pk: 'win', pw: 'flip', ts: 'key', bg: 'code', md: 'l', ms: 's' };   // md, ms — медали в карточке агента: в строке «Стаж», меньше — выбор владельца 18.10   // ts — кнопка экрана тетриса: клавиша «ИГРАТЬ»; bg — фон за офисом (16.10: рисунки из знаков; выбраны «знаки сайта»), выбор владельца 15.10   // pw — окно на телефоне: «листание», выбор владельца 15.10   // тетрис: «Аркада», клавиши «в цветах окна» — выбор владельца 15.10   // фон «в цвет офиса» — выбор владельца 15.10   // 15.10: «Обо мне» А, «Навыки» В, Press Start 2P — выбор владельца; фон — варианты   // wv — вид окон разделов: 0 как было, 1–3 — варианты Дизайнера (14.10)   // пол П2, стены С4 (кирпич в цветах переговорной), толщина 8 — выбор владельца 14.10
   (function () {   // пол и стены (pix/rooms.js): кнопки из списка вариантов, начальный — из адреса ?floor= / ?walls=
     var q = new URLSearchParams(location.search), RS = window.PIX_ROOMS;
     if (!RS) return;
     ['floor', 'walls', 'wt'].forEach(function (grp) {
       var list = grp === 'wt' ? WTS : RS[grp === 'floor' ? 'floors' : 'walls'], box = document.querySelector('.grp[data-group="' + grp + '"]');
       if (list[q.get(grp)]) state[grp] = q.get(grp);
-      ['zoom', 'mk', 'board', 'wv', 'w3-about', 'w3-skills', 'w3-font', 'field', 'w3-tetris', 'pk', 'pw', 'ts', 'nm', 'sz', 'bg'].forEach(function (g) { if (q.get(g)) state[g] = q.get(g); });   // ?zoom= ?mk= ?board= — для проверок и листов
+      ['zoom', 'mk', 'board', 'wv', 'w3-about', 'w3-skills', 'w3-font', 'field', 'w3-tetris', 'pk', 'pw', 'ts', 'nm', 'sz', 'bg', 'md', 'ms'].forEach(function (g) { if (q.get(g)) state[g] = q.get(g); });   // ?zoom= ?mk= ?board= — для проверок и листов
       Object.keys(list).forEach(function (k) {
         var b = document.createElement('button'); b.type = 'button'; b.dataset.v = k; b.textContent = list[k].name; box.appendChild(b);
       });
@@ -2637,6 +2829,9 @@
     if (group === 'pk' && window.PixKeys) { PixKeys.palette = v; if (!win.hidden) PixKeys.mount($('#winPanel')); }   // цвета клавиш тетриса
     if (group === 'ts' && window.W3X) { W3X.startStyle = v; if (win.dataset.open === 'tetris') openSpot('tetris', lastFocus); }   // кнопка экрана тетриса
     if (group === 'pw' && !win.hidden && win.dataset.open && win.dataset.open.indexOf('agent:') !== 0) openSpot(win.dataset.open, lastFocus);   // вид окна на телефоне
+    if ((group === 'md' || group === 'ms') && !win.hidden && win.dataset.open && win.dataset.open.indexOf('agent:') === 0) {   // место и размер медалей — открытую карточку заново
+      var mdId = win.dataset.open.slice(6); openAgent(AGENTS.filter(function (x) { return x.id === mdId; })[0], lastFocus);
+    }
   }
   document.querySelectorAll('.grp').forEach(function (g) {
     g.addEventListener('click', function (e) { var b = e.target.closest('button'); if (b) setVariant(g.dataset.group, b.dataset.v); });
@@ -2765,7 +2960,7 @@
   }, skip: function (e) {   // нажатие и наведение — не для фона: окно открыто, указатель на кнопке, панели, подсказках
     return !win.hidden || !!(e.target && e.target.closest && e.target.closest('button, a, input, header, .win, .chips, .hud, .ag, .spot'));
   } });
-  ['first', 'marks', 'classic', 'tags', 'nm', 'sz', 'screen', 'tone', 'outline', 'zoom', 'floor', 'walls', 'wt', 'mk', 'board', 'wv', 'w3-about', 'w3-skills', 'w3-font', 'field', 'w3-tetris', 'pk', 'pw', 'ts', 'bg'].forEach(function (g) { setVariant(g, state[g]); });
+  ['first', 'marks', 'classic', 'tags', 'nm', 'sz', 'screen', 'tone', 'outline', 'zoom', 'floor', 'walls', 'wt', 'mk', 'board', 'wv', 'w3-about', 'w3-skills', 'w3-font', 'field', 'w3-tetris', 'pk', 'pw', 'ts', 'bg', 'md', 'ms'].forEach(function (g) { setVariant(g, state[g]); });
   agents.forEach(paintAgent); agentsRender();
   requestAnimationFrame(frame);
 
@@ -2773,6 +2968,10 @@
   window.__office = {
     T: T, W: W, H: H, grid: grid, spots: SPOTS, seats: SEATS, rcSeat: RC_SEAT, poi: POI, agents: agents,
     decor: DECOR, zones: ZONES, doors: DOORS,
+    // медали (18.10): у кого какие на сегодня (дата страницы), сколько раз полка перерисовывалась, ячейки на холсте
+    medals: function (id) { return medalsOf(AGENTS.filter(function (x) { return x.id === id; })[0]); },
+    medalPaints: function () { return medalShelf.paints || 0; },
+    medalLayout: medalLayout, medalSize: [MED_W, MED_H],
     isFloor: function (x, y) { return !!grid[y] && grid[y][x] === 1; },
     reach: function () {
       var bad = [];

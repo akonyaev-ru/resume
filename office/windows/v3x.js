@@ -515,7 +515,8 @@
     if (window.PixKeys && panel.querySelector('.w3x-pkey')) { PixKeys.mount(panel); PixKeys.snap(panel); }
     // стакан и «далее» живой игры — тоже на целые точки: клетка стакана — целое число точек экрана; пиксельная кнопка
     // экрана — тоже: её скосы и ступеньки углов — клетки клавиш (--pk), на дробной точке они расплываются
-    Array.prototype.forEach.call(panel.querySelectorAll('.w3x-field, .w3x-nextc, .w3x-pbtn'), function (c) {
+    // карточка агента (18.10): портрет и полка медалей — холсты в целых точках на точку рисунка, им тоже нужна целая точка
+    Array.prototype.forEach.call(panel.querySelectorAll('.w3x-field, .w3x-nextc, .w3x-pbtn, .agcard__pic, .agmed__cv'), function (c) {
       c.style.left = ''; c.style.top = '';
       var r = c.getBoundingClientRect();
       if (!r.width) return;
