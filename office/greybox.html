@@ -236,20 +236,7 @@
   .legal a { color: inherit; text-decoration: none; pointer-events: auto; }
   .legal a:hover, .legal a:focus-visible { color: var(--text); }
   body.is-phone .legal { left: 0; right: 0; bottom: 0; padding: 4px 0 5px; text-align: center; background: rgba(16, 18, 21, .88); }
-  /* переключатель языка (18.10, английская версия офиса; вид — на выбор, state.lb): обычные ссылки на адрес другого языка */
-  .langsw { position: fixed; top: 12px; right: 12px; z-index: 30; display: flex; gap: 0; padding: 0; margin: 0;
-    background: #181b20; font: 400 12.8px/1 'Press Start 2P', monospace; font-synthesis: none; -webkit-font-smoothing: none;
-    box-shadow: 0 -4px 0 0 #3d4652, 0 4px 0 0 #3d4652, -4px 0 0 0 #3d4652, 4px 0 0 0 #3d4652,
-      0 -8px 0 0 #0b0c0e, 0 8px 0 0 #0b0c0e, -8px 0 0 0 #0b0c0e, 8px 0 0 0 #0b0c0e,
-      -4px -4px 0 0 #0b0c0e, 4px -4px 0 0 #0b0c0e, -4px 4px 0 0 #0b0c0e, 4px 4px 0 0 #0b0c0e; }
-  .langsw a { display: block; padding: 8px 10px; color: #9aa1ab; text-decoration: none; }
-  .langsw a + a { box-shadow: inset 4px 0 0 0 #2c3139; }
-  .langsw a[aria-current] { color: #062b27; background: #2dd4bf; }
-  .langsw a:not([aria-current]):hover, .langsw a:not([aria-current]):focus-visible { color: #f2f4f6; background: #262b33; }
-  .langsw a:focus-visible { outline: 2px solid #2dd4bf; outline-offset: -4px; }
-  body.is-phone .langsw { top: 8px; right: 8px; font-size: 9.6px; }
-  body.is-phone .langsw a { padding: 7px 8px; }
-  body:not(.lb-a) .langsw { display: none; }
+  /* переключатель языка (18.10): ссылка на адрес другого языка в строке лицензии — выбор владельца (вид Б) */
   .legal .lang-link { color: #9aa1ab; }
   body:not(.lb-b) .legal .lang-link, body:not(.lb-b) .legal .lang-sep { display: none; }
 
@@ -358,8 +345,9 @@
     <button data-v="l">в строке «Стаж» ✓</button><button data-v="r">строкой «Награды:»</button><button data-v="p">пирамида под рамкой</button></div>
   <div class="grp grp--done" data-group="ms"><span class="grp__name">Размер медалей:</span>
     <button data-v="s">меньше ✓</button><button data-v="m">как было</button><button data-v="l">крупнее</button></div>
-  <div class="grp" data-group="lb"><span class="grp__name">Кнопка языка:</span>
-    <button data-v="a">А «RU | EN» в углу ★</button><button data-v="b">Б ссылка в строке внизу</button></div>
+  <!-- решено владельцем 18.10: «Ставим вид Б — ссылка «English» в строке лицензии внизу» -->
+  <div class="grp grp--done" data-group="lb"><span class="grp__name">Кнопка языка:</span>
+    <button data-v="a">А «RU | EN» в углу</button><button data-v="b">Б ссылка в строке внизу ✓</button></div>
   <div class="grp" data-group="screen"><span class="grp__name">Экран:</span>
     <button data-v="desk">компьютер</button><button data-v="phone2">телефон</button></div>
   <div class="grp grp--w3 grp--done" data-group="pw"><span class="grp__name">Окно на телефоне:</span>
@@ -387,7 +375,6 @@
     </div>
   </div>
   <p class="legal" id="legal">© Алексей Коняев · графика – <a href="https://creativecommons.org/licenses/by-nc/4.0/deed.ru" target="_blank" rel="noopener license">CC BY-NC 4.0</a> · код – <a href="https://github.com/akonyaev-ru/resume/blob/main/LICENSE" target="_blank" rel="noopener">MIT</a><span class="lang-sep"> · </span><a class="lang-link" href="https://akonyaev-ru.github.io/resume/en/" hreflang="en" lang="en">English</a></p>
-  <nav class="langsw" aria-label="Язык"><a href="https://akonyaev-ru.github.io/resume/" hreflang="ru" lang="ru" aria-label="Русский" aria-current="page">RU</a><a href="https://akonyaev-ru.github.io/resume/en/" hreflang="en" lang="en" aria-label="English">EN</a></nav>
 </main>
 
 <script src="pix/i18n.js"></script>
@@ -532,11 +519,10 @@
     if (legalEl) legalEl.innerHTML = window.OFFICE_LEGAL_EN;
     OFFICE_I18N.page(document.body);
   }
-  (function () {   // переключатель языка — ссылки в разметке (ТЗ SEO); здесь: текущий язык, в демо — адреса ?lang=
+  (function () {   // ссылка на другой язык — в разметке (ТЗ SEO); здесь: в демо — адрес ?lang=
     var site = !!window.OFFICE_LANG, here = location.pathname.split('/').pop();
-    document.querySelectorAll('.langsw a, .legal .lang-link').forEach(function (a) {
+    document.querySelectorAll('.legal .lang-link').forEach(function (a) {
       var l = a.getAttribute('hreflang');
-      if (a.parentNode.classList.contains('langsw')) { if (l === LANG) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current'); }
       if (!site) a.setAttribute('href', l === 'en' ? here + '?lang=en' : here);
     });
   })();
@@ -2841,7 +2827,7 @@
   // nm — набор имён на бейджах агентов (16.10): 1 на «О» / 2 по делу / 3 по костюму
   // sz — размер агентов (16.10: «не 1,8, а 1,9, и предложи 1,9 и 2»)
   var state = { first: 'card', marks: 'always', classic: 'hover', tags: 'always', nm: '1', sz: '19', screen: 'desk', s: 1,
-    tone: 'mid', outline: 'none', zoom: 'k9', floor: 'slate', walls: 'c4', wt: '8', mk: '1', board: '2', wv: '3', 'w3-about': 'a', 'w3-skills': 'c', 'w3-font': 'press', field: 'office', 'w3-tetris': 'arcade', pk: 'win', pw: 'flip', ts: 'key', bg: 'code', md: 'l', ms: 's', lb: 'a' };   // md, ms — медали в карточке агента: в строке «Стаж», меньше — выбор владельца 18.10   // ts — кнопка экрана тетриса: клавиша «ИГРАТЬ»; bg — фон за офисом (16.10: рисунки из знаков; выбраны «знаки сайта»), выбор владельца 15.10   // pw — окно на телефоне: «листание», выбор владельца 15.10   // тетрис: «Аркада», клавиши «в цветах окна» — выбор владельца 15.10   // фон «в цвет офиса» — выбор владельца 15.10   // 15.10: «Обо мне» А, «Навыки» В, Press Start 2P — выбор владельца; фон — варианты   // wv — вид окон разделов: 0 как было, 1–3 — варианты Дизайнера (14.10)   // пол П2, стены С4 (кирпич в цветах переговорной), толщина 8 — выбор владельца 14.10
+    tone: 'mid', outline: 'none', zoom: 'k9', floor: 'slate', walls: 'c4', wt: '8', mk: '1', board: '2', wv: '3', 'w3-about': 'a', 'w3-skills': 'c', 'w3-font': 'press', field: 'office', 'w3-tetris': 'arcade', pk: 'win', pw: 'flip', ts: 'key', bg: 'code', md: 'l', ms: 's', lb: 'b' };   // lb — кнопка языка: ссылка в строке лицензии (выбор владельца 18.10)   // md, ms — медали в карточке агента: в строке «Стаж», меньше — выбор владельца 18.10   // ts — кнопка экрана тетриса: клавиша «ИГРАТЬ»; bg — фон за офисом (16.10: рисунки из знаков; выбраны «знаки сайта»), выбор владельца 15.10   // pw — окно на телефоне: «листание», выбор владельца 15.10   // тетрис: «Аркада», клавиши «в цветах окна» — выбор владельца 15.10   // фон «в цвет офиса» — выбор владельца 15.10   // 15.10: «Обо мне» А, «Навыки» В, Press Start 2P — выбор владельца; фон — варианты   // wv — вид окон разделов: 0 как было, 1–3 — варианты Дизайнера (14.10)   // пол П2, стены С4 (кирпич в цветах переговорной), толщина 8 — выбор владельца 14.10
   (function () {   // пол и стены (pix/rooms.js): кнопки из списка вариантов, начальный — из адреса ?floor= / ?walls=
     var q = new URLSearchParams(location.search), RS = window.PIX_ROOMS;
     if (!RS) return;

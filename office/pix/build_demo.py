@@ -214,7 +214,6 @@ if PROD:
         en_legal = re.search(r"window\.OFFICE_LEGAL_EN = (.*?);\n", read(os.path.join(HERE, 'i18n.js')), re.S).group(1)
         en_legal = ''.join(re.findall(r"'((?:[^'\\]|\\.)*)'", en_legal))
         html = legal.sub(lambda m: m.group(1) + en_legal + m.group(2), html)
-        rep('<nav class="langsw" aria-label="Язык">', '<nav class="langsw" aria-label="Language">')
     rep('<title>Пиксельный офис — серый макет</title>', head)
     # язык страницы — до словаря: pix/i18n.js берёт его отсюда
     rep('<script>/* pix/i18n.js */', "<script>window.OFFICE_LANG = '%s';</script>\n<script>/* pix/i18n.js */" % LANG)
