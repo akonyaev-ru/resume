@@ -251,6 +251,15 @@
   /* 17.10, ночь: «надпись посередине по ширине, без подчёркиваний, короткое тире вместо длинного» */
   .legal { position: absolute; left: 0; right: 0; bottom: 6px; z-index: 5; margin: 0; text-align: center; font: 11px/1.3 system-ui, "Segoe UI", sans-serif;
     color: #6e7681; pointer-events: none; }   /* 17.10, ночь: «чуть-чуть темнее» (было #7d8590) */
+  /* 18.10, ТЗ SEO «имя и роль»: имя в строке — единственный заголовок страницы; вид строки прежний */
+  .legal__name { display: inline; margin: 0; font: inherit; color: inherit; letter-spacing: inherit; }
+  /* без JavaScript (только на сайте, <noscript> вставляет сборка): кто это и ссылка на классику — посередине окна */
+  .nojs { position: absolute; left: 16px; right: 16px; top: 50%; transform: translateY(-50%); z-index: 6; max-width: 30em; margin: 0 auto;
+    padding: 14px 18px; text-align: center; font: 14px/1.5 system-ui, "Segoe UI", sans-serif; color: var(--text);
+    background: var(--panel); border: 1px solid var(--line); border-radius: 8px; }
+  .nojs p { margin: 0; }
+  .nojs p + p { margin-top: 6px; color: var(--muted); }
+  .nojs a { color: var(--acc); }
   .legal a { color: inherit; text-decoration: none; pointer-events: auto; }
   .legal a:hover, .legal a:focus-visible { color: var(--text); }
   body.is-phone .legal { left: 0; right: 0; bottom: 0; padding: 4px 0 5px; text-align: center; background: rgba(16, 18, 21, .88); }
@@ -391,7 +400,7 @@
   <canvas id="field" aria-hidden="true"></canvas>
   <canvas id="drift" aria-hidden="true" hidden></canvas>
   <div class="vp" id="vp">
-    <aside class="hud" id="hud" aria-label="Коротко обо мне"></aside>
+    <aside class="hud" id="hud"></aside>
     <div class="scroller" id="scroller">
       <div class="sizer" id="sizer">
         <div class="world" id="world"><canvas id="bg" aria-hidden="true"></canvas><div id="layer"></div></div>
@@ -407,7 +416,7 @@
       </div>
     </div>
   </div>
-  <p class="legal" id="legal">© Алексей Коняев · графика – <a href="https://creativecommons.org/licenses/by-nc/4.0/deed.ru" target="_blank" rel="noopener license">CC BY-NC 4.0</a> · код – <a href="https://github.com/akonyaev-ru/resume/blob/main/LICENSE" target="_blank" rel="noopener">MIT</a><span class="lang-sep"> · </span><a class="lang-link" href="https://akonyaev-ru.github.io/resume/en/" hreflang="en" lang="en">English</a></p>
+  <div class="legal" id="legal">© <h1 class="legal__name">Алексей Коняев</h1> · графика – <a href="https://creativecommons.org/licenses/by-nc/4.0/deed.ru" target="_blank" rel="noopener license">CC BY-NC 4.0</a> · код – <a href="https://github.com/akonyaev-ru/resume/blob/main/LICENSE" target="_blank" rel="noopener">MIT</a><span class="lang-sep"> · </span><a class="lang-link" href="https://akonyaev-ru.github.io/resume/en/" hreflang="en" lang="en">English</a></div>
 </main>
 
 <script src="pix/i18n.js"></script>
@@ -2076,6 +2085,9 @@
   function place(e, x, y, w, h) { e.style.left = x + 'px'; e.style.top = y + 'px'; e.style.width = w + 'px'; e.style.height = h + 'px'; }
 
   function buildLabels() {
+    // подписи серого макета видны только без арта и пикселей (body.art / body.pix .lbl — display: none): в арте их не
+    // строить — иначе в странице лежат никогда не показываемые имя, роль и показатели (ТЗ SEO «имя и роль», строка 1)
+    if (ART || PIXM) return;
     var p = R ? R.person : null;
     // Вывеска за стойкой: имя и роль.
     var sign = el('div', 'lbl sign');
@@ -2919,6 +2931,10 @@
   /* ---------- Карточка «сразу видно» и список на телефоне. ---------- */
   function buildHud() {
     var hud = $('#hud');
+    // карточки сбоку нет (владелец 14.10) — пустая: спрятанная стилем копия имени, роли и контактов не нужна (ТЗ SEO
+    // «имя и роль», строка 1); раскладка по-прежнему двигает пустой #hud
+    if (!SIDE_CARD) { hud.innerHTML = ''; hud.removeAttribute('aria-label'); return; }
+    hud.setAttribute('aria-label', OT('Коротко обо мне'));
     if (!R) { hud.innerHTML = noData(); return; }
     var p = R.person, c = p.contacts;
     hud.innerHTML = '<div class="hud__name">' + esc(t(p.name)) + '</div><div class="hud__role">' + esc(t(p.role).replace('\n', ' ')) + '</div>' +

@@ -75,7 +75,7 @@
   var MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
   // строка лицензии английской страницы: лицензия CC — на английском, ссылка на русскую версию офиса подписана по-русски (lang="ru")
-  window.OFFICE_LEGAL_EN = '© Alexey Konyaev · graphics – <a href="https://creativecommons.org/licenses/by-nc/4.0/deed.en" target="_blank" rel="noopener license">CC BY-NC 4.0</a>' +
+  window.OFFICE_LEGAL_EN = '© <h1 class="legal__name">Alexey Konyaev</h1> · graphics – <a href="https://creativecommons.org/licenses/by-nc/4.0/deed.en" target="_blank" rel="noopener license">CC BY-NC 4.0</a>' +
     ' · code – <a href="https://github.com/akonyaev-ru/resume/blob/main/LICENSE" target="_blank" rel="noopener">MIT</a>' +
     '<span class="lang-sep"> · </span><a class="lang-link" href="https://akonyaev-ru.github.io/resume/" hreflang="ru" lang="ru">Русский</a>';
   function OT(s) { return LANG === 'en' && Object.prototype.hasOwnProperty.call(EN, s) ? EN[s] : s; }

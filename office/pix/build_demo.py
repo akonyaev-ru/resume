@@ -209,7 +209,7 @@ if PROD:
         ])
         rep('<html lang="ru">', '<html lang="en">')
         # строка лицензии — по-английски прямо в разметке: робот читает её без скрипта (ТЗ SEO, строка 6)
-        legal = re.compile(r'(<p class="legal" id="legal">).*?(</p>)', re.S)
+        legal = re.compile(r'(<div class="legal" id="legal">).*?(</div>)', re.S)   # с 18.10 — div: в строке <h1> с именем
         assert len(legal.findall(html)) == 1
         en_legal = re.search(r"window\.OFFICE_LEGAL_EN = (.*?);\n", read(os.path.join(HERE, 'i18n.js')), re.S).group(1)
         en_legal = ''.join(re.findall(r"'((?:[^'\\]|\\.)*)'", en_legal))
@@ -227,6 +227,16 @@ if PROD:
     bar = re.compile(r'<header class="bar" id="bar">.*?</header>\n', re.S)
     assert len(bar.findall(html)) == 1
     html = bar.sub('', html)
+    # без JavaScript офиса нет — коротко кто это и ссылка на классику (ТЗ SEO «имя и роль», строка 6; владелец 18.10: «давай
+    # то, что рекомендуешь»). Заголовка тут нет: единственный <h1> — имя в строке лицензии. Роль — как в классике (jobTitle).
+    if LANG == 'en':
+        nojs = ('<b>Alexey Konyaev</b> — LegalOPS and AI-agent implementation specialist.',
+                'The pixel office needs JavaScript. The text CV is in the <a href="%sold/en.html">classic version</a>.' % SITE_URL)
+    else:
+        role = re.search(r'"jobTitle": "([^"]+)"', old).group(1)
+        nojs = ('<b>Алексей Коняев</b> — %s.' % (role[0].lower() + role[1:]),
+                'Пиксельный офис работает с включённым JavaScript. Резюме текстом — в <a href="%sold/">классической версии</a>.' % SITE_URL)
+    rep('<main class="stage" id="stage">\n', '<main class="stage" id="stage">\n  <noscript><div class="nojs"><p>%s</p><p>%s</p></div></noscript>\n' % nojs)
 else:
     rep('<title>Пиксельный офис — серый макет</title>', '<title>Пиксельный офис — демо</title>')
 day = datetime.date.today().strftime('%d.%m')
