@@ -1,10 +1,19 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- Адреса: офис (главная, с 17.10.2026) и классическая версия резюме — русская и английская. Даты правки нет
+<!-- Адреса: офис (главная, с 17.10.2026; английская страница офиса — с 18.10.2026) и классическая версия резюме — русская и английская. Даты правки нет
      намеренно — выкладка идет и по расписанию, и подставленное «сегодня» означало бы правку, которой не было. -->
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
         xmlns:xhtml="http://www.w3.org/1999/xhtml">
   <url>
     <loc>https://akonyaev-ru.github.io/resume/</loc>
+    <xhtml:link rel="alternate" hreflang="ru" href="https://akonyaev-ru.github.io/resume/" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://akonyaev-ru.github.io/resume/en/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://akonyaev-ru.github.io/resume/" />
+  </url>
+  <url>
+    <loc>https://akonyaev-ru.github.io/resume/en/</loc>
+    <xhtml:link rel="alternate" hreflang="ru" href="https://akonyaev-ru.github.io/resume/" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://akonyaev-ru.github.io/resume/en/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://akonyaev-ru.github.io/resume/" />
   </url>
   <url>
     <loc>https://akonyaev-ru.github.io/resume/old/</loc>

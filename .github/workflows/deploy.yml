@@ -129,8 +129,12 @@ jobs:
       # Главная с 17.10.2026 — пиксельный офис: одна страница со всем внутри,
       # собирается из office/ после таблицы рекордов (десятка вшивается в
       # «Аркаду») и данных резюме (окна разделов).
+      # С 18.10.2026 — и английская страница офиса /resume/en/: тот же офис, надписи из office/pix/i18n.js, резюме —
+      # английская половина data/resume.js; canonical и hreflang — свои у каждой страницы.
       - name: Собрать страницу офиса
-        run: python office/pix/build_demo.py --prod office/dist/index.html
+        run: |
+          python office/pix/build_demo.py --prod office/dist/index.html
+          python office/pix/build_demo.py --prod office/dist/en/index.html --lang en
 
       # На сайт уходит только папка сайта: офис в корне, классическая версия в
       # old/ (страницы, assets/, data/, однофайловая), 404, карта сайта и

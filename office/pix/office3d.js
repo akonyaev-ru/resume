@@ -690,8 +690,9 @@
   // ---------- подсказки и кнопки ----------
   function hudBuild() {
     hud = document.createElement('div'); hud.className = 'o3d-hud';
-    hud.innerHTML = '<div class="o3d-hud__bar"><b>Офис</b>' +
-      '<button type="button" data-x="1">Выйти в план</button></div><div class="o3d-hud__tip"></div>';
+    var OT = window.OT || String;   // надписи — по словарю офиса (pix/i18n.js, 18.10)
+    hud.innerHTML = '<div class="o3d-hud__bar"><b>' + OT('Офис') + '</b>' +
+      '<button type="button" data-x="1">' + OT('Выйти в план') + '</button></div><div class="o3d-hud__tip"></div>';
     hud.addEventListener('click', function (e) {
       var b = e.target.closest('button'); if (!b) return;
       if (b.dataset.x) exit(); else setMode(b.dataset.m);
@@ -703,8 +704,8 @@
     hud.querySelectorAll('[data-m]').forEach(function (b) { b.setAttribute('aria-pressed', b.dataset.m === mode ? 'true' : 'false'); });
     var tip = hud.querySelector('.o3d-hud__tip'), t;
     if (cam.s < 1) t = '';
-    else if (mode === 'otto') t = near ? '<kbd>E</kbd> — ' + near.title : 'Стрелки или WASD — идти · колесо — ближе / дальше · нажатие на предмет — открыть';
-    else t = 'Стрелки или WASD — лететь · тянуть мышью — двигать · колесо — ближе / дальше · нажатие на предмет — открыть';
+    else if (mode === 'otto') t = near ? '<kbd>E</kbd> — ' + near.title : (window.OT || String)('Стрелки или WASD — идти · колесо — ближе / дальше · нажатие на предмет — открыть');
+    else t = (window.OT || String)('Стрелки или WASD — лететь · тянуть мышью — двигать · колесо — ближе / дальше · нажатие на предмет — открыть');
     if (tip.__t !== t) { tip.innerHTML = t; tip.__t = t; }
   }
 

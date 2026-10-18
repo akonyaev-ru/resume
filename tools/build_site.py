@@ -13,7 +13,8 @@ scripts/ и даже `.pyc` из прогона проверок. Теперь �
 резюме — в `old/` со своими `assets/` и `data/`. Офис — одна страница со всем
 внутри: её собирает `office/pix/build_demo.py --prod office/dist/index.html`,
 рядом лежит картинка превью `office/og.jpg`. По прежним адресам английской и
-однофайловой версий — страницы-переадресации в `old/`.
+однофайловой версий — страницы-переадресации в `old/`. С 18.10.2026 у офиса есть английская страница
+`/resume/en/` (`build_demo.py --prod office/dist/en/index.html --lang en`).
 
 Запускается в CI после сборок `en.html`, `dist/resume.html` и страницы офиса.
 """
@@ -28,8 +29,8 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 
-# Офис: собранная страница и картинка превью -> корень сайта.
-OFFICE = {"office/dist/index.html": "index.html", "office/og.jpg": "og.jpg"}
+# Офис: собранная страница и картинка превью -> корень сайта; английская страница офиса (18.10.2026) -> en/.
+OFFICE = {"office/dist/index.html": "index.html", "office/dist/en/index.html": "en/index.html", "office/og.jpg": "og.jpg"}
 # Классическая версия и то, без чего она не работает, -> old/. Однофайловая
 # версия тоже страница: её раздают ссылкой, и она не должна ссылаться ни на что
 # рядом с собой.

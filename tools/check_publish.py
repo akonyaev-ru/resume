@@ -189,7 +189,7 @@ def stamp_twice():
 
 # С 17.10.2026: в корне — офис (index.html, og.jpg), 404, карта сайта, переадресации прежних адресов (en.html,
 # dist/resume.html); классическая версия со своими папками — в old/.
-SITE = {"index.html", "og.jpg", "404.html", "sitemap.xml", "en.html", "dist", "old"}
+SITE = {"index.html", "og.jpg", "404.html", "sitemap.xml", "en.html", "dist", "old", "en"}   # en/ — английский офис (18.10)
 OLD = {"index.html", "en.html", "assets", "data", "dist"}
 
 
@@ -206,6 +206,8 @@ def project_copy() -> Path:
     (work / "dist" / "fragment.html").write_text("старая сборка", encoding="utf-8")
     (work / "office" / "dist").mkdir(parents=True)
     (work / "office" / "dist" / "index.html").write_text("<!doctype html><title>офис</title>", encoding="utf-8")
+    (work / "office" / "dist" / "en").mkdir()
+    (work / "office" / "dist" / "en" / "index.html").write_text("<!doctype html><title>office</title>", encoding="utf-8")
     (work / "office" / "og.jpg").write_bytes(b"\xff\xd8\xff\xd9")
     for junk in ("PROJECT_SPEC.md", "README.md", "MEMORY.md", ".gitignore", "Mask-group.png", "LICENSE",
                  "tools/check_pet.js", "scripts/fetch_records.py", "scripts/__pycache__/x.pyc",
@@ -231,14 +233,15 @@ def site_only_pages():
         top = {p.name for p in out.iterdir()}
         old = {p.name for p in (out / "old").iterdir()}
         dist = {p.name for p in (out / "old" / "dist").iterdir()}
+        en = {p.name for p in (out / "en").iterdir()}
         shutil.rmtree(out.parent)
     finally:
         shutil.rmtree(work)
     if problems:
         fail("; ".join(problems))
-    if top != SITE or old != OLD or dist != {"resume.html"}:
-        fail(f"в папке: {sorted(top)}, в old: {sorted(old)}, в old/dist: {sorted(dist)}")
-    return "офис и превью в корне, классическая версия с assets, data и однофайловой — в old, служебного нет"
+    if top != SITE or old != OLD or dist != {"resume.html"} or en != {"index.html"}:
+        fail(f"в папке: {sorted(top)}, в old: {sorted(old)}, в old/dist: {sorted(dist)}, в en: {sorted(en)}")
+    return "офис и превью в корне, английский офис — в en, классическая версия с assets, data и однофайловой — в old, служебного нет"
 
 
 def site_missing_reference():
@@ -291,6 +294,19 @@ def site_missing_office():
     if not any("office/dist/index.html" in p for p in problems):
         fail("пропажа страницы офиса не замечена: " + "; ".join(problems))
     return "офис не собран — отказ"
+
+
+def site_missing_office_en():
+    work = project_copy()
+    try:
+        (work / "office" / "dist" / "en" / "index.html").unlink()
+        out, problems = build(work)
+        shutil.rmtree(out.parent)
+    finally:
+        shutil.rmtree(work)
+    if not any("office/dist/en/index.html" in p for p in problems):
+        fail("пропажа английской страницы офиса не замечена: " + "; ".join(problems))
+    return "английский офис не собран — отказ"
 
 
 def site_moved():
@@ -355,6 +371,7 @@ check("папка сайта: битая ссылка из скрипта — о
 check("папка сайта: нет страницы — отказ", site_missing_page)
 check("папка сайта: одиночная копия ни на что не ссылается", single_file_self_contained)
 check("папка сайта: нет страницы офиса — отказ", site_missing_office)
+check("папка сайта: нет английской страницы офиса — отказ", site_missing_office_en)
 check("папка сайта: прежние адреса ведут на новые", site_moved)
 check("рисовалка кадров: повторный прогон не меняет pet.js", draw_pet_idempotent)
 

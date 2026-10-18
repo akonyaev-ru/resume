@@ -236,6 +236,22 @@
   .legal a { color: inherit; text-decoration: none; pointer-events: auto; }
   .legal a:hover, .legal a:focus-visible { color: var(--text); }
   body.is-phone .legal { left: 0; right: 0; bottom: 0; padding: 4px 0 5px; text-align: center; background: rgba(16, 18, 21, .88); }
+  /* переключатель языка (18.10, английская версия офиса; вид — на выбор, state.lb): обычные ссылки на адрес другого языка */
+  .langsw { position: fixed; top: 12px; right: 12px; z-index: 30; display: flex; gap: 0; padding: 0; margin: 0;
+    background: #181b20; font: 400 12.8px/1 'Press Start 2P', monospace; font-synthesis: none; -webkit-font-smoothing: none;
+    box-shadow: 0 -4px 0 0 #3d4652, 0 4px 0 0 #3d4652, -4px 0 0 0 #3d4652, 4px 0 0 0 #3d4652,
+      0 -8px 0 0 #0b0c0e, 0 8px 0 0 #0b0c0e, -8px 0 0 0 #0b0c0e, 8px 0 0 0 #0b0c0e,
+      -4px -4px 0 0 #0b0c0e, 4px -4px 0 0 #0b0c0e, -4px 4px 0 0 #0b0c0e, 4px 4px 0 0 #0b0c0e; }
+  .langsw a { display: block; padding: 8px 10px; color: #9aa1ab; text-decoration: none; }
+  .langsw a + a { box-shadow: inset 4px 0 0 0 #2c3139; }
+  .langsw a[aria-current] { color: #062b27; background: #2dd4bf; }
+  .langsw a:not([aria-current]):hover, .langsw a:not([aria-current]):focus-visible { color: #f2f4f6; background: #262b33; }
+  .langsw a:focus-visible { outline: 2px solid #2dd4bf; outline-offset: -4px; }
+  body.is-phone .langsw { top: 8px; right: 8px; font-size: 9.6px; }
+  body.is-phone .langsw a { padding: 7px 8px; }
+  body:not(.lb-a) .langsw { display: none; }
+  .legal .lang-link { color: #9aa1ab; }
+  body:not(.lb-b) .legal .lang-link, body:not(.lb-b) .legal .lang-sep { display: none; }
 
   /* Окно раздела. */
   .win { position: absolute; inset: 0; z-index: 1000; display: flex; align-items: center; justify-content: center;
@@ -342,6 +358,8 @@
     <button data-v="l">в строке «Стаж» ✓</button><button data-v="r">строкой «Награды:»</button><button data-v="p">пирамида под рамкой</button></div>
   <div class="grp grp--done" data-group="ms"><span class="grp__name">Размер медалей:</span>
     <button data-v="s">меньше ✓</button><button data-v="m">как было</button><button data-v="l">крупнее</button></div>
+  <div class="grp" data-group="lb"><span class="grp__name">Кнопка языка:</span>
+    <button data-v="a">А «RU | EN» в углу ★</button><button data-v="b">Б ссылка в строке внизу</button></div>
   <div class="grp" data-group="screen"><span class="grp__name">Экран:</span>
     <button data-v="desk">компьютер</button><button data-v="phone2">телефон</button></div>
   <div class="grp grp--w3 grp--done" data-group="pw"><span class="grp__name">Окно на телефоне:</span>
@@ -368,9 +386,11 @@
       </div>
     </div>
   </div>
-  <p class="legal">© Алексей Коняев · графика – <a href="https://creativecommons.org/licenses/by-nc/4.0/deed.ru" target="_blank" rel="noopener license">CC BY-NC 4.0</a> · код – <a href="https://github.com/akonyaev-ru/resume/blob/main/LICENSE" target="_blank" rel="noopener">MIT</a></p>
+  <p class="legal" id="legal">© Алексей Коняев · графика – <a href="https://creativecommons.org/licenses/by-nc/4.0/deed.ru" target="_blank" rel="noopener license">CC BY-NC 4.0</a> · код – <a href="https://github.com/akonyaev-ru/resume/blob/main/LICENSE" target="_blank" rel="noopener">MIT</a><span class="lang-sep"> · </span><a class="lang-link" href="https://akonyaev-ru.github.io/resume/en/" hreflang="en" lang="en">English</a></p>
+  <nav class="langsw" aria-label="Язык"><a href="https://akonyaev-ru.github.io/resume/" hreflang="ru" lang="ru" aria-label="Русский" aria-current="page">RU</a><a href="https://akonyaev-ru.github.io/resume/en/" hreflang="en" lang="en" aria-label="English">EN</a></nav>
 </main>
 
+<script src="pix/i18n.js"></script>
 <script src="../../../data/resume.js"></script>
 <script src="art/work/a/art.js"></script>
 <script src="art/work/b/art.js"></script>
@@ -400,7 +420,8 @@
   'use strict';
   var R = window.RESUME || null;
   var MUT = window.__MUT || '';
-  var LANG = 'ru';
+  // язык страницы — pix/i18n.js (18.10: английская версия офиса, /resume/en/); OT — надписи офиса по словарю
+  var LANG = window.OFFICE_I18N ? OFFICE_I18N.lang : 'ru', OT = window.OT || function (s) { return s; };
   function $(s) { return document.querySelector(s); }
   function t(x) { if (x == null) return ''; if (typeof x !== 'object') return String(x); return x[LANG] || x.ru || ''; }
   function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
@@ -418,12 +439,13 @@
   var TRACE = !!(ART && (ART.rooms || ART.hq));   // ?art=t16|t8 — перерисовка пикселями; ?art=w — Gemini целиком
   if (TRACE) document.body.classList.add('pix', 'trace');
   document.querySelectorAll('.grp--links a').forEach(function (a) { if ((ART ? ARTV.toLowerCase() : PIXM ? 'pix' : '') === a.dataset.art) a.setAttribute('aria-current', 'page'); });
-  if (ART && ART.hq) document.querySelector('.bar__title').innerHTML = '<b>Пиксельный офис — Gemini целиком.</b> Предметы с белой картинки ' +
+  var barTitle = document.querySelector('.bar__title') || {};   // на сайте панели демо нет — сборка её вырезает
+  if (ART && ART.hq) barTitle.innerHTML = '<b>Пиксельный офис — Gemini целиком.</b> Предметы с белой картинки ' +
     'на пустом офисе, без перерисовки; уменьшены один раз качественно прямо в точки экрана. Агенты спрятаны — смотрим офис.';
-  else if (TRACE) document.querySelector('.bar__title').innerHTML = '<b>Пиксельный офис — перерисовка картинки Gemini пикселями.</b> ' +
+  else if (TRACE) barTitle.innerHTML = '<b>Пиксельный офис — перерисовка картинки Gemini пикселями.</b> ' +
     'Те же 90 предметов на ровной сетке ' + ART.grid + ' пикселей на клетку, общая палитра ' + Object.keys(ART.pal).length +
     ' цветов, вывод SVG без сглаживания. Пол и стены — свои, чистые. Агенты спрятаны — сейчас смотрим офис.';
-  else if (ART) document.querySelector('.bar__title').innerHTML = '<b>Пиксельный офис — шаг 3: офис из картинки Gemini.</b> Фон и 90 предметов ' +
+  else if (ART) barTitle.innerHTML = '<b>Пиксельный офис — шаг 3: офис из картинки Gemini.</b> Фон и 90 предметов ' +
     'вырезаны из вашей картинки, агенты ходят между ними; агенты пока кружки — осьминожков рисуем следующим шагом. ' +
     'Наведите на предмет с «!» — подсветится по контуру.';
   if (PLAN) document.body.classList.add('plan');
@@ -499,6 +521,25 @@
     // ходят (клетки не занимает), окна раздела нет; на телефоне и без WebGL2 его подсказки нет
     { id: 'enter3d', title: 'Войти в офис', obj: 'Ковёр у входа', label: 'коврик', x: 34, y: 38, w: 2, h: 1, noDraw: true, act: 'o3d' },
   ];
+  // английская страница (18.10): названия разделов и предметов, «Classic version» — на английскую классическую версию,
+  // строка лицензии и подписи разметки для чтения с экрана
+  if (LANG === 'en') {
+    SPOTS.forEach(function (s) {
+      s.title = OT(s.title); s.obj = OT(s.obj);
+      if (s.id === 'classic') s.href = 'https://akonyaev-ru.github.io/resume/old/en.html';
+    });
+    var legalEl = document.getElementById('legal');
+    if (legalEl) legalEl.innerHTML = window.OFFICE_LEGAL_EN;
+    OFFICE_I18N.page(document.body);
+  }
+  (function () {   // переключатель языка — ссылки в разметке (ТЗ SEO); здесь: текущий язык, в демо — адреса ?lang=
+    var site = !!window.OFFICE_LANG, here = location.pathname.split('/').pop();
+    document.querySelectorAll('.langsw a, .legal .lang-link').forEach(function (a) {
+      var l = a.getAttribute('hreflang');
+      if (a.parentNode.classList.contains('langsw')) { if (l === LANG) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current'); }
+      if (!site) a.setAttribute('href', l === 'en' ? here + '?lang=en' : here);
+    });
+  })();
   SPOTS.forEach(function (s) { if (!s.wall && !s.noDraw) fill(s.x, s.y, s.w, s.h, 2); });
   if (ART) {   // занятые клетки — по нарисованному, а не по плану: Gemini кое-что сдвинул (кулер, куст у стены)
     for (var gy = 0; gy < H; gy++) for (var gx = 0; gx < W; gx++) if (grid[gy][gx] === 2) grid[gy][gx] = 1;
@@ -554,7 +595,12 @@
     // 17.10, вечер: «появился новый агент — финансовый аналитик, он с 17 октября 2026; костюм — хомяк из первого каталога»
     { id: 'fin', role: 'Финансовый аналитик', n: ['Карл', 'Ивар', 'Бенни'], since: '2026-10-17', c: '#e8b47a', desc: 'Считает бюджеты и окупаемость проектов и сводит цифры в понятные отчёты.' },
   ];
-  var SECRET = { title: 'Секретный агент', text: 'Информацию об этом агенте я предпочёл скрыть.' };
+  var SECRET = { title: OT('Секретный агент'), text: OT('Информацию об этом агенте я предпочёл скрыть.') };
+  AGENTS.forEach(function (d) {   // английская страница: должность и описание по id (секретным — нет), имена латиницей
+    var en = window.OFFICE_I18N && OFFICE_I18N.agent(d.id);
+    if (en) { d.role = en[0]; d.desc = en[1]; }
+    if (LANG === 'en') d.n = d.n.map(OFFICE_I18N.name);
+  });
   function agentName(d) { return d.n[(+state.nm || 1) - 1]; }
   function agentTag(d) { return agentName(d); }
 
@@ -2414,7 +2460,7 @@
   }
   /* ---------- Окна разделов. ---------- */
   var win = $('#win'), lastFocus = null;
-  function noData() { return '<p class="stub">Данные резюме не загрузились (data/resume.js).</p>'; }
+  function noData() { return '<p class="stub">' + OT('Данные резюме не загрузились (data/resume.js).') + '</p>'; }
   function bullet(b) {
     var txt = t(b && b.text ? b.text : b), bold = b && b.bold ? t(b.bold) : '', h = esc(txt);
     if (bold) { var eb = esc(bold); h = h.replace(eb, '<b>' + eb + '</b>'); }
@@ -2486,7 +2532,9 @@
   }
   /* Окно на телефоне (15.10, варианты «Окно на телефоне», ../windows/phone.js): порядок разделов для листания — как в
      офисе, без тетриса (на телефоне его нет) и входа в классику; короткие имена — для кнопок «‹ … / … ›». */
-  var PW_SHORT = { about: 'Обо мне', metrics: 'Показатели', experience: 'Опыт', products: 'Продукты', skills: 'Навыки',
+  var PW_SHORT = LANG === 'en' ? { about: 'About', metrics: 'Impact', experience: 'Experience', products: 'Products', skills: 'Skills',
+    education: 'Education', courses: 'Training', languages: 'Languages' } :
+    { about: 'Обо мне', metrics: 'Показатели', experience: 'Опыт', products: 'Продукты', skills: 'Навыки',
     education: 'Образование', courses: 'Курсы', languages: 'Языки' };
   function pwOrder() { return SPOTS.filter(function (x) { return PW_SHORT[x.id]; }).map(function (x) { return x.id; }); }
   function openSpot(id, from, dir) {
@@ -2515,6 +2563,7 @@
   // дней, просто с дата месяц год»; было «N месяцев N дней — с …» от сегодняшнего дня)
   function stazh(since) {
     var p = since.split('-').map(Number);
+    if (LANG === 'en') return OFFICE_I18N.date(new Date(p[0], p[1] - 1, p[2]));   // «Joined: July 16, 2026»
     return 'с ' + p[2] + ' ' + MONTHS_GEN[p[1] - 1] + ' ' + p[0];
   }
   // окно агента — портрет 130 и описание в три-четыре строки (16.10: было 880, «лишнее место» → 560). 18.10: 600 — «ты не у
@@ -2526,18 +2575,18 @@
      «Специалиста по проверке контрагентов» имя уходило в многоточие; на телефоне подписи нет вовсе, а должность залезала
      под крестик. Теперь в шапке имя (короткое — помещается всегда), должность — первой строкой карточки, переносится. */
   function openAgent(d, from) {
-    var text = d.secret ? '<p>' + esc(SECRET.text) + '</p>' : d.desc ? '<p>' + esc(d.desc) + '</p>' : '<p class="stub">Описание — после согласования.</p>';
+    var text = d.secret ? '<p>' + esc(SECRET.text) + '</p>' : d.desc ? '<p>' + esc(d.desc) + '</p>' : '<p class="stub">' + OT('Описание — после согласования.') + '</p>';
     var pic = PC && PC.ag ? '<canvas class="agcard__pic" aria-hidden="true"></canvas>' : '', shelf = window.PIX_MEDALS ? medalShelfHtml() : '';
-    var row = state.md !== 'p', since = d.since ? '<p class="agcard__since"><b>Стаж:</b> ' + esc(stazh(d.since)) + '</p>' : '';
+    var row = state.md !== 'p', since = d.since ? '<p class="agcard__since"><b>' + OT('Стаж:') + '</b> ' + esc(stazh(d.since)) + '</p>' : '';
     // l — медали в строке «Стаж» у правого края (владелец 18.10: «для экономии места награды одной строкой со стажем»);
     // r — отдельной строкой «Награды:»; p — пирамида под рамкой портрета
     var html = '<div class="agcard agcard--md-' + (row ? 'r' : 'p') + '">' +
       (row || !shelf ? pic : '<div class="agcard__side">' + pic + shelf + '</div>') +
       '<div class="agcard__txt"><h3 class="w3-name agcard__role">' + esc(d.secret ? SECRET.title : d.role) + '</h3>' + text +
-      (state.md === 'l' && shelf ? '<div class="agcard__meta">' + since + '<div class="agcard__awards"><b>Награды:</b>' + shelf + '</div></div>' : since) +
-      (state.md === 'r' && shelf ? '<div class="agcard__awards"><b>Награды:</b>' + shelf + '</div>' : '') + '</div>' +
+      (state.md === 'l' && shelf ? '<div class="agcard__meta">' + since + '<div class="agcard__awards"><b>' + OT('Награды:') + '</b>' + shelf + '</div></div>' : since) +
+      (state.md === 'r' && shelf ? '<div class="agcard__awards"><b>' + OT('Награды:') + '</b>' + shelf + '</div>' : '') + '</div>' +
       '<div class="agmed__tip" role="status" hidden></div></div>';
-    openWin('ИИ-агент', agentName(d), html, from);
+    openWin(OT('ИИ-агент'), agentName(d), html, from);
     win.dataset.open = 'agent:' + d.id;
     var panel = $('#winPanel');
     if (!document.body.classList.contains('is-phone')) panel.style.width = 'min(' + AGCARD_W + 'px, calc(100% - 32px))';
@@ -2571,22 +2620,26 @@
     m = ((m % 12) + 12) % 12;
     return new Date(y, m, Math.min(p[2], new Date(y, m + 1, 0).getDate()));
   }
-  function dateText(dt) { return dt.getDate() + ' ' + MONTHS_GEN[dt.getMonth()] + ' ' + dt.getFullYear(); }
+  function dateText(dt) { return LANG === 'en' ? OFFICE_I18N.date(dt) : dt.getDate() + ' ' + MONTHS_GEN[dt.getMonth()] + ' ' + dt.getFullYear(); }
   function medalsOf(d) {
     var n = new Date(), now = new Date(n.getFullYear(), n.getMonth(), n.getDate());
     return MEDAL_ORDER.map(function (k) {
-      var m = { key: k, name: MEDAL_NAME[k] };
+      var m = { key: k, name: OT(MEDAL_NAME[k]) };
       if (MEDAL_MONTHS[k]) {
         var at = addMonths(d.since, MEDAL_MONTHS[k]);
         m.got = at <= now;
-        m.text = m.got ? { m3: '3 месяца', m6: 'Полгода', y1: 'Год' }[k] + ' в команде — с ' + dateText(at) + '.'
+        if (LANG === 'en') m.text = m.got ? { m3: '3 months', m6: 'Six months', y1: 'A year' }[k] + ' on the team — since ' + dateText(at) + '.'
+          : 'Coming on ' + dateText(at) + ' — after ' + { m3: 'three months', m6: 'six months', y1: 'a year' }[k] + ' of work.';
+        else m.text = m.got ? { m3: '3 месяца', m6: 'Полгода', y1: 'Год' }[k] + ' в команде — с ' + dateText(at) + '.'
           : 'Будет ' + dateText(at) + ' — ' + { m3: 'через три месяца', m6: 'через полгода', y1: 'через год' }[k] + ' работы.';
       } else if (k === 'disk') {
         m.got = DISK.indexOf(d.id) >= 0;
-        m.text = m.got ? 'Папка агента перевалила за гигабайт.' : 'Когда папка агента перерастёт 1 ГБ.';
+        m.text = LANG === 'en' ? (m.got ? 'The agent’s folder has passed one gigabyte.' : 'When the agent’s folder grows past 1 GB.')
+          : m.got ? 'Папка агента перевалила за гигабайт.' : 'Когда папка агента перерастёт 1 ГБ.';
       } else {
         m.got = VALUABLE.indexOf(d.id) >= 0;
-        m.text = m.got ? 'Главная награда офиса.' : 'Главная награда офиса — пока у Оливии и Отто.';
+        m.text = LANG === 'en' ? (m.got ? 'The office’s top award.' : 'The office’s top award — so far held by Olivia and Otto.')
+          : m.got ? 'Главная награда офиса.' : 'Главная награда офиса — пока у Оливии и Отто.';
       }
       return m;
     });
@@ -2602,7 +2655,7 @@
     return { slots: out, w: 5 * MED_W + 16, h: MED_TOP + MED_H };
   }
   function medalShelfHtml() {
-    return '<div class="agmed" role="group" aria-label="Награды"><canvas class="agmed__cv" aria-hidden="true"></canvas>' +
+    return '<div class="agmed" role="group" aria-label="' + OT('Награды') + '"><canvas class="agmed__cv" aria-hidden="true"></canvas>' +
       MEDAL_ORDER.map(function (k, i) { return '<button type="button" class="agmed__slot" data-i="' + i + '"></button>'; }).join('') + '</div>';
   }
   var medalImgCache = {};
@@ -2634,7 +2687,7 @@
       var m = list[i], q = slots[i];
       b.style.left = q[0] * S / dpr + 'px'; b.style.top = q[1] * S / dpr + 'px';
       b.style.width = MED_W * S / dpr + 'px'; b.style.height = MED_H * S / dpr + 'px';
-      b.setAttribute('aria-label', m.name + (m.got ? '' : ' — ещё не получена'));
+      b.setAttribute('aria-label', m.name + (m.got ? '' : OT(' — ещё не получена')));
       b.classList.toggle('is-got', m.got);
       b.addEventListener('pointerenter', function () { hot = i; });
       b.addEventListener('pointerleave', function () { if (hot === i) hot = -1; });
@@ -2736,7 +2789,7 @@
       var d = a.d, tag = agentTag(d);
       a.el.querySelector('.ltr').textContent = d.secret ? '?' : tag.charAt(0).toUpperCase();
       a.el.querySelector('.tag').textContent = tag;
-      a.el.setAttribute('aria-label', 'Агент: ' + (d.secret ? SECRET.title : d.role) + ', ' + agentName(d));
+      a.el.setAttribute('aria-label', OT('Агент:') + ' ' + (d.secret ? SECRET.title : d.role) + ', ' + agentName(d));
     });
   }
   function closeWin() {
@@ -2767,7 +2820,7 @@
       '<ul class="hud__m">' + R.metrics.map(function (q) { return '<li><b>' + esc((q.prefix || '') + q.value + (q.suffix || '')) + '</b>' + esc(t(q.caption)) + '</li>'; }).join('') + '</ul>' +
       '<div class="hud__links"><a href="' + esc(c.telegram.href) + '" target="_blank" rel="noopener">Telegram</a>' +
       '<a href="' + esc(c.email.href) + '">' + esc(c.email.label) + '</a><a href="' + esc(c.github.href) + '" target="_blank" rel="noopener">GitHub</a></div>' +
-      '<div class="hud__hint">Нажимайте на предметы с «!» и на сотрудников.</div>';
+      '<div class="hud__hint">' + OT('Нажимайте на предметы с «!» и на сотрудников.') + '</div>';
   }
   function buildChips() {
     var nav = $('#chips');
@@ -2788,15 +2841,15 @@
   // nm — набор имён на бейджах агентов (16.10): 1 на «О» / 2 по делу / 3 по костюму
   // sz — размер агентов (16.10: «не 1,8, а 1,9, и предложи 1,9 и 2»)
   var state = { first: 'card', marks: 'always', classic: 'hover', tags: 'always', nm: '1', sz: '19', screen: 'desk', s: 1,
-    tone: 'mid', outline: 'none', zoom: 'k9', floor: 'slate', walls: 'c4', wt: '8', mk: '1', board: '2', wv: '3', 'w3-about': 'a', 'w3-skills': 'c', 'w3-font': 'press', field: 'office', 'w3-tetris': 'arcade', pk: 'win', pw: 'flip', ts: 'key', bg: 'code', md: 'l', ms: 's' };   // md, ms — медали в карточке агента: в строке «Стаж», меньше — выбор владельца 18.10   // ts — кнопка экрана тетриса: клавиша «ИГРАТЬ»; bg — фон за офисом (16.10: рисунки из знаков; выбраны «знаки сайта»), выбор владельца 15.10   // pw — окно на телефоне: «листание», выбор владельца 15.10   // тетрис: «Аркада», клавиши «в цветах окна» — выбор владельца 15.10   // фон «в цвет офиса» — выбор владельца 15.10   // 15.10: «Обо мне» А, «Навыки» В, Press Start 2P — выбор владельца; фон — варианты   // wv — вид окон разделов: 0 как было, 1–3 — варианты Дизайнера (14.10)   // пол П2, стены С4 (кирпич в цветах переговорной), толщина 8 — выбор владельца 14.10
+    tone: 'mid', outline: 'none', zoom: 'k9', floor: 'slate', walls: 'c4', wt: '8', mk: '1', board: '2', wv: '3', 'w3-about': 'a', 'w3-skills': 'c', 'w3-font': 'press', field: 'office', 'w3-tetris': 'arcade', pk: 'win', pw: 'flip', ts: 'key', bg: 'code', md: 'l', ms: 's', lb: 'a' };   // md, ms — медали в карточке агента: в строке «Стаж», меньше — выбор владельца 18.10   // ts — кнопка экрана тетриса: клавиша «ИГРАТЬ»; bg — фон за офисом (16.10: рисунки из знаков; выбраны «знаки сайта»), выбор владельца 15.10   // pw — окно на телефоне: «листание», выбор владельца 15.10   // тетрис: «Аркада», клавиши «в цветах окна» — выбор владельца 15.10   // фон «в цвет офиса» — выбор владельца 15.10   // 15.10: «Обо мне» А, «Навыки» В, Press Start 2P — выбор владельца; фон — варианты   // wv — вид окон разделов: 0 как было, 1–3 — варианты Дизайнера (14.10)   // пол П2, стены С4 (кирпич в цветах переговорной), толщина 8 — выбор владельца 14.10
   (function () {   // пол и стены (pix/rooms.js): кнопки из списка вариантов, начальный — из адреса ?floor= / ?walls=
     var q = new URLSearchParams(location.search), RS = window.PIX_ROOMS;
     if (!RS) return;
     ['floor', 'walls', 'wt'].forEach(function (grp) {
       var list = grp === 'wt' ? WTS : RS[grp === 'floor' ? 'floors' : 'walls'], box = document.querySelector('.grp[data-group="' + grp + '"]');
       if (list[q.get(grp)]) state[grp] = q.get(grp);
-      ['zoom', 'mk', 'board', 'wv', 'w3-about', 'w3-skills', 'w3-font', 'field', 'w3-tetris', 'pk', 'pw', 'ts', 'nm', 'sz', 'bg', 'md', 'ms'].forEach(function (g) { if (q.get(g)) state[g] = q.get(g); });   // ?zoom= ?mk= ?board= — для проверок и листов
-      Object.keys(list).forEach(function (k) {
+      ['zoom', 'mk', 'board', 'wv', 'w3-about', 'w3-skills', 'w3-font', 'field', 'w3-tetris', 'pk', 'pw', 'ts', 'nm', 'sz', 'bg', 'md', 'ms', 'lb'].forEach(function (g) { if (q.get(g)) state[g] = q.get(g); });   // ?zoom= ?mk= ?board= — для проверок и листов
+      if (box) Object.keys(list).forEach(function (k) {   // на сайте панели демо нет — сборка её вырезает (ТЗ SEO 18.10)
         var b = document.createElement('button'); b.type = 'button'; b.dataset.v = k; b.textContent = list[k].name; box.appendChild(b);
       });
     });
@@ -2968,7 +3021,7 @@
   }, skip: function (e) {   // нажатие и наведение — не для фона: окно открыто, указатель на кнопке, панели, подсказках
     return !win.hidden || !!(e.target && e.target.closest && e.target.closest('button, a, input, header, .win, .chips, .hud, .ag, .spot'));
   } });
-  ['first', 'marks', 'classic', 'tags', 'nm', 'sz', 'screen', 'tone', 'outline', 'zoom', 'floor', 'walls', 'wt', 'mk', 'board', 'wv', 'w3-about', 'w3-skills', 'w3-font', 'field', 'w3-tetris', 'pk', 'pw', 'ts', 'bg', 'md', 'ms'].forEach(function (g) { setVariant(g, state[g]); });
+  ['first', 'marks', 'classic', 'tags', 'nm', 'sz', 'screen', 'tone', 'outline', 'zoom', 'floor', 'walls', 'wt', 'mk', 'board', 'wv', 'w3-about', 'w3-skills', 'w3-font', 'field', 'w3-tetris', 'pk', 'pw', 'ts', 'bg', 'md', 'ms', 'lb'].forEach(function (g) { setVariant(g, state[g]); });
   agents.forEach(paintAgent); agentsRender();
   requestAnimationFrame(frame);
 

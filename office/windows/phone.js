@@ -63,7 +63,7 @@
     if (o.mode !== 'flip') return;
     var i = o.order.indexOf(id), prev = o.order[i - 1], next = o.order[i + 1];
     var nav = document.createElement('nav');
-    nav.className = 'w3p-nav'; nav.setAttribute('aria-label', 'Разделы');
+    nav.className = 'w3p-nav'; nav.setAttribute('aria-label', (window.OT || String)('Разделы'));
     nav.innerHTML = (prev ? '<button type="button" class="w3p-go w3p-go--prev" data-go="' + prev + '"><span aria-hidden="true">‹</span> ' + o.title(prev) + '</button>' : '<span></span>') +
       '<span class="w3p-count">' + (i + 1) + ' / ' + o.order.length + '</span>' +
       (next ? '<button type="button" class="w3p-go w3p-go--next" data-go="' + next + '">' + o.title(next) + ' <span aria-hidden="true">›</span></button>' : '<span></span>');

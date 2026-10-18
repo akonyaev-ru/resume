@@ -7,6 +7,8 @@
    Обычный JS (ES5), без сборки. Тексты интерфейса — по-русски. */
 (function () {
   'use strict';
+  // надписи — по словарю офиса (pix/i18n.js, 18.10: английская версия); без него — как есть
+  var OT = window.OT || function (s) { return s; }, EN = !!(window.OFFICE_I18N && window.OFFICE_I18N.lang === 'en');
 
   var SVG_OUT = '<svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true" focusable="false"><path d="M7 3H3v10h10V9M9.5 3H13v3.5M13 3L7.5 8.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="square" stroke-linejoin="miter"/></svg>';
 
@@ -14,7 +16,9 @@
   function toArr(nl) { return Array.prototype.slice.call(nl); }
   function closest(el, sel) { return el && el.closest ? el.closest(sel) : null; }
   function plural(n, one, few, many) {
+    if (EN) return n === 1 ? OT(one) : OT(one) + 's';   // «1 skill», «5 skills»
     var a = n % 10, b = n % 100;
+
     if (a === 1 && b !== 11) return one;
     if (a >= 2 && a <= 4 && (b < 12 || b > 14)) return few;
     return many;
@@ -55,17 +59,17 @@
         return '<a class="w3-btn' + (k === 'telegram' ? ' w3-btn--main' : '') + '" href="' + esc(c[k].href) + '"' +
           (k === 'email' ? '' : ' target="_blank" rel="noopener"') + '>' + esc(t(c[k].label)) + '</a>';
       }).join('');
-      var facts = [['Город', t(p.city)], ['Занятость', t(p.employment)], ['Формат', t(p.schedule)], ['Переезд', t(p.relocation)],
-        ['Специализации', list(t(p.specializations)).join(', ')]]   // массив — через запятую с пробелом
+      var facts = [[OT('Город'), t(p.city)], [OT('Занятость'), t(p.employment)], [OT('Формат'), t(p.schedule)], [OT('Переезд'), t(p.relocation)],
+        [OT('Специализации'), list(t(p.specializations)).join(', ')]]   // массив — через запятую с пробелом
         .filter(function (f) { return f[1]; })
         .map(function (f) { return '<dt>' + f[0] + '</dt><dd>' + esc(f[1]) + '</dd>'; }).join('');
-      return book('Обо мне', [
-        { name: 'Коротко', sub: '', html: '<h3 class="w3-who">' + esc(t(p.name)) + '</h3>' +
+      return book(OT('Обо мне'), [
+        { name: OT('Коротко'), sub: '', html: '<h3 class="w3-who">' + esc(t(p.name)) + '</h3>' +
           '<p class="w3-meta">' + esc(t(p.role).replace(/\n/g, ' ')) + '</p>' +
           '<p class="w3-lede">' + esc(t(p.lede)) + '</p><div class="w3-btns">' + links + '</div>' },
-        { name: 'Подробнее', sub: '', html: '<p class="w3-text">' + esc(t(p.about)) + '</p>' +
+        { name: OT('Подробнее'), sub: '', html: '<p class="w3-text">' + esc(t(p.about)) + '</p>' +
           (quote ? '<blockquote class="w3-quote">' + esc(quote) + '</blockquote>' : '') },
-        { name: 'Условия работы', sub: '', html: '<dl class="w3-facts">' + facts + '</dl>' }
+        { name: OT('Условия работы'), sub: '', html: '<dl class="w3-facts">' + facts + '</dl>' }
       ]);
     },
 
@@ -79,11 +83,11 @@
     },
 
     experience: function (R, t, esc) {
-      return book('Места работы', list(R.experience).map(function (e) {
+      return book(OT('Места работы'), list(R.experience).map(function (e) {
         var name = esc(t(e.company)), when = esc(t(e.period));
         return { name: name, sub: when, html:
           '<header class="w3-head"><h3 class="w3-name">' + name + '</h3>' +
-          '<p class="w3-meta">' + esc(t(e.role)) + (e.parallel ? '<span class="w3-tag">параллельно</span>' : '') + '</p>' +
+          '<p class="w3-meta">' + esc(t(e.role)) + (e.parallel ? '<span class="w3-tag">' + OT('параллельно') + '</span>' : '') + '</p>' +
           '<p class="w3-when">' + when + '</p></header>' +
           '<ul class="w3-points">' + list(e.bullets).map(function (b) {
             var x = bullet(b, t, esc);
@@ -93,19 +97,19 @@
     },
 
     products: function (R, t, esc) {
-      return book('Продукты', list(R.projects).map(function (p) {
+      return book(OT('Продукты'), list(R.projects).map(function (p) {
         var name = esc(t(p.name)), tag = esc(t(p.tagline));
         return { name: name, sub: tag, html:
           '<header class="w3-head"><h3 class="w3-name">' + name + '</h3><p class="w3-meta">' + tag + '</p></header>' +
           '<p class="w3-text">' + esc(t(p.description)) + '</p>' +
-          '<ul class="w3-chips" aria-label="Стек">' + list(p.stack).map(function (s) { return '<li>' + esc(t(s)) + '</li>'; }).join('') + '</ul>' +
+          '<ul class="w3-chips" aria-label="' + OT('Стек') + '">' + list(p.stack).map(function (s) { return '<li>' + esc(t(s)) + '</li>'; }).join('') + '</ul>' +
           (p.link ? '<a class="w3-btn" href="' + esc(p.link) + '" target="_blank" rel="noopener">' + SVG_OUT +
             '<span>' + esc(p.repo || p.link) + '</span></a>' : '') };
       }));
     },
 
     skills: function (R, t, esc) {
-      return book('Группы навыков', list(R.skillGroups).map(function (g) {
+      return book(OT('Группы навыков'), list(R.skillGroups).map(function (g) {
         var name = esc(t(g.title)), n = list(g.skills).length;
         return { name: name, sub: n + ' ' + plural(n, 'навык', 'навыка', 'навыков'), html:
           '<header class="w3-head"><h3 class="w3-name">' + name + '</h3></header>' +

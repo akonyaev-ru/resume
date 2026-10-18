@@ -7,9 +7,12 @@
    Портрет: window.W3X_PHOTO (демо одним файлом вшивает его данными) или путь сайта от офиса. */
 (function () {
   'use strict';
+  // надписи — по словарю офиса (pix/i18n.js, 18.10: английская версия); без него — как есть
+  var OT = window.OT || function (s) { return s; }, EN = !!(window.OFFICE_I18N && window.OFFICE_I18N.lang === 'en');
 
   function list(x) { return x == null ? [] : [].concat(x); }
   function plural(n, one, few, many) {
+    if (EN) return n === 1 ? OT(one) : OT(one) + 's';   // «1 skill», «5 skills»
     var a = n % 10, b = n % 100;
     if (a === 1 && b !== 11) return one;
     if (a >= 2 && a <= 4 && (b < 12 || b > 14)) return few;
@@ -25,8 +28,8 @@
     }).join('');
   }
   function facts(p, t) {
-    return [['Город', t(p.city)], ['Занятость', t(p.employment)], ['Формат', t(p.schedule)], ['Переезд', t(p.relocation)],
-      ['Специализации', list(t(p.specializations)).join(', ')]].filter(function (f) { return f[1]; });
+    return [[OT('Город'), t(p.city)], [OT('Занятость'), t(p.employment)], [OT('Формат'), t(p.schedule)], [OT('Переезд'), t(p.relocation)],
+      [OT('Специализации'), list(t(p.specializations)).join(', ')]].filter(function (f) { return f[1]; });
   }
   function photo(p) {
     if (!p.photo) return '';
@@ -130,7 +133,7 @@
       if (window.PixKeys && panel.querySelector('.w3x-pkey')) { PixKeys.mount(panel); PixKeys.snap(panel); }
       // макет, а не игра: клавиши ничего не двигают — честно в подзаголовке окна (у живой «Аркады» — нет)
       var sub = panel.querySelector('#winSub');
-      if (sub && panel.querySelector('.w3x-tetris:not(.w3x-live)') && !/макет/.test(sub.textContent)) sub.textContent += ' · макет на снимке партии';
+      if (sub && panel.querySelector('.w3x-tetris:not(.w3x-live)') && !/макет/.test(sub.textContent)) sub.textContent += OT(' · макет на снимке партии');
     },
     tetrisStart: tetrisStart,
     startStyle: 'key',   // кнопка стартового экрана и конца партии: 'btn' | 'key' | 'blink' (screenButton); в демо — группа «Кнопка тетриса»
@@ -223,48 +226,48 @@
      десятке — отдельной строкой; при пустой таблице — честное «рекордов пока нет». Свой ник — из партии снимка. */
   function tetrisMock(kind, esc) {
     var S = window.W3X_TETRIS, REC = window.RECORDS || { top: [] };
-    if (!S) return '<p class="stub">Нет снимка партии (tetris/mock.js).</p>';
+    if (!S) return '<p class="stub">' + OT('Нет снимка партии (tetris/mock.js).') + '</p>';
     var top = (REC.top || []).slice(0, 10), mine = S.nick;
     var rows = top.length ? top.map(function (r, i) {
       return '<li' + (r.nick === mine ? ' class="is-mine"' : '') + '><span class="w3x-place">' + (i + 1) + '</span>' +
         '<span class="w3x-nick">' + esc(r.nick) + '</span><span class="w3x-best">' + esc(String(r.best)) + '</span></li>';
-    }).join('') : '<li class="w3x-empty">рекордов пока нет</li>';
-    var own = '<p class="w3x-own">вы — <span class="w3x-nick">' + esc(mine || '—') + '</span>, рекорда пока нет</p>';
+    }).join('') : '<li class="w3x-empty">' + OT('рекордов пока нет') + '</li>';
+    var own = '<p class="w3x-own">' + OT('вы — ') + '<span class="w3x-nick">' + esc(mine || '—') + '</span>' + OT(', рекорда пока нет') + '</p>';
     // без строки «общая таблица на …» — владелец 15.10: «убери упоминание общей таблицы»
-    var records = '<section class="w3x-tblock w3x-records"><h3 class="w3x-group">Рекорды</h3><ol class="w3x-top">' + rows + '</ol>' + own + '</section>';
-    var next = '<section class="w3x-tblock"><h3 class="w3x-group">Далее</h3><img class="w3x-next" src="' + S.next + '" alt="Следующая фигура" width="' +
+    var records = '<section class="w3x-tblock w3x-records"><h3 class="w3x-group">' + OT('Рекорды') + '</h3><ol class="w3x-top">' + rows + '</ol>' + own + '</section>';
+    var next = '<section class="w3x-tblock"><h3 class="w3x-group">' + OT('Далее') + '</h3><img class="w3x-next" src="' + S.next + '" alt="' + OT('Следующая фигура') + '" width="' +
       Math.round(S.nw / 1.25) + '" height="' + Math.round(S.nh / 1.25) + '"></section>';
-    var stats = '<dl class="w3x-tblock w3x-stats-t"><div><dt>Счёт</dt><dd class="w3x-tnum">' + S.score + '</dd></div>' +
-      '<div><dt>Уровень</dt><dd class="w3x-tnum">' + S.level + '</dd></div><div><dt>Линии</dt><dd class="w3x-tnum">' + S.lines + '</dd></div></dl>';
-    var legend = '<section class="w3x-tblock"><h3 class="w3x-group">Спецклетки</h3><ul class="w3x-legend">' + (S.legend || []).map(function (l) {
+    var stats = '<dl class="w3x-tblock w3x-stats-t"><div><dt>' + OT('Счёт') + '</dt><dd class="w3x-tnum">' + S.score + '</dd></div>' +
+      '<div><dt>' + OT('Уровень') + '</dt><dd class="w3x-tnum">' + S.level + '</dd></div><div><dt>' + OT('Линии') + '</dt><dd class="w3x-tnum">' + S.lines + '</dd></div></dl>';
+    var legend = '<section class="w3x-tblock"><h3 class="w3x-group">' + OT('Спецклетки') + '</h3><ul class="w3x-legend">' + (S.legend || []).map(function (l) {
       // в снимке название и пояснение слиплись («черная дырaглотает…») — делим по известному названию
       var m = String(l.text).match(/^(черная дыра|чёрная дыра|кислота|радуга|камень|вирус)\s*(.*)$/i) || [0, l.text, ''];
       // владелец 15.10: «описание специальных блоков должно остаться» — название и пояснение всегда
       return '<li><img src="' + l.icon + '" alt="" width="16" height="16"><span><b>' + esc(m[1]) + '</b> ' + esc(m[2]) + '</span></li>';
     }).join('') + '</ul></section>';
-    var board = '<div class="w3x-board"><img src="' + S.field + '" alt="Стакан тетриса" width="' + Math.round(S.fw / 1.25) + '" height="' +
+    var board = '<div class="w3x-board"><img src="' + S.field + '" alt="' + OT('Стакан тетриса') + '" width="' + Math.round(S.fw / 1.25) + '" height="' +
       Math.round(S.fh / 1.25) + '"></div>';
     /* Управление — как на сайте (console.js, keyRow): одна строка под стаканом — стрелки, поворот, широкий сброс, пауза;
        крупно знак действия, мелко клавиша, если не совпадает со знаком. Владелец 15.10: «управление пропало — вернуть».
        В макете кнопки ещё ничего не делают — заработают с игрой. */
-    var KEYS = [['left', '←', '', 'Влево (←)'], ['down', '↓', '', 'Вниз (↓)'], ['right', '→', '', 'Вправо (→)'], ['rotate', '↻', '↑', 'Повернуть (↑, X)'],
-      ['drop', '⤓', 'пробел', 'Сбросить (пробел)'], ['pause', 'II', 'P', 'Пауза (P)']];
+    var KEYS = [['left', '←', '', OT('Влево (←)')], ['down', '↓', '', OT('Вниз (↓)')], ['right', '→', '', OT('Вправо (→)')], ['rotate', '↻', '↑', OT('Повернуть (↑, X)')],
+      ['drop', '⤓', OT('пробел'), OT('Сбросить (пробел)')], ['pause', 'II', 'P', OT('Пауза (P)')]];
     var cap = function (k) {
       return '<button type="button" class="w3x-key' + (k[0] === 'drop' ? ' w3x-key--wide' : '') + '" data-act="' + k[0] + '" aria-label="' + k[3] + '" title="' + k[3] + '">' +
         '<span class="w3x-key__glyph">' + k[1] + '</span>' + (k[2] ? '<small aria-hidden="true">' + k[2] + '</small>' : '') + '</button>';
     };
     var keys = '<div class="w3x-keys"><span class="w3x-keys__group">' + KEYS.slice(0, 4).map(cap).join('') + '</span>' + KEYS.slice(4).map(cap).join('') + '</div>';
-    var mark = '<p class="w3x-mock">Макет на снимке настоящей партии — игра подключится после выбора раскладки.</p>';
+    var mark = '<p class="w3x-mock">' + OT('Макет на снимке настоящей партии — игра подключится после выбора раскладки.') + '</p>';
     if (kind === 'a') return '<div class="w3x w3x-tetris w3x-tetris-a"><div class="w3x-boardcol">' + board + keys + '</div>' +
       '<div class="w3x-tcol"><div class="w3x-trow">' + next + stats + '</div>' +
       '<div class="w3x-tpair">' + records + legend + '</div>' + mark + '</div></div>';   // рекорды и спецклетки рядом — влезает и десятка
 
     var pkey = pkeyHtml;
     var hud = function (cls) {
-      return '<dl class="w3x-hud ' + cls + '"><div><dt>Счёт</dt><dd class="w3x-tnum">' + S.score + '</dd></div>' +
-        '<div><dt>Уровень</dt><dd class="w3x-tnum">' + S.level + '</dd></div><div><dt>Линии</dt><dd class="w3x-tnum">' + S.lines + '</dd></div></dl>';
+      return '<dl class="w3x-hud ' + cls + '"><div><dt>' + OT('Счёт') + '</dt><dd class="w3x-tnum">' + S.score + '</dd></div>' +
+        '<div><dt>' + OT('Уровень') + '</dt><dd class="w3x-tnum">' + S.level + '</dd></div><div><dt>' + OT('Линии') + '</dt><dd class="w3x-tnum">' + S.lines + '</dd></div></dl>';
     };
-    var nextImg = '<img class="w3x-next" src="' + S.next + '" alt="Следующая фигура" width="' + Math.round(S.nw / 1.25) + '" height="' + Math.round(S.nh / 1.25) + '">';
+    var nextImg = '<img class="w3x-next" src="' + S.next + '" alt="' + OT('Следующая фигура') + '" width="' + Math.round(S.nw / 1.25) + '" height="' + Math.round(S.nh / 1.25) + '">';
 
     if (kind === 'arcade') {
       /* «Аркада» — как NES-тетрис: стакан посередине; слева — что делают спецклетки и пульт (стрелки буквой «Т», под ними
@@ -272,26 +275,26 @@
         return '<div class="w3x w3x-tetris w3x-tetris-arcade">' +
         '<div class="w3x-side">' + legend + ARCADE_CTL + '</div>' +
         board +
-        '<div class="w3x-side"><div class="w3x-nexthud"><section class="w3x-tblock"><h3 class="w3x-group">Далее</h3>' + nextImg + '</section>' +
+        '<div class="w3x-side"><div class="w3x-nexthud"><section class="w3x-tblock"><h3 class="w3x-group">' + OT('Далее') + '</h3>' + nextImg + '</section>' +
         '<div class="w3x-tblock">' + hud('w3x-hud--col') + '</div></div>' + records + '</div></div>';
     }
     /* «Пульт» — стакан слева; справа сверху табло (далее, счёт, уровень, линии), посередине рекорды и спецклетки рядом,
        снизу клавиши одним рядом с подписями — низ пульта на уровне дна стакана. */
     var row = function (act, w) { return '<span class="w3x-cap">' + pkey(act, w) + '<small>' + PKEYS[act][3] + '</small></span>'; };
-    var deck = '<section class="w3x-tblock w3x-deck"><h3 class="w3x-group">Управление</h3><div class="w3x-deck__keys">' +
+    var deck = '<section class="w3x-tblock w3x-deck"><h3 class="w3x-group">' + OT('Управление') + '</h3><div class="w3x-deck__keys">' +
       '<span class="w3x-deck__grp">' + row('left') + row('down') + row('right') + '</span>' +
       '<span class="w3x-deck__grp">' + row('rotate') + row('drop', 2) + row('pause') + '</span></div></section>';
     return '<div class="w3x w3x-tetris w3x-tetris-deck">' + board + '<div class="w3x-side">' +
-      '<div class="w3x-tblock w3x-board-hud"><div class="w3x-hudnext"><span class="w3x-hudlbl">Далее</span>' + nextImg + '</div>' + hud('w3x-hud--row') + '</div>' +
+      '<div class="w3x-tblock w3x-board-hud"><div class="w3x-hudnext"><span class="w3x-hudlbl">' + OT('Далее') + '</span>' + nextImg + '</div>' + hud('w3x-hud--row') + '</div>' +
       '<div class="w3x-tpair">' + records + legend + '</div>' + deck + '</div></div>';
   }
 
   /* Пиксельные клавиши (tetris/keys.js): знак на колпачке — клавиша клавиатуры, подпись — действие (как на сайте:
      ← → сдвиг, ↓ вниз, ↑ поворот, пробел — сброс, P — пауза). data-code — какие настоящие клавиши её нажимают. */
   var PKEYS = {
-    left: ['←', 'ArrowLeft', 'Влево (←)', 'влево'], down: ['↓', 'ArrowDown', 'Вниз (↓)', 'вниз'],
-    right: ['→', 'ArrowRight', 'Вправо (→)', 'вправо'], rotate: ['↑', 'ArrowUp KeyX', 'Повернуть (↑, X)', 'поворот'],
-    drop: ['SPACE', 'Space', 'Сбросить (пробел)', 'сброс'], pause: ['P', 'KeyP', 'Пауза (P)', 'пауза']
+    left: ['←', 'ArrowLeft', OT('Влево (←)'), OT('влево')], down: ['↓', 'ArrowDown', OT('Вниз (↓)'), OT('вниз')],
+    right: ['→', 'ArrowRight', OT('Вправо (→)'), OT('вправо')], rotate: ['↑', 'ArrowUp KeyX', OT('Повернуть (↑, X)'), OT('поворот')],
+    drop: ['SPACE', 'Space', OT('Сбросить (пробел)'), OT('сброс')], pause: ['P', 'KeyP', OT('Пауза (P)'), OT('пауза')]
   };
   function pkeyHtml(act, span, area) {   // span — ширина в обычных клавишах (пробел)
     var k = PKEYS[act];
@@ -299,28 +302,28 @@
       (span ? ' data-span="' + span + '"' : '') + (area ? ' style="grid-area: ' + area + '"' : '') + ' aria-label="' + k[2] + '" title="' + k[2] + '"></button>';
   }
   /* Пульт «Аркады»: стрелки буквой «Т», P над ←, пробел во всю ширину (три клавиши и два промежутка); рядом — что делает каждая. */
-  var ARCADE_CTL = '<section class="w3x-tblock w3x-ctl"><h3 class="w3x-group">Управление</h3><div class="w3x-ctl__in"><div class="w3x-pad">' +
+  var ARCADE_CTL = '<section class="w3x-tblock w3x-ctl"><h3 class="w3x-group">' + OT('Управление') + '</h3><div class="w3x-ctl__in"><div class="w3x-pad">' +
     pkeyHtml('pause', 0, 'p') + pkeyHtml('rotate', 0, 'u') + pkeyHtml('left', 0, 'l') + pkeyHtml('down', 0, 'd') + pkeyHtml('right', 0, 'r') +
-    pkeyHtml('drop', 3, 's') + '</div><ul class="w3x-how"><li><b>↑</b> поворот</li><li><b>← →</b> сдвиг</li><li><b>↓</b> вниз</li>' +
-    '<li><b>пробел</b> сброс</li><li><b>P</b> пауза</li></ul></div></section>';
+    pkeyHtml('drop', 3, 's') + '</div><ul class="w3x-how"><li><b>↑</b> ' + OT('поворот') + '</li><li><b>← →</b> ' + OT('сдвиг') + '</li><li><b>↓</b> ' + OT('вниз') + '</li>' +
+    '<li><b>' + OT('пробел') + '</b> ' + OT('сброс') + '</li><li><b>P</b> ' + OT('пауза') + '</li></ul></div></section>';
 
   /* «Аркада» на настоящей игре сайта (assets/js/console.js, окно-skin): стакан и «далее» — холсты, которые рисует игра;
      спецклетки — её значками и её подписями (размеры из правил ядра); счёт, уровень, линии — из партии; рекорды — общая
      десятка (data/records.js) со своей записью (mergeScores). Поверх стакана — стартовый экран, пауза, конец партии. */
   function tetrisArcade(esc) {
     var C = window.OfficeConsole;
-    var legend = '<section class="w3x-tblock"><h3 class="w3x-group">Спецклетки</h3><ul class="w3x-legend">' + C.blocks().map(function (b) {
+    var legend = '<section class="w3x-tblock"><h3 class="w3x-group">' + OT('Спецклетки') + '</h3><ul class="w3x-legend">' + C.blocks().map(function (b) {
       return '<li data-type="' + b.type + '"><canvas class="w3x-licon" aria-hidden="true"></canvas><span><b>' + esc(b.name) + '</b> ' + esc(b.text) + '</span></li>';
     }).join('') + '</ul></section>';
-    var board = '<div class="w3x-board"><canvas class="w3x-field" role="img" aria-label="Стакан тетриса"></canvas>' +
+    var board = '<div class="w3x-board"><canvas class="w3x-field" role="img" aria-label="' + OT('Стакан тетриса') + '"></canvas>' +
       '<div class="w3x-screen" aria-live="polite"></div><div class="w3x-over" hidden><b></b><span></span></div></div>';
-    var hud = '<dl class="w3x-hud w3x-hud--col"><div><dt>Счёт</dt><dd class="w3x-tnum" data-stat="score">0</dd></div>' +
-      '<div><dt>Уровень</dt><dd class="w3x-tnum" data-stat="level">1</dd></div><div><dt>Линии</dt><dd class="w3x-tnum" data-stat="lines">0</dd></div></dl>';
+    var hud = '<dl class="w3x-hud w3x-hud--col"><div><dt>' + OT('Счёт') + '</dt><dd class="w3x-tnum" data-stat="score">0</dd></div>' +
+      '<div><dt>' + OT('Уровень') + '</dt><dd class="w3x-tnum" data-stat="level">1</dd></div><div><dt>' + OT('Линии') + '</dt><dd class="w3x-tnum" data-stat="lines">0</dd></div></dl>';
     // без строки «общая таблица на …» — владелец 15.10: «убери упоминание общей таблицы»
-    var records = '<section class="w3x-tblock w3x-records"><h3 class="w3x-group">Рекорды</h3><ol class="w3x-top"></ol><p class="w3x-own"></p></section>';
+    var records = '<section class="w3x-tblock w3x-records"><h3 class="w3x-group">' + OT('Рекорды') + '</h3><ol class="w3x-top"></ol><p class="w3x-own"></p></section>';
     return '<div class="w3x w3x-tetris w3x-tetris-arcade w3x-live">' +
       '<div class="w3x-side">' + legend + ARCADE_CTL + '</div>' + board +
-      '<div class="w3x-side"><div class="w3x-nexthud"><section class="w3x-tblock"><h3 class="w3x-group">Далее</h3><canvas class="w3x-nextc" aria-hidden="true"></canvas></section>' +
+      '<div class="w3x-side"><div class="w3x-nexthud"><section class="w3x-tblock"><h3 class="w3x-group">' + OT('Далее') + '</h3><canvas class="w3x-nextc" aria-hidden="true"></canvas></section>' +
       '<div class="w3x-tblock">' + hud + '</div></div>' + records + '</div></div>';
   }
 
@@ -335,18 +338,18 @@
        'blink' — надпись «▶ ИГРАТЬ», мигает, как PRESS START на автоматах (при «уменьшить движение» не мигает).
      'btn' и 'blink' остаются для сравнения (?ts=btn|blink). Возвращает { el — что вставить, focus — сама кнопка }. */
   function screenButton(kind, act, onClick) {
-    var word = act === 'start' ? 'Играть' : 'Ещё раз', b = document.createElement('button'), el = b;
+    var word = act === 'start' ? OT('Играть') : OT('Ещё раз'), b = document.createElement('button'), el = b;
     b.type = 'button';
     if (kind === 'key') {
       b.className = 'w3x-pkey w3x-startkey';
-      b.setAttribute('data-label', act === 'start' ? 'ИГРАТЬ' : 'ЕЩЁ РАЗ');
+      b.setAttribute('data-label', act === 'start' ? OT('ИГРАТЬ') : OT('ЕЩЁ РАЗ'));
       b.setAttribute('data-span', act === 'start' ? '2.5' : '3');
       b.setAttribute('data-code', act === 'start' ? 'Enter NumpadEnter' : 'KeyR');   // нажатие на клавиатуре видно на экране
       b.setAttribute('data-pal', 'acc');
       b.setAttribute('aria-label', word + ' (' + (act === 'start' ? 'Enter' : 'R') + ')');
       el = document.createElement('span'); el.className = 'w3x-startcap';
       el.appendChild(b);
-      var cap = document.createElement('small'); cap.textContent = act === 'start' ? 'или Enter' : 'или R'; el.appendChild(cap);
+      var cap = document.createElement('small'); cap.textContent = act === 'start' ? OT('или Enter') : OT('или R'); el.appendChild(cap);
     } else {
       /* Надпись — во вложенном span: фильтр чёткости пиксельного шрифта (#w3x-crisp, порог прозрачности) работает только
          на прозрачном фоне, а у кнопки фон сплошной. «▶» — знак самого Press Start 2P (проверено замером ширины). */
@@ -365,10 +368,10 @@
     ol.innerHTML = table.rows.length ? table.rows.map(function (r, i) {
       return '<li' + (r.mine ? ' class="is-mine"' : '') + '><span class="w3x-place">' + (i + 1) + '</span><span class="w3x-nick">' + escHtml(r.nick) +
         '</span><span class="w3x-best">' + escHtml(r.best) + '</span></li>';
-    }).join('') : '<li class="w3x-empty">рекордов пока нет</li>';
+    }).join('') : '<li class="w3x-empty">' + OT('рекордов пока нет') + '</li>';
     var mine = table.extra || table.rows.filter(function (r) { return r.mine; })[0];
-    own.innerHTML = mine ? 'вы — <span class="w3x-nick">' + escHtml(mine.nick) + '</span>, ' + (table.extra ? 'рекорд ' + escHtml(mine.best) + ', вне десятки' : 'ваша строка выделена')
-      : 'вы — <span class="w3x-nick">' + escHtml(nick || '—') + '</span>, рекорда пока нет';
+    own.innerHTML = mine ? OT('вы — ') + '<span class="w3x-nick">' + escHtml(mine.nick) + '</span>, ' + (table.extra ? OT('рекорд ') + escHtml(mine.best) + OT(', вне десятки') : OT('ваша строка выделена'))
+      : OT('вы — ') + '<span class="w3x-nick">' + escHtml(nick || '—') + '</span>' + OT(', рекорда пока нет');
   }
 
   /* Запуск игры в окне «Аркады»: окно — наше (skin), игра — console.js. Клетка стакана — целое число точек экрана и
@@ -448,8 +451,8 @@
         paintRecords(panel, C.table(), nick);
         fit(function (cell) { sizeBoard(field, q('.w3x-nextc'), cell); });
         // у клавиши ENTER подпись «играть» под ней, подсказка лишняя; у кнопки и надписи — «или Enter»
-        show('<p class="w3x-screen__title w3x-screen__title--big">Тетрис</p>' + pair('игрок', '<span class="w3x-nick">' + escHtml(nick) + '</span>'),
-          start, style === 'key' ? '' : 'или Enter');
+        show('<p class="w3x-screen__title w3x-screen__title--big">' + OT('Тетрис') + '</p>' + pair(OT('игрок'), '<span class="w3x-nick">' + escHtml(nick) + '</span>'),
+          start, style === 'key' ? '' : OT('или Enter'));
       },
       play: function () { screen.hidden = true; screen.innerHTML = ''; before = (C.record() || {}).best || 0; },
       fit: fit,
@@ -457,8 +460,8 @@
       over: function (score, table) {
         paintRecords(panel, table, C.nick());
         var fresh = score > before && score > 0;
-        show('<p class="w3x-screen__title">Игра окончена</p>' + pair('счёт', '<b class="w3x-tnum">' + escHtml(score) + '</b>') +
-          (fresh ? '<p class="w3x-screen__rec">новый рекорд</p>' : ''), again, style === 'key' ? 'Esc — закрыть' : 'R — ещё раз · Esc — закрыть');
+        show('<p class="w3x-screen__title">' + OT('Игра окончена') + '</p>' + pair(OT('счёт'), '<b class="w3x-tnum">' + escHtml(score) + '</b>') +
+          (fresh ? '<p class="w3x-screen__rec">' + OT('новый рекорд') + '</p>' : ''), again, style === 'key' ? OT('Esc — закрыть') : OT('R — ещё раз · Esc — закрыть'));
       },
       close: function () {
         panel.style.removeProperty('--w3-max');   // прибавка высоты — только для тетриса: окно дальше служит другим разделам

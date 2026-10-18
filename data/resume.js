@@ -377,7 +377,7 @@ window.RESUME = {
         { name: { ru: 'Базы знаний', en: 'Knowledge bases' } },
         { name: { ru: 'Битрикс24', en: 'Bitrix24' } },
         { name: 'Jira' },
-        { name: '1С:ERP' },
+        { name: { ru: '1С:ERP', en: '1C:ERP' } },   // по-английски — латинская C (18.10, английский офис)
         { name: { ru: '1С:УТ', en: '1C:Trade' } },
         { name: { ru: 'Диадок (ЭДО)', en: 'Diadoc (e-document exchange)' } },
       ],

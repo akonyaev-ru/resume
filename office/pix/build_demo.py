@@ -16,6 +16,9 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 OFFICE = os.path.dirname(HERE)
 SRC = os.path.join(OFFICE, 'greybox.html')
 PROD = '--prod' in sys.argv
+# 18.10: английская страница офиса (/resume/en/) — тот же офис, язык en: надписи из pix/i18n.js, резюме — из data/resume.js
+LANG = sys.argv[sys.argv.index('--lang') + 1] if '--lang' in sys.argv else 'ru'
+assert LANG in ('ru', 'en'), LANG
 OUT = sys.argv[sys.argv.index('--prod') + 1] if PROD else os.path.join(OFFICE, 'dist', 'office_demo.html')
 
 
@@ -33,6 +36,7 @@ SITE = up_to(os.path.join('data', 'resume.js'))
 WIN = os.path.join(OFFICE, 'windows') if os.path.isdir(os.path.join(OFFICE, 'windows')) else os.path.join(OFFICE, '..', 'windows')
 
 INLINE = {   # скрипты страницы: путь в <script src> → файл; остальные (старые режимы a, b, w, t8, t16c) выкидываются
+    'pix/i18n.js': os.path.join(HERE, 'i18n.js'),   # язык страницы и надписи офиса по-английски (18.10)
     '../../../data/resume.js': os.path.join(SITE, 'data', 'resume.js'),
     'pix/pix.js': os.path.join(HERE, 'pix.js'),
     'pix/rooms.js': os.path.join(HERE, 'rooms.js'),
@@ -72,7 +76,7 @@ def script(m):
 
 
 html, n = re.subn(r'<script src="([^"]+)"></script>', script, html)
-assert n == 24, n   # подключений скриптов в странице (18.10: +1 — медали); вставляются из INLINE, прочие выкидываются
+assert n == 25, n   # подключений скриптов в странице (18.10: +1 — медали); вставляются из INLINE, прочие выкидываются
 
 # стили окон: @import шрифтов сайта заменяется самими шрифтами (Golos Text, Unbounded — кириллица и латиница) данными в файле
 RES = SITE
@@ -157,32 +161,73 @@ if PROD:
         return m.group(0)
     desc = re.search(r'<meta name="description" content="([^"]+)"', old).group(1)
     ogdesc = re.search(r'<meta property="og:description" content="([^"]+)"', old).group(1)
-    URL = 'https://akonyaev-ru.github.io/resume/'
+    SITE_URL = 'https://akonyaev-ru.github.io/resume/'
+    URL = SITE_URL + ('en/' if LANG == 'en' else '')   # canonical и og:url — на саму страницу (ТЗ SEO 18.10, строка 1)
+    # пара языков офиса (ТЗ SEO, строка 2): ru / en / x-default = русская; классика /old/ — своя пара, с офисом не связана
+    alt = ['<link rel="alternate" hreflang="ru" href="%s">' % SITE_URL, '<link rel="alternate" hreflang="en" href="%sen/">' % SITE_URL,
+           '<link rel="alternate" hreflang="x-default" href="%s">' % SITE_URL]
     head = '\n'.join([
         '<title>Резюме Алексея Коняева</title>',
         '<meta name="description" content="%s">' % desc,
         '<meta name="author" content="Алексей Коняев">',
         '<link rel="canonical" href="%s">' % URL,
+    ] + alt + [
         '<meta property="og:type" content="website">',
         '<meta property="og:locale" content="ru_RU">',
+        '<meta property="og:locale:alternate" content="en_US">',
         '<meta property="og:site_name" content="Резюме Алексея Коняева">',
         '<meta property="og:title" content="Резюме Алексея Коняева">',
         '<meta property="og:description" content="%s">' % ogdesc,
         '<meta property="og:url" content="%s">' % URL,
-        '<meta property="og:image" content="%sog.jpg">' % URL,
+        '<meta property="og:image" content="%sog.jpg">' % SITE_URL,
         '<meta property="og:image:width" content="1200">',
         '<meta property="og:image:height" content="630">',
         '<meta property="og:image:alt" content="Пиксельный офис Алексея Коняева: разделы резюме — предметы офиса">',
         '<meta name="twitter:card" content="summary_large_image">',
         tag(r'<link rel="icon" [^>]*>'),
     ])
+    if LANG == 'en':   # блок <head> из ТЗ SEO 18.10 (строки 1, 2, 5, 9): картинка превью общая — на ней нет текста
+        head = '\n'.join([
+            '<title>Alexey Konyaev — CV</title>',
+            '<meta name="description" content="LegalOPS and AI-agent implementation specialist. A practising lawyer who rolls out AI agents and automates the legal function: Claude, Python, LLM, Bitrix24. Experience, results, products.">',
+            '<meta name="author" content="Alexey Konyaev">',
+            '<link rel="canonical" href="%s">' % URL,
+        ] + alt + [
+            '<meta property="og:type" content="website">',
+            '<meta property="og:locale" content="en_US">',
+            '<meta property="og:locale:alternate" content="ru_RU">',
+            '<meta property="og:site_name" content="Alexey Konyaev — CV">',
+            '<meta property="og:title" content="Alexey Konyaev — CV">',
+            '<meta property="og:description" content="LegalOPS and AI-agent implementation specialist: a practising lawyer, legal function automation.">',
+            '<meta property="og:url" content="%s">' % URL,
+            '<meta property="og:image" content="%sog.jpg">' % SITE_URL,
+            '<meta property="og:image:width" content="1200">',
+            '<meta property="og:image:height" content="630">',
+            '<meta property="og:image:alt" content="Alexey Konyaev\'s pixel office: CV sections are objects in the office">',
+            '<meta name="twitter:card" content="summary_large_image">',
+            tag(r'<link rel="icon" [^>]*>'),
+        ])
+        rep('<html lang="ru">', '<html lang="en">')
+        # строка лицензии — по-английски прямо в разметке: робот читает её без скрипта (ТЗ SEO, строка 6)
+        legal = re.compile(r'(<p class="legal" id="legal">).*?(</p>)', re.S)
+        assert len(legal.findall(html)) == 1
+        en_legal = re.search(r"window\.OFFICE_LEGAL_EN = (.*?);\n", read(os.path.join(HERE, 'i18n.js')), re.S).group(1)
+        en_legal = ''.join(re.findall(r"'((?:[^'\\]|\\.)*)'", en_legal))
+        html = legal.sub(lambda m: m.group(1) + en_legal + m.group(2), html)
+        rep('<nav class="langsw" aria-label="Язык">', '<nav class="langsw" aria-label="Language">')
     rep('<title>Пиксельный офис — серый макет</title>', head)
+    # язык страницы — до словаря: pix/i18n.js берёт его отсюда
+    rep('<script>/* pix/i18n.js */', "<script>window.OFFICE_LANG = '%s';</script>\n<script>/* pix/i18n.js */" % LANG)
+    # панели демо на сайте нет и в разметке (ТЗ SEO, строка 4): её текст и ссылки ?art= читал робот
+    bar = re.compile(r'<header class="bar" id="bar">.*?</header>\n', re.S)
+    assert len(bar.findall(html)) == 1
+    html = bar.sub('', html)
 else:
     rep('<title>Пиксельный офис — серый макет</title>', '<title>Пиксельный офис — демо</title>')
 day = datetime.date.today().strftime('%d.%m')
-title = re.compile(r"  else if \(TRACE\) document\.querySelector\('\.bar__title'\)\.innerHTML = .*?смотрим офис\.';", re.S)
+title = re.compile(r"  else if \(TRACE\) barTitle\.innerHTML = .*?смотрим офис\.';", re.S)
 assert len(title.findall(html)) == 1
-html = title.sub(lambda m: """  else if (TRACE) document.querySelector('.bar__title').innerHTML = '<b>Пиксельный офис — демо на %s.</b> ' +
+html = title.sub(lambda m: "  else if (TRACE) barTitle.innerHTML = '';" if PROD else """  else if (TRACE) barTitle.innerHTML = '<b>Пиксельный офис — демо на %s.</b> ' +
     'Офис нарисован руками по картинке Gemini: 27 предметов, пол «сланец», обои — кирпич в цветах переговорной. Нажмите на предмет с «!» — ' +
     'откроется раздел резюме. Агенты тоже нажимаются.';""" % day, html)
 # метка собранного демо (body.demo-build) — для правил, которые нужны только ему
