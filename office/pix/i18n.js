@@ -11,6 +11,9 @@
 
   var EN = {
     // разделы и предметы
+    // 18.10, демо: контакт на стойке (вариант ct)
+    'Контакты': 'Contacts', 'Телефон на стойке': 'Phone on the desk', 'Звонок на стойке': 'Bell on the desk',
+    'Визитница на стойке': 'Card holder on the desk',
     'Обо мне': 'About me', 'Стойка ресепшн': 'Reception desk', 'Показатели': 'Impact', 'Большой экран': 'Big screen',
     'Опыт работы': 'Experience', 'Доска в переговорной': 'Meeting-room whiteboard', 'Собственные продукты': 'My own products',
     'Витрина': 'Display case', 'Навыки': 'Skills', 'Серверная': 'Server room', 'Образование': 'Education',

@@ -177,6 +177,24 @@
   @media (hover: hover) { .spot:hover .tip { opacity: 1; } }   /* на касание подпись не залипает */
   body.classic-label .spot--classic .tip { opacity: 1; }
   @media (prefers-reduced-motion: reduce) { .spot .mk, body.marks-glow .spot { animation: none; } }
+  /* 18.10, демо: вывеска (заголовок для поиска), окно контактов, подсказка первого визита */
+  .hint { opacity: 0; transition: opacity .16s linear; }
+  .hint.is-on { opacity: 1; }
+  .hint-bubble { position: absolute; z-index: 1900; box-sizing: border-box; display: flex; flex-direction: column; align-items: center; justify-content: center;
+    background-size: 100% 100%; image-rendering: pixelated; color: #1b1d21; font: 600 11px/16px system-ui, "Segoe UI", sans-serif; white-space: nowrap; cursor: pointer; }
+  .hint-l { display: block; }
+  .hint-mk { vertical-align: -4px; image-rendering: pixelated; }
+  .hint-ring { position: absolute; z-index: 1950; pointer-events: none; image-rendering: pixelated; }
+  .hint-cap { position: absolute; z-index: 1950; background: #0e1013; color: #e6e8eb; border: 1px solid #3a4049; border-radius: 4px; padding: 4px 6px;
+    font: 600 10px/1.25 system-ui, "Segoe UI", sans-serif; white-space: nowrap; text-align: center; cursor: pointer; }
+  .hint-strip { position: fixed; left: 0; right: 0; bottom: 28px; margin: 0 auto; width: max-content; max-width: calc(100% - 32px); z-index: 960;
+    background: rgba(14, 16, 19, .92); color: #e6e8eb; border: 1px solid #3a4049; border-radius: 4px; padding: 6px 10px;
+    font: 600 12px/16px system-ui, "Segoe UI", sans-serif; cursor: pointer; }
+  .hint-strip .hint-mk { vertical-align: -3px; }
+  @media (prefers-reduced-motion: reduce) { .hint { transition: none; } }
+  .ct-win { padding: 4px 2px 2px; }
+  .ct-win .w3x-btns { margin-top: 14px; }
+  .ct-win__mail { margin: 12px 0 0; font: 13px/1.4 "Golos Text", system-ui, sans-serif; color: #9aa1ab; user-select: all; }
 
   /* Надписи на предметах: вариант «в сцене» показывает содержание, остальные — серую подпись. */
   .lbl { position: absolute; display: flex; align-items: center; justify-content: center; text-align: center;
@@ -348,6 +366,21 @@
   <!-- решено владельцем 18.10: «Ставим вид Б — ссылка «English» в строке лицензии внизу» -->
   <div class="grp grp--done" data-group="lb"><span class="grp__name">Кнопка языка:</span>
     <button data-v="a">А «RU | EN» в углу</button><button data-v="b">Б ссылка в строке внизу ✓</button></div>
+  <!-- 18.10: «покажи живое демо вывески, контакта на ресепшене и подсказки при первом визите — по 2–3 варианта» -->
+  <!-- 18.10, позже: «понравился только один вариант — буквы во всю стену, но другого цвета (не чёрного) и более аккуратно;
+       текст серебром, с анимацией блеска или переливания». Табличка и неон, контакт на стойке и подсказка — отклонены -->
+  <!-- решено владельцем 18.10: объёмное серебро с бликом, логотип | AI-AGENTS, посередине стены — «Правок нет, выкладывай» -->
+  <div class="grp grp--done" data-group="sg"><span class="grp__name">Буквы на стене:</span>
+    <button data-v="relief">объёмное серебро, блик ✓</button><button data-v="silver">плоское серебро, блик</button><button data-v="shimmer">серебро, перелив</button><button data-v="letters">чёрные — как было</button><button data-v="0">нет</button></div>
+  <!-- 18.10, ещё позже: «попробуй отрисовать мой логотип и повесить его в серебре, чтобы получилось ЛОГО / AI-AGENTS» -->
+  <div class="grp grp--done" data-group="st"><span class="grp__name">Надпись:</span>
+    <button data-v="logo">логотип | AI-AGENTS ✓</button><button data-v="slash">логотип / AI-AGENTS</button><button data-v="name">имя и роль</button></div>
+  <div class="grp grp--done" data-group="sp"><span class="grp__name">Место:</span>
+    <button data-v="mid">посередине стены ✓</button><button data-v="tv">над экраном — видно и на телефоне</button></div>
+  <div class="grp grp--done" data-group="ct"><span class="grp__name">Контакт:</span>
+    <button data-v="0">нет</button><button data-v="phone">1 телефон ★</button><button data-v="bell">2 звонок</button><button data-v="cards">3 визитница</button></div>
+  <div class="grp grp--done" data-group="fh"><span class="grp__name">Подсказка:</span>
+    <button data-v="0">нет</button><button data-v="bubble">1 Оливия говорит ★</button><button data-v="ring">2 кольцо «Начните отсюда»</button><button data-v="strip">3 строка внизу</button><button data-v="again" class="grp__act">↺ показать снова</button></div>
   <div class="grp" data-group="screen"><span class="grp__name">Экран:</span>
     <button data-v="desk">компьютер</button><button data-v="phone2">телефон</button></div>
   <div class="grp grp--w3 grp--done" data-group="pw"><span class="grp__name">Окно на телефоне:</span>
@@ -494,6 +527,8 @@
   var SPOTS = [
     { id: 'about', title: 'Обо мне', obj: 'Стойка ресепшн', label: 'стойка', x: 31, y: 31, w: 8, h: 2 },
     // Почтовый ящик (контакты) убран — владелец 12.10: «мне он не нравится»; контакты остаются в карточке.
+    // 18.10, демо: контакт предметом на стойке (вариант ct; '0' — нет): рамка «!» — по нарисованному предмету плана со spot 'contacts'
+    { id: 'contacts', title: 'Контакты', obj: 'Телефон на стойке', x: 36, y: 31, w: 2, h: 1, noDraw: true },
     { id: 'metrics', title: 'Показатели', obj: 'Большой экран', label: PLAN ? 'big TV screen' : '', x: 26, y: 3, w: 12, h: 4 },
     { id: 'experience', title: 'Опыт работы', obj: 'Доска в переговорной', label: 'доска', x: 46, y: 2, w: 10, h: 2, legs: true },
     { id: 'products', title: 'Собственные продукты', obj: 'Витрина', label: 'витрина', x: 26, y: 33, w: 2, h: 4 },
@@ -879,19 +914,7 @@
   function pixCanvasInit() {
     var gsz = ART.grid, wpx = 16 / gsz;
     PC = { g: gsz, wpx: wpx, aw: 1024 / wpx, ah: 640 / wpx, hot: null, n: 0 };
-    var MAPH = window.PIX_OBJ_MAP || {};
-    var ERASE = window.PIX_ERASE || {};   // точки-остатки разрезки в чужих кусках (были под старыми кусками)
-    var list = ART.objects.filter(function (o) { return MAPH[o.id] !== '-'; }).map(function (o) {   // '-' — заменено предметами по плану
-      if (!ERASE[o.id]) return o;
-      var rows = o.rows.map(function (r) { return r.split(''); });
-      ERASE[o.id].forEach(function (p) { rows[p[1]][p[0]] = '.'; });
-      return Object.assign({}, o, { rows: rows.map(function (r) { return r.join(''); }) });
-    });
-    (window.PIX_PLACE || []).forEach(function (pl, n) {   // предметы по плану (остров: стол и четыре стула)
-      var hs = PIX_OBJ[pl.s];
-      list.push({ id: pl.s + '_' + n, kind: pl.s, spot: pl.s === 'rug' ? 'enter3d' : null, foot: pl.foot, x: pl.x, y: pl.y, w: hs.w * wpx, h: hs.h * wpx, place: pl.s });
-    });
-    PC.list = list.sort(function (a, b) { return a.foot - b.foot; });
+    PC.list = pcList();
     pcBuild();
     agentsInit();
     buildCompare();
@@ -899,13 +922,45 @@
     place(PC.view, 0, 0, 1024, 640);
     $('#world').insertBefore(PC.view, layer);
   }
+  /* Список предметов холста: куски картинки (кроме заменённых) и предметы по плану. 18.10: функцией — варианты добавок
+     (контакт на стойке, вывеска) меняют его на лету; предмет плана с полем v ('ct:phone') — только в своём варианте, без
+     полей v — всегда. Надписи (вывеска) — предметы dyn: ряды знаков собираются из шрифта (addsObjs). */
+  function pcList() {
+    var MAPH = window.PIX_OBJ_MAP || {}, wpx = PC.wpx;
+    var ERASE = window.PIX_ERASE || {};   // точки-остатки разрезки в чужих кусках (были под старыми кусками)
+    var list = ART.objects.filter(function (o) { return MAPH[o.id] !== '-'; }).map(function (o) {   // '-' — заменено предметами по плану
+      if (!ERASE[o.id]) return o;
+      var rows = o.rows.map(function (r) { return r.split(''); });
+      ERASE[o.id].forEach(function (p) { rows[p[1]][p[0]] = '.'; });
+      return Object.assign({}, o, { rows: rows.map(function (r) { return r.join(''); }) });
+    });
+    // добавки (предметы вариантов и надписи) — в конце списка, после основных: места агентов и мониторы помнят предметы по
+    // номеру в списке, и вставка вывески по глубине сдвигала номера — мониторы гасли (проверка агентов, 18.10). Рисуются
+    // они после основных; на холсте их ничто не перекрывает (стена, край стойки)
+    var extra = [], byFoot = function (a, b) { return a.foot - b.foot; };
+    (window.PIX_PLACE || []).forEach(function (pl, n) {   // предметы по плану (остров: стол и четыре стула)
+      if (pl.v && pl.v !== pl.v.split(':')[0] + ':' + state[pl.v.split(':')[0]]) return;
+      var hs = PIX_OBJ[pl.s];
+      (pl.v ? extra : list).push({ id: pl.s + '_' + n, kind: pl.s, spot: pl.spot || (pl.s === 'rug' ? 'enter3d' : null), foot: pl.foot, x: pl.x, y: pl.y, w: hs.w * wpx, h: hs.h * wpx, place: pl.s });
+    });
+    addsObjs().forEach(function (o) { extra.push(o); });
+    return list.sort(byFoot).concat(extra.sort(byFoot));
+  }
   function pcBuild() {   // предметы в свои холсты (и заново — при смене шага досок)
     var MAPH = window.PIX_OBJ_MAP || {}, wpx = PC.wpx;
+    // 18.10: холсты — с запасом по предмету и его рисунку: пересборка списка (пришёл шрифт вывески, сменился вариант)
+    // не перерисовывает 90 предметов заново — замер: разовая пересборка давала +10 п. п. нагрузки в первые секунды
+    var cache = PC.cells || (PC.cells = {});
+    function cells(o, pal, k) {
+      var key = o.id + '|' + k, c = cache[key] || (cache[key] = { img: cellCanvas(o, pal, ''), dark: cellCanvas(o, pal, 'dark'), hot: cellCanvas(o, pal, 'hot') });
+      return { o: o, pal: pal, img: c.img, dark: c.dark, hot: c.hot };
+    }
     PC.objs = PC.list.map(function (o) {
+      if (o.dyn) return cells(o, o.dyn.pal, o.rows.join('|'));
       if (o.place) {
         var hp = PIX_OBJ[o.place];
         o.rows = hp.rows;
-        return { o: o, pal: hp.pal, img: cellCanvas(o, hp.pal, ''), dark: cellCanvas(o, hp.pal, 'dark'), hot: cellCanvas(o, hp.pal, 'hot') };
+        return cells(o, hp.pal, o.place);
       }
       var hand = MAPH[o.id] && PIX_OBJ[MAPH[o.id]], pal = ART.pal;   // только одобренные и на проверке
       if (hand) {   // перерисовано руками (pix/objects.py): низ по центру — там же, где у Gemini
@@ -919,15 +974,16 @@
         var sh = (window.PIX_SHIFT || {})[o.id];   // сдвиг по месту (стена закрывала нижний ряд комнаты)
         if (sh) { o.x += sh[0]; o.y += sh[1]; o.foot += sh[1]; }
       }
-      return { o: o, pal: pal, img: cellCanvas(o, pal, ''), dark: cellCanvas(o, pal, 'dark'), hot: cellCanvas(o, pal, 'hot') };
+      return cells(o, pal, (o.sprite || '') + '|' + state.board);
     });
     // доски «белые»: полотно — отдельным слоем во весь холст, рисуется после тона тем же масштабом, точка в точку
+    // 18.10: и неон вывески (dyn.glow — его буквы и ореол в полную яркость, рецепт Дизайнера)
     PC.glow = null;
-    if (state.board === '3') {
+    if (state.board === '3' || PC.objs.some(function (it) { return it.o.dyn && it.o.dyn.glow; })) {
       var gc = document.createElement('canvas'); gc.width = PC.aw; gc.height = PC.ah;
       var gg = gc.getContext('2d');
       PC.objs.forEach(function (it) {
-        var keys = BOARD_GLOW[it.o.sprite];
+        var keys = it.o.dyn ? it.o.dyn.glow : state.board === '3' && BOARD_GLOW[it.o.sprite];
         if (!keys) return;
         it.o.rows.forEach(function (row, j) {
           for (var i = 0; i < row.length; i++) if (keys.indexOf(row[i]) >= 0) { gg.fillStyle = it.pal[row[i]]; gg.fillRect(it.o.x / PC.wpx + i, it.o.y / PC.wpx + j, 1, 1); }
@@ -1514,6 +1570,7 @@
       // новые предметы (16.10, позже): у принтера — панель и лист (аквариум убран 16.10, ночь)
       else if (kind === 'printer') PC.ovs.push({ par: idx, type: 'printer', key: 'printer', seed: 9, foot: o.foot + 0.5, x: X + 4, y: Y + 2, w: 23, h: 18 });
       else if (kind === 'vac_dock') { VAC.dock = it; }
+      else if (o.dyn && o.dyn.anim) PC.ovs.push({ par: idx, type: 'sign', key: 'sign', seed: 5, foot: o.foot + 0.5, x: X, y: Y, w: o.w, h: o.h, sg: o.dyn });
     });
     if (VAC.dock) {   // слой пылесоса один на всё время: при пересборке офиса (смена досок, тона) он не возвращается на станцию
       var first = !VAC.ov;
@@ -1524,10 +1581,20 @@
   // смена кадра, с (реже — меньше перерисовок офиса без движения); принтер — шагом телевизора: его кадры меняются в те
   // же моменты, и офис перерисовывается один раз на всех (аквариум и принтер с шагом 0,12 и 0,1 давали +8,6 п. п.)
   var OV_RATE = { mon: 0.6, tv: 0.2, rack: 0.25, retro: 0.25, printer: 0.2, vac: 0.5 };
+  // блеск букв на стене (18.10): блик — 2 с полосой каждые 7 с, шагом 0,05 (между — слоя нет, офис не перерисовывается);
+  // перелив и искры — шагом телевизора 0,2: кадры меняются в те же моменты, офис перерисовывается один раз на всех
+  var SIGN_GLINT = { every: 7, run: 2, step: 0.05 }, SIGN_STEP = 0.2;
   var OV_RM = { mon: 0, tv: 30, rack: 0, retro: 40, printer: 30, vac: 0 };                // «уменьшить движение» — один кадр: экраны включены, но стоят
   function ovFrame(ov, on) {
     if (ov.type === 'mon' && !on[ov.key]) return null;            // монитор светится, пока за ним работают
     if (ov.type === 'printer') return RM ? OV_RM.printer : prnFrame();
+    if (ov.type === 'sign') {
+      if (RM) return null;
+      if (ov.sg.anim === 'silver') { var gt = AG_T % SIGN_GLINT.every; return gt < SIGN_GLINT.run ? Math.floor(gt / SIGN_GLINT.step) : null; }
+      if (ov.sg.anim === 'shimmer') return Math.floor(AG_T / SIGN_STEP) % 40;
+      var sf = Math.floor(AG_T / SIGN_STEP);   // искры: две вспышки по 0,4 с каждые 1,6 с
+      return sf % 8 < 2 ? sf : null;
+    }
     // пылесос: кадр — место и огонёк (место меняется — офис перерисовывается)
     if (ov.type === 'vac') return ov.x + ',' + ov.y + ',' + (RM || VAC.state === 'dock' ? 0 : Math.floor(AG_T / OV_RATE.vac) % 2) + ',' + (VAC.state === 'dock' ? 'd' : 'c');
     return RM ? OV_RM[ov.type] : Math.floor(AG_T / OV_RATE[ov.type]);
@@ -1678,6 +1745,35 @@
   var TV_ARROW = ['00100', '01110', '10101', '00100', '00100'];   // стрелка 5×5 на большом экране (вверх; вниз — отражение)
   var CODE = ['#7fc8ff', '#f2c46d', '#9be38a', '#e88fb5', '#c9d3e6'];
   var OV_PAINT = {
+    sign: function (px, ov, f) {   // блеск по точкам металла букв (коды 0–9); остальное — прозрачно, под слоем буквы как есть
+      var rows = ov.sg.rows, an = ov.sg.anim, W = rows[0].length, H = rows.length, x, y;
+      var lit = function (lv, d) { return METAL[Math.max(0, Math.min(9, lv - d))]; };
+      if (an === 'silver') {   // косая полоса слева направо: ядро белое, края на ступень светлее
+        var pos = -40 + (W + 80) * f / (SIGN_GLINT.run / SIGN_GLINT.step);
+        for (y = 0; y < H; y++) for (x = 0; x < W; x++) {
+          var c = rows[y][x]; if (c < '0' || c > '9') continue;
+          var d = Math.abs(x + y * 0.6 - pos);
+          if (d < 3) px('#ffffff', x, y); else if (d < 8) px(lit(+c, 3), x, y);
+        }
+      } else if (an === 'shimmer') {   // волна света по диагонали: период 160 точек, 40 кадров по 0,2 с — 8 с на круг
+        for (y = 0; y < H; y++) for (x = 0; x < W; x++) {
+          var cc = rows[y][x]; if (cc < '0' || cc > '9') continue;
+          var w = Math.cos(((x + y * 0.8) / 160 - f / 40) * 2 * Math.PI);
+          if (w > 0.82) px(lit(+cc, 4), x, y); else if (w > 0.45) px(lit(+cc, 2), x, y); else if (w < -0.6) px(METAL[Math.min(9, +cc + 1)], x, y);
+        }
+      } else {   // искры: четырёхлучевая звёздочка на верхнем крае буквы, место — по кадру
+        var tops = ov.tops || (ov.tops = (function () {
+          var a = [];
+          for (y = 1; y < H; y++) for (x = 2; x < W - 2; x++) if (rows[y][x] === '0' && rows[y - 1][x] !== '0' && rows[y - 1][x] !== 's') a.push([x, y]);
+          return a;
+        })());
+        if (!tops.length) return;
+        var p = tops[hsh(ov.seed, Math.floor(f / 8)) % tops.length], big = f % 8 === 0;
+        px('#ffffff', p[0], p[1]);
+        [[1, 0], [-1, 0], [0, 1], [0, -1]].forEach(function (q) { px(big ? '#ffffff' : '#e9edf2', p[0] + q[0], p[1] + q[1]); });
+        if (big) [[2, 0], [-2, 0], [0, -2]].forEach(function (q) { px('#d8dde4', p[0] + q[0], p[1] + q[1]); });
+      }
+    },
     mon: function (px, ov, f) {   // код: пять строк, прокрутка вверх, курсор мигает
       px('#15223a', 0, 0, 22, 11); px('#1d2f4f', 0, 0, 22, 1);
       for (var j = 0; j < 5; j++) {
@@ -1819,8 +1915,9 @@
         }
         c.drawImage(im, sx, sy);
       } else {
-        var o = q.ov, cv = ovCanvas(o, q.f);
+        var o = q.ov, cv = ovCanvas(o, q.f), scr = o.type === 'sign' && o.sg.scr;
         sx = span(o.x); sy = span(o.y); sw = span(o.x + o.w) - sx; sh = span(o.y + o.h) - sy;
+        if (scr) { sx = scr.X; sy = scr.Y; sw = o.w * scr.k; sh = o.h * scr.k; }   // блик вывески — её целым шагом (см. pixCanvasRender)
         c.drawImage(cv, 0, 0, o.w, o.h, sx, sy, sw, sh);
       }
       var x0 = Math.floor(sx / n), y0 = Math.floor(sy / n), x1 = Math.ceil((sx + sw) / n), y1 = Math.ceil((sy + sh) / n);
@@ -1870,16 +1967,18 @@
       if (q.wall) { var r = q.r; PC.statics.push({ foot: q.foot, x0: r[0], y0: r[1], x1: r[0] + r[2], y1: r[1] + r[3],
         paint: function (fg) { fg.drawImage(toned(st.fg), r[0], r[1], r[2], r[3], r[0], r[1], r[2], r[3]); } }); return; }
       var it = q.it, o = it.o, X = o.x / wpx, Y = o.y / wpx, bands = ISLAND_BANDS[o.place || o.kind];
+      if (o.dyn && o.dyn.screen) return;   // вывеска в целых точках экрана — не в холсте рисунка (ниже)
       if (bands) return bands.forEach(function (b) {   // остров — полосами: дальние стулья, стол, ближние стулья (подсказки у него нет)
         PC.statics.push({ foot: o.y + b[2], x0: X, y0: Y + b[0], x1: X + it.img.width, y1: Y + b[1],
           paint: function (fg) { var im = toned(it.img); fg.drawImage(im, 0, b[0], im.width, b[1] - b[0], X, Y + b[0], im.width, b[1] - b[0]); } });
       });
-      PC.statics.push({ foot: q.foot, x0: X - 1, y0: Y - 1, x1: X + it.img.width + 1, y1: Y + it.img.height + 1, glow: !!BOARD_GLOW[o.sprite],
+      PC.statics.push({ foot: q.foot, x0: X - 1, y0: Y - 1, x1: X + it.img.width + 1, y1: Y + it.img.height + 1, glow: !!(BOARD_GLOW[o.sprite] || (o.dyn && o.dyn.glow)),
         paint: function (fg) { var im = objImg(it), pad = im === it.img ? 0 : 1; fg.drawImage(toned(im), X - pad, Y - pad); } });
     });
     queue.forEach(function (q) {
       if (q.wall) return q.draw();
       var it = q.it, o = it.o, im = objImg(it), pad = im === it.img ? 0 : 1;
+      if (o.dyn && o.dyn.screen) return;
       g.drawImage(im, o.x / wpx - pad, o.y / wpx - pad);
     });
     var b = PC.base || (PC.base = document.createElement('canvas')); b.width = PC.aw * PC.n; b.height = PC.ah * PC.n;
@@ -1887,6 +1986,19 @@
     c.imageSmoothingEnabled = false;
     c.filter = 'brightness(' + TONE[state.tone] + ')';
     c.drawImage(off, 0, 0, b.width, b.height);
+    /* Вывеска (18.10, позже: «выглядит неровно, можешь буквы поровнее отрисовать?»; «логотип с текстом чуть меньше и
+       посередине по вертикали»): офис растягивается на экран дробно (×1,125 — каждая восьмая точка в 2 пикселя), и на мелких
+       буквах штрихи выходили разной толщины. Вывеска — прямо на экранный холст, k = целое число пикселей на точку (при
+       масштабе 1,125 — 1: на 11 % меньше прежнего); середина видимой части (без тени) — на середине лица стены по высоте
+       (точки мира 8..32) и на cx по ширине. Агенты стоят ниже (нога ниже) — рисуются поверх, как и прежде. */
+    PC.objs.forEach(function (it) {
+      var o = it.o, d = o.dyn;
+      if (!d || !d.screen) return;
+      var k = Math.max(1, Math.floor(PC.n + 1e-9)), bx0 = 1e9, bx1 = -1, by0 = 1e9, by1 = -1;
+      o.rows.forEach(function (r, j) { for (var i = 0; i < r.length; i++) if (r[i] !== '.' && r[i] !== 'z') { bx0 = Math.min(bx0, i); bx1 = Math.max(bx1, i); by0 = Math.min(by0, j); by1 = Math.max(by1, j); } });
+      d.scr = { k: k, X: Math.round(d.cx * PC.n - (bx0 + bx1 + 1) / 2 * k), Y: Math.round(20 * PC.n - (by0 + by1 + 1) / 2 * k) };
+      c.drawImage(it.img, d.scr.X, d.scr.Y, it.img.width * k, it.img.height * k);
+    });
     if (PC.glow) { c.filter = 'none'; c.drawImage(PC.glow, 0, 0, b.width, b.height); }
     var v = PC.view;
     if (v.width !== b.width || v.height !== b.height) { v.width = b.width; v.height = b.height; }
@@ -2013,6 +2125,7 @@
     spotsBuilt = true;
     SPOTS.forEach(function (s) {
       if (s.act === 'o3d' && !(PC && window.Office3D && Office3D.supported())) return;   // коврик — вход в 2.5D, только с WebGL2
+      if (s.id === 'contacts' && (state.ct === '0' || !(PC && spriteRect('contacts')))) return;   // контакт — только в своём варианте
       var b = s.href ? el('a', 'spot spot--' + s.id) : el('button', 'spot spot--' + s.id);
       if (s.href) { b.href = s.href; b.target = '_blank'; b.rel = 'noopener'; } else b.type = 'button';
       b.setAttribute('aria-label', s.title + ' — ' + s.obj.toLowerCase());
@@ -2440,6 +2553,7 @@
     fade: function (k) { PC.view.style.opacity = k < 1 ? String(k) : ''; O3D.hidden = k <= 0; },
   };
   function o3dEnter() {
+    if (HINT.on) hintOff(true);
     if (!window.Office3D || !PC || !PC.ag || Office3D.on()) return;
     // 17.10: «убери режим свободной камеры» — вход только «за Отто»
     Office3D.enter(HOST3D, 'otto', function () { var b = document.querySelector('.spot--enter3d'); if (b) b.focus(); });
@@ -2510,6 +2624,7 @@
     },
   };
   function openWin(sub, title, html, from) {
+    if (HINT.on) hintOff(true);   // подсказка первого визита (18.10): своё дело сделала
     $('#winSub').textContent = sub; $('#winTitle').textContent = title; $('#winBody').innerHTML = html;
     $('#winPanel').style.width = '';   // ширину ставит только окно агента (openAgent) — у разделов своя
     // партия «Аркады» в прежнем содержимом окна — остановить: её стакана уже нет, а клавиши она ещё ловит
@@ -2528,10 +2643,14 @@
     var V = window['WIN_V' + state.wv], own = V && V.render && V.render[id];
     var X = state.wv === '3' && window.W3X && W3X[id] && W3X[id][state['w3-' + id]];   // «Картотека»: свой вид «Обо мне» и «Навыков»
     if (X) own = X;
-    var html = R && own ? own(R, t, esc) : R || id === 'tetris' ? RENDER[id]() : noData();
+    var html = id === 'contacts' ? (R ? contactsHtml() : noData()) : R && own ? own(R, t, esc) : R || id === 'tetris' ? RENDER[id]() : noData();
     document.body.classList.toggle('ts-open', id === 'tetris');   // до подгонки окна тетриса: панель уже в итоговой высоте
     openWin(s.obj, s.title, html, from);
     win.dataset.open = id;
+    if (id === 'contacts') {   // окно контактов — узкое (360–420), фокус сразу на Telegram
+      if (!document.body.classList.contains('is-phone')) $('#winPanel').style.width = 'min(400px, calc(100% - 32px))';
+      var tg = $('#winBody').querySelector('.w3-btn--main'); if (tg) tg.focus();
+    }
     if (own && V.init) V.init($('#winPanel'));
     if (X && W3X.init) W3X.init($('#winPanel'));
     if (window.W3P && state.wv === '3' && document.body.classList.contains('is-phone') && PW_SHORT[id]) {
@@ -2823,24 +2942,436 @@
     sc.scrollTop = (s.y + s.h / 2) * T * k - sc.clientHeight / 2;
   }
 
+  /* ---------- Вывеска, контакт на стойке, подсказка первого визита (18.10, демо). ----------
+     Владелец 18.10 на «что бы ты ещё добавил по визуалу»: «покажи живое демо вывески, контакта на ресепшене и подсказки при
+     первом визите — по 2–3 варианта, на сайт пока не выкладывай». Ограничения владельца: почтовый ящик для контактов
+     отклонён 12.10, карточка сбоку убрана 14.10. На сайте (панели демо нет) всё выключено — '0', пока владелец не выберет. */
+  // ★ — рекомендованное. 18.10, позже: из предложений владельцу понравились только буквы во всю стену — серебром и с блеском;
+  // контакт на стойке и подсказка первого визита отклонены (код остаётся выключенным, в панели — среди решённых)
+  var ADDS_REC = { sg: 'relief', ct: '0', fh: '0' };   // 18.10, позже: «нравится объёмное серебро, но чтобы были не искры, а блики»
+  var CT_OBJ = { phone: 'Телефон на стойке', bell: 'Звонок на стойке', cards: 'Визитница на стойке' };
+  var PS_FONT = '8px "Press Start 2P"', psOk = false;
+  function psLoad() {   // надписи — пиксельным шрифтом окон; готовность — по статусу шрифта (fonts.check врёт «да» и без него)
+    if (psOk || !document.fonts || !document.fonts.load) return;
+    // ответ — сами загруженные начертания (FontFaceSet не массив: [].slice.call(document.fonts) всегда пуст — так и не рисовалось)
+    document.fonts.load(PS_FONT, 'АЯ').then(function (list) {
+      psOk = (list || []).some(function (f) { return f.family.replace(/["']/g, '') === 'Press Start 2P' && f.status === 'loaded'; });
+      if (psOk) { addsApply(); hintRepaint(); }
+    }, function () {});
+  }
+  /* 18.10, позже: «в буквах А пустое место серое» — после тёмных просветов: «проблема пока не решена»: серым оставался просвет
+     между ножками «А» (он открыт вниз, и заливка закрытых просветов его не берёт). У «А» / «A» он помечается 'x' — тёмным, как
+     обводка: пустое под перекладиной и вершиной между ножками той же буквы. У «Н», «П», «Л» просветы не трогаются. */
+  function textRows(text) {   // строка шрифтом 8 px: точка шрифта = точка рисунка; '#' — знак, 'x' — просвет «А», рамка — по знакам
+    var c = document.createElement('canvas'), g = c.getContext('2d');
+    g.font = PS_FONT;
+    var adv = g.measureText(text).width / Math.max(1, text.length);   // шрифт моноширинный: буква i — с 2 + adv·i
+    var w = Math.ceil(g.measureText(text).width) + 4, h = 14;
+    c.width = w; c.height = h;
+    g.font = PS_FONT; g.textBaseline = 'top'; g.fillStyle = '#000'; g.fillText(text, 2, 2);
+    var d = g.getImageData(0, 0, w, h).data, x0 = w, x1 = -1, y0 = h, y1 = -1, x, y;
+    var ink = function (X, Y) { return d[(Y * w + X) * 4 + 3] > 127; }, gap = {};
+    for (y = 0; y < h; y++) for (x = 0; x < w; x++) if (ink(x, y)) { x0 = Math.min(x0, x); x1 = Math.max(x1, x); y0 = Math.min(y0, y); y1 = Math.max(y1, y); }
+    for (var k = 0; k < text.length; k++) {
+      if ('AА'.indexOf(text[k]) < 0) continue;
+      var a = Math.round(2 + adv * k), b = Math.min(w - 1, Math.round(2 + adv * (k + 1)) - 1);
+      for (y = 0; y < h; y++) for (x = a; x <= b; x++) {
+        if (ink(x, y)) continue;
+        var L = false, Rr = false, U = false, q;
+        for (q = a; q < x; q++) L = L || ink(q, y);
+        for (q = x + 1; q <= b; q++) Rr = Rr || ink(q, y);
+        for (q = 0; q < y; q++) U = U || ink(x, q);
+        if (L && Rr && U) gap[x + ',' + y] = 1;
+      }
+    }
+    var rows = [];
+    for (y = y0; y <= y1; y++) { var r = ''; for (x = x0; x <= x1; x++) r += ink(x, y) ? '#' : gap[x + ',' + y] ? 'x' : '.'; rows.push(r); }
+    return rows;
+  }
+  /* Вывеска (рецепт Дизайнера 18.10, office_adds/sign_rows.js): буквы — ряды шрифта (textRows), точка шрифта = точка рисунка.
+     plate (★) — тёмная табличка цвета верха стен над большим экраном: «АЛЕКСЕЙ КОНЯЕВ» светлым, «LEGALOPS И AI-АГЕНТЫ»
+     серым; neon — та же табличка, буквы бирюзой с ореолом в точку, поверх общего тона в полную яркость; letters — почти
+     чёрные буквы прямо на кирпиче слева: имя вдвое крупнее, черта, полная роль двумя строками. Светлые буквы прямо на
+     кирпиче не читаются (2,6:1), поэтому табличка или тёмные буквы. Нога 36,5 — плоскость лица стены, как у диплома. */
+  var SIGN_PAL = {
+    plate: { o: '#1a1b1f', h: '#3d4047', P: '#2c2e34', s: '#222328', N: '#e9ebef', R: '#aeb4bf', z: '#0000002e' },
+    neon: { o: '#0b0c0e', P: '#15171b', N: '#e8fffb', n: '#1f5f58', R: '#5ee6d4', r: '#164a45', z: '#0000002e' },
+    letters: { N: '#0e0e0f', z: '#00000038' } };
+  var SIGN_TXT = LANG === 'en' ? { name: 'ALEXEY KONYAEV', role: 'LEGALOPS & AI AGENTS', r1: 'LEGALOPS AND AI-AGENT', r2: 'IMPLEMENTATION SPECIALIST' }
+    : { name: 'АЛЕКСЕЙ КОНЯЕВ', role: 'LEGALOPS И AI-АГЕНТЫ', r1: 'СПЕЦИАЛИСТ ПО LEGALOPS', r2: 'И ВНЕДРЕНИЮ AI-АГЕНТОВ' };
+  function sgGrid(w, h) { var g = []; for (var y = 0; y < h; y++) { var r = []; for (var x = 0; x < w; x++) r.push('.'); g.push(r); } return g; }
+  function sgStamp(g, rows, x0, y0, ch, k) {
+    k = k || 1;
+    for (var j = 0; j < rows.length; j++) for (var i = 0; i < rows[j].length; i++) {
+      if (rows[j][i] !== '#') continue;
+      for (var dy = 0; dy < k; dy++) for (var dx = 0; dx < k; dx++) g[y0 + j * k + dy][x0 + i * k + dx] = ch;
+    }
+  }
+  function sgRing(g, core, color, onto) {   // ореол в точку вокруг знаков (4 соседа), только по точкам onto
+    var add = [];
+    for (var y = 0; y < g.length; y++) for (var x = 0; x < g[y].length; x++) {
+      if (g[y][x] !== onto) continue;
+      if ((g[y - 1] && g[y - 1][x] === core) || (g[y + 1] && g[y + 1][x] === core) || g[y][x - 1] === core || g[y][x + 1] === core) add.push([x, y]);
+    }
+    add.forEach(function (p) { g[p[1]][p[0]] = color; });
+  }
+  function sgPlate(nameRows, roleRows, kind) {   // обводка 1, поля 7 по бокам, 2 сверху и снизу, 2 между строками; тень 1 справа и снизу
+    var PX = 7, PT = 2, GAP = 2, PB = 2, wN = nameRows[0].length, wR = roleRows[0].length;
+    var wT = Math.max(wN, wR), W = wT + 2 * (1 + PX), H = 1 + PT + nameRows.length + GAP + roleRows.length + PB + 1;
+    var g = sgGrid(W + 1, H + 1), x, y;
+    for (y = 0; y < H; y++) for (x = 0; x < W; x++) g[y][x] = (x === 0 || y === 0 || x === W - 1 || y === H - 1) ? 'o' : 'P';
+    if (kind === 'plate') {
+      for (x = 1; x < W - 1; x++) { g[1][x] = 'h'; g[H - 2][x] = 's'; }
+      for (y = 1; y < H - 1; y++) { g[y][1] = 'h'; g[y][W - 2] = 's'; }
+    }
+    [[0, 0, 1, 1], [W - 1, 0, W - 2, 1], [0, H - 1, 1, H - 2], [W - 1, H - 1, W - 2, H - 2]].forEach(function (c) { g[c[1]][c[0]] = '.'; g[c[3]][c[2]] = 'o'; });
+    var yN = 1 + PT;
+    sgStamp(g, nameRows, 1 + PX + Math.round((wT - wN) / 2), yN, 'N');
+    sgStamp(g, roleRows, 1 + PX + Math.round((wT - wR) / 2), yN + nameRows.length + GAP, 'R');
+    if (kind === 'neon') { sgRing(g, 'N', 'n', 'P'); sgRing(g, 'R', 'r', 'P'); }
+    for (x = 1; x <= W; x++) g[H][x] = 'z';
+    for (y = 1; y < H; y++) g[y][W] = 'z';
+    return g;
+  }
+  function sgLetters(nameRows, role1, role2) {   // имя ×2, через 12 черта, через 12 роль двумя строками; тень на точку вправо-вниз
+    var K = 2, GAP = 12, wN = nameRows[0].length * K, hN = nameRows.length * K;
+    var wR = Math.max(role1[0].length, role2[0].length), hR = role1.length + 2 + role2.length;
+    var W = wN + GAP + 1 + GAP + wR + 1, H = Math.max(hN, hR) + 1, g = sgGrid(W, H), xRule = wN + GAP, xR = xRule + 1 + GAP, x, y;
+    sgStamp(g, nameRows, 0, Math.floor((H - 1 - hN) / 2), 'N', K);
+    for (y = 0; y < hR; y++) g[y][xRule] = 'N';
+    sgStamp(g, role1, xR, 0, 'N'); sgStamp(g, role2, xR, role1.length + 2, 'N');
+    var sh = [];
+    for (y = 0; y < H - 1; y++) for (x = 0; x < W - 1; x++) if (g[y][x] === 'N' && g[y + 1][x + 1] === '.') sh.push([x + 1, y + 1]);
+    sh.forEach(function (p) { g[p[1]][p[0]] = 'z'; });
+    return g;
+  }
+  /* Серебряные буквы во всю стену (владелец 18.10, позже: «буквы во всю стену, но другого цвета (не чёрного) и более
+     аккуратно; текст серебром, с анимацией блеска или переливания»). Раскладка прежняя — имя вдвое крупнее, черта, роль
+     двумя строками, — но всё серебром и ровно: металл — переход тона по высоте строки (светлый верх, провал, отблеск ниже
+     середины, тёмный низ); светлое на кирпиче не читается (2,6:1, замер Дизайнера), поэтому тёмная обводка — только снаружи
+     (просветы букв не заливаются) — и тень на стене вправо-вниз. relief — буквы с толщиной: под каждой точкой ряд
+     «бока». Блеск — живым слоем, как экраны (OV_PAINT.sign): silver — блик полосой раз в 7 с, shimmer — перелив волной,
+     relief — искры. «Уменьшить движение» — без анимации. Коды: 0–9 металл по высоте, s — бок, o — обводка, z — тень. */
+  var METAL = ['#f7f9fc', '#e9edf2', '#d8dde4', '#c6ccd5', '#b5bcc6', '#cdd2da', '#e2e6ec', '#aab1bc', '#959da9', '#838b98'];
+  var SILVER_PAL = (function () {
+    // 18.10, позже: «в промежутках букв А и К в логотипе я вижу снова чёрный, сделай светлее (тёмно-серый)» — обводка, просветы «А»
+    // и узкие промежутки логотипа (их заполняет обводка) — тёмно-серые, а не почти чёрные (#1d1f24)
+    var p = { s: '#5f6672', o: '#3a3e46', z: '#00000047' };
+    METAL.forEach(function (c, i) { p[String(i)] = c; });
+    return p;
+  })();
+  /* Логотип владельца (pix/logo.py — источник и сверка с картинкой владельца). 18.10, позже: «правил свой логотип» — новая
+     картинка, 33×21, совпадение клеток 100 %: фигурные скобки, стержень из двух половин, перемычка касается их углом, лучи «К»
+     со срезанными концами; штрих 3. Надпись st: logo ★ — «логотип | AI-AGENTS» (черта), slash — «логотип /
+     AI-AGENTS» (косая, как в сообщении владельца), name — имя и роль, как было. «AI-AGENTS» — вдвое крупнее, как имя. */
+  var LOGO_ROWS = [
+    '....###...................###....',
+    '...####...................####...',
+    '..#####...................#####..',
+    '..###.......................###..',
+    '..###....###........###.....###..',
+    '..###....###.......###......###..',
+    '..###....###......####......###..',
+    '..###....###.....####.......###..',
+    '.###.....###.....###.........###.',
+    '###.........#######...........###',
+    '###.........#######...........###',
+    '###.........#######...........###',
+    '.###.....###.....###.........###.',
+    '..###....###.....####.......###..',
+    '..###....###......####......###..',
+    '..###....###.......###......###..',
+    '..###....###........###.....###..',
+    '..###.......................###..',
+    '..#####...................#####..',
+    '...####...................####...',
+    '....###...................###....'
+  ];
+  function sgScale(rows, k) { return rows.map(function (r) { var s = ''; for (var i = 0; i < r.length; i++) for (var q = 0; q < k; q++) s += r[i]; var a = []; for (q = 0; q < k; q++) a.push(s); return a; }).reduce(function (x, y) { return x.concat(y); }, []); }
+  function sgStack(a, gap, b) {
+    var w = Math.max(a[0].length, b[0].length), pad = function (r) { while (r.length < w) r += '.'; return r; }, e = pad(''), out = a.map(pad);
+    for (var i = 0; i < gap; i++) out.push(e);
+    return out.concat(b.map(pad));
+  }
+  // блоки слева направо: ряды знаков ('#') или разделитель { sep: 'bar' | 'slash' } высотой следующего блока
+  function sgBlocks(blocks, relief, gap) {
+    var GAP = gap || 10, M = 2, rel = relief ? 1 : 0, hB = 0, w = M, x, y;
+    blocks.forEach(function (b) { if (!b.sep) hB = Math.max(hB, b.length); });
+    var lay = blocks.map(function (b, i) {
+      var nx = blocks[i + 1] && !blocks[i + 1].sep ? blocks[i + 1] : blocks[i - 1], h = b.sep ? nx.length : b.length;
+      var bw = b.sep === 'slash' ? Math.round(h / 2.5) : b.sep ? 1 : b[0].length, at = w;
+      w += bw + (i < blocks.length - 1 ? GAP : 0);
+      return { b: b, x: at, y: M + Math.floor((hB - h) / 2), w: bw, h: h };
+    });
+    var W = w + M + 1, H = M + hB + rel + M + 1, g = sgGrid(W, H);
+    var keep = lay.filter(function (L) { return L.b === LOGO_ROWS; }).map(function (L) { return [L.x, L.x + L.w - 1]; });
+    lay.forEach(function (L) {
+      var lv = function (r) { return String(Math.min(9, Math.floor(r / L.h * 10))); };
+      if (L.b.sep === 'bar') for (y = 0; y < L.h; y++) g[L.y + y][L.x] = lv(y);
+      else if (L.b.sep === 'slash') for (y = 0; y < L.h; y++) g[L.y + y][L.x + Math.round((L.h - 1 - y) * (L.w - 1) / (L.h - 1))] = lv(y);
+      else for (y = 0; y < L.h; y++) for (x = 0; x < L.w; x++) {
+        if (L.b[y][x] === '#') g[L.y + y][L.x + x] = lv(y);
+        else if (L.b[y][x] === 'x') g[L.y + y][L.x + x] = 'o';   // просвет «А» — тёмный, как обводка
+      }
+    });
+    return sgFinish(g, relief, keep);
+  }
+  function sgSilver(nameRows, role1, role2, relief) {
+    return sgBlocks([sgScale(nameRows, 2), { sep: 'bar' }, sgStack(role1, 3, role2)], relief);
+  }
+  /* 18.10, позже: «в буквах А пустое место серое какое-то, мне это не нравится» — просветы букв (А, О, Р, В, Я…) заливаются
+     цветом обводки: прорезь в металле, а не кирпич; просветы логотипа (keep — его столбцы) остаются стеной, как на картинке. */
+  function sgFinish(g, relief, keep) {   // толщина (relief), обводка снаружи, просветы букв — тёмные, тень вправо-вниз
+    var W = g[0].length, H = g.length, x, y;
+    if (relief) {   // толщина: под точкой металла, где пусто, — бок
+      var side = [];
+      for (y = 0; y < H - 1; y++) for (x = 0; x < W; x++) if (/[0-9]/.test(g[y][x]) && g[y + 1][x] === '.') side.push([x, y + 1]);
+      side.forEach(function (p) { g[p[1]][p[0]] = 's'; });
+    }
+    // снаружи — всё пустое, до чего дойти от края (4 соседа): просветы букв остаются кирпичом
+    var out = sgGrid(W, H), st = [], i;
+    for (x = 0; x < W; x++) { st.push([x, 0]); st.push([x, H - 1]); }
+    for (y = 0; y < H; y++) { st.push([0, y]); st.push([W - 1, y]); }
+    while (st.length) {
+      var q = st.pop(); x = q[0]; y = q[1];
+      if (x < 0 || y < 0 || x >= W || y >= H || out[y][x] === '#' || g[y][x] !== '.') continue;
+      out[y][x] = '#'; st.push([x + 1, y]); st.push([x - 1, y]); st.push([x, y + 1]); st.push([x, y - 1]);
+    }
+    var ol = [];
+    for (y = 0; y < H; y++) for (x = 0; x < W; x++) {
+      if (out[y][x] !== '#') continue;
+      for (i = 0; i < 8; i++) {
+        var nx = x + [1, -1, 0, 0, 1, 1, -1, -1][i], ny = y + [0, 0, 1, -1, 1, -1, 1, -1][i];
+        if (ny >= 0 && ny < H && nx >= 0 && nx < W && g[ny][nx] !== '.' && g[ny][nx] !== 'o') { ol.push([x, y]); break; }
+      }
+    }
+    ol.forEach(function (p) { g[p[1]][p[0]] = 'o'; });
+    var open = function (cx) { return (keep || []).some(function (k) { return cx >= k[0] && cx <= k[1]; }); };
+    for (y = 0; y < H; y++) for (x = 0; x < W; x++) if (g[y][x] === '.' && out[y][x] !== '#' && !open(x)) g[y][x] = 'o';
+    var sh = [];
+    for (y = 0; y < H - 1; y++) for (x = 0; x < W - 1; x++) if (g[y][x] === 'o' && g[y + 1][x + 1] === '.' && out[y + 1][x + 1] === '#') sh.push([x + 1, y + 1]);
+    sh.forEach(function (p) { g[p[1]][p[0]] = 'z'; });
+    return g;
+  }
+  // места (точки мира): лицо верхней стены опенспейса — y 8..31, свободно по x 44..611; экран — x 418..606, середина 512,5
+  function addsObjs() {
+    var v = state.sg, metal = v === 'silver' || v === 'shimmer' || v === 'relief';
+    if (!(SIGN_PAL[v] || metal) || !psOk) return [];
+    var logo = metal && state.st !== 'name';
+    // промежутки у черты — 8: вывеска 198 точек и над экраном целиком в окне телефона (он видит стену с 412) до растения (612)
+    var g = logo ? sgBlocks([LOGO_ROWS, { sep: state.st === 'slash' ? 'slash' : 'bar' }, sgScale(textRows('AI-AGENTS'), 2)], v === 'relief', 8)
+      : metal ? sgSilver(textRows(SIGN_TXT.name), textRows(SIGN_TXT.r1), textRows(SIGN_TXT.r2), v === 'relief')
+      : v === 'letters' ? sgLetters(textRows(SIGN_TXT.name), textRows(SIGN_TXT.r1), textRows(SIGN_TXT.r2))
+      : sgPlate(textRows(SIGN_TXT.name), textRows(SIGN_TXT.role), v);
+    var rows = g.map(function (r) { return r.join(''); }), w = rows[0].length, h = rows.length;
+    // серебро: по высоте — посередине лица стены (8..31), слева — после растения (его лист кончается на 43)
+    // логотип с надписью короче (198): sp tv ★ — над большим экраном (середина 512: 413..610, правее — растение с 612), видно и на
+    // телефоне, «!» экрана уходит вправо; mid — посередине свободной стены между растением (43) и «!» экрана (505)
+    var x = logo ? Math.round((state.sp === 'mid' ? 274 : 512) - w / 2) : metal ? 50 : v === 'letters' ? 52 : Math.round(512.5 - (w - 2) / 2);
+    var y = metal ? Math.round(8 + (24 - h) / 2) : v === 'letters' ? 12 : h > 23 ? 8 : 9;
+    return [{ id: 'sign_' + v, kind: 'sign', sprite: 'sign', spot: null, foot: 36.5, x: x, y: y, w: w, h: h, rows: rows,
+      dyn: { rows: rows, pal: metal ? SILVER_PAL : SIGN_PAL[v], glow: v === 'neon' ? 'NnRr' : '', anim: metal ? (v === 'relief' ? 'silver' : v) : '',
+        screen: metal, cx: x + w / 2 } }];   // screen — рисуется в целых точках экрана (pixCanvasRender), cx — середина по x в точках мира
+  }
+  // окно контактов — имя, роль и те же кнопки, что в «Обо мне» (Telegram главной, почта, GitHub)
+  function contactsHtml() {
+    var p = R.person || {}, c = p.contacts || {};
+    var btns = window.W3X && W3X.links ? W3X.links(c, t, esc, '', R.ui) : '';
+    var mail = c.email && c.email.href ? String(c.email.href).replace('mailto:', '') : '';
+    // классы — как у карточки «Обо мне» (w3x-name — пиксельный шрифт акцентов, w3x-role), чтобы окно было из той же «Картотеки»
+    return '<div class="w3x ct-win ct-win--' + esc(state.ct) + '">' +
+      '<h3 class="w3x-name">' + esc(t(p.name)) + '</h3>' +
+      '<p class="w3x-role">' + esc(t(p.role).replace(/\n/g, ' ')) + '</p>' +
+      '<div class="w3x-btns">' + btns + '</div>' +
+      (mail ? '<p class="ct-win__mail">' + esc(mail) + '</p>' : '') + '</div>';
+  }
+  function addsApply() {   // вывеска и контакт: список предметов холста заново, подсказки «!» — по новым рисункам
+    var cs = SPOTS.filter(function (s) { return s.id === 'contacts'; })[0];
+    if (cs && CT_OBJ[state.ct]) cs.obj = OT(CT_OBJ[state.ct]);
+    if (!PC || !PC.list) return;
+    psLoad();
+    PC.list = pcList(); pcBuild(); PC.rects = PC.mask = null;
+    if (PC.ag && PC.ovs) buildOverlays();   // слои ссылаются на номер предмета (par) — список другой, слои заново
+    if (spotsBuilt) { layer.querySelectorAll('.spot').forEach(function (e) { e.remove(); }); buildSpots(); }
+    pixCanvasRender();
+  }
+  /* Подсказка первого визита (fh): на сайте — один раз (метка в localStorage; нет хранилища — показывается, вреда нет), в демо —
+     при каждом выборе варианта и по «↺ показать снова». Гаснет сама через HINT_MS, от первого нажатия на предмет или агента,
+     на телефоне — и от прокрутки офиса пальцем. */
+  var HINT_KEY = 'office-hint-seen', HINT_MS = 12000, HINT = { on: false, timer: 0, el: null, at: 0 };
+  function hintSeen() { try { return localStorage.getItem(HINT_KEY) === '1'; } catch (e) { return false; } }
+  function hintMark() { try { localStorage.setItem(HINT_KEY, '1'); } catch (e) {} }
+  function hintApply() {
+    hintOff(false);
+    if (state.fh === '0') return;
+    if (!document.getElementById('bar') && hintSeen()) return;
+    hintOn();
+  }
+  function hintAgain() { try { localStorage.removeItem(HINT_KEY); } catch (e) {} hintApply(); }
+  function hintRepaint() { if (PC && PC.ag && agents.length) { PC.agSig = null; agentsRender(); } }
+  function hintPhone() { return document.body.classList.contains('is-phone'); }
+  /* Виды (fh): bubble ★ — Оливия говорит белым пиксельным пузырём над головой (часть мира, у ресепшена — в окне телефона);
+     ring — пиксельные кольца у «!» раздела «Обо мне» и подпись «Начните отсюда»; strip — строка внизу окна. Внутри текста —
+     сам значок «!» картинкой: учит буквально. Появление — только прозрачностью (сдвиг над холстом мылит офис, урок 14.10).
+     На телефоне — один раз «подгляд»: офис чуть уезжает влево и возвращается, показывая, что листается. */
+  var HINT_TXT = LANG === 'en' ? { d1: 'Click any', d2: 'to open a section', p1: 'Swipe the office sideways', p2: 'and tap', start: 'Start here',
+      phone2: 'The office scrolls sideways', strip: ['Click', 'on an object to open a CV section'], stripP: ['Swipe the office sideways and tap', ''] }
+    : { d1: 'Нажмите на', d2: 'откроется раздел резюме', p1: 'Листайте офис вбок', p2: 'и нажимайте', start: 'Начните отсюда',
+      phone2: 'Офис листается вбок', strip: ['Нажмите на', 'у предмета — откроется раздел резюме'], stripP: ['Листайте офис вбок и нажимайте', ''] };
+  function hintMk(cssPx) {   // значок «!» внутри текста подсказки — та же картинка, что над предметами
+    var M = markSize(), im = el('img', 'hint-mk'); im.src = M.src; im.alt = '«!»';
+    im.style.width = (cssPx ? cssPx : M.w) + 'px'; im.style.height = (cssPx ? cssPx : M.h) + 'px';
+    return im;
+  }
+  function hintFrame(pw, ph, k, tailX) {   // рамка пузыря в точках значка: углы срезаны в две ступеньки, хвост в три
+    var c = document.createElement('canvas'), H = ph + 3; c.width = pw * k; c.height = H * k;
+    var g = c.getContext('2d'), O = '#1b1d21', W = '#f2f2f2';
+    function px(x, y, col) { g.fillStyle = col; g.fillRect(x * k, y * k, k, k); }
+    for (var y = 0; y < ph; y++) for (var x = 0; x < pw; x++) {
+      var cut = y === 0 || y === ph - 1 ? 2 : y === 1 || y === ph - 2 ? 1 : 0;
+      if (x < cut || x >= pw - cut) continue;
+      var edge = y === 0 || y === ph - 1 || x === cut || x === pw - 1 - cut || ((y === 1 || y === ph - 2) && (x === 1 || x === pw - 2));
+      px(x, y, edge ? O : W);
+    }
+    for (var s = 0; s < 3; s++) {   // хвост вниз, к макушке: 3 → 1 точки белым, с обводкой
+      for (var i = -2 + s; i <= 2 - s; i++) px(tailX + i, ph - 1 + s, (i === -2 + s || i === 2 - s) ? O : W);
+    }
+    px(tailX, ph + 2, O);
+    return c.toDataURL();
+  }
+  function hintDisp() {   // где голова Оливии (точки мира): по её позе на холсте, иначе — над стойкой
+    var a = agents.filter(function (q) { return q.d.id === 'disp'; })[0];
+    if (a && PC && PC.ag) { var p = agentPose(a); if (p) return { x: (p.SX + p.W / 2) / PC.n, y: p.SY / PC.n, a: a }; }
+    return { x: 553, y: 470, a: a };
+  }
+  function hintBubble() {
+    var ph = hintPhone(), b = el('div', 'hint hint-bubble');
+    b.setAttribute('role', 'status');
+    var l1 = el('span', 'hint-l'), l2 = el('span', 'hint-l');
+    if (ph) { l1.textContent = HINT_TXT.p1; l2.textContent = HINT_TXT.p2 + ' '; l2.appendChild(hintMk()); }
+    else { l1.textContent = HINT_TXT.d1 + ' '; l1.appendChild(hintMk()); l1.appendChild(document.createTextNode(' —')); l2.textContent = HINT_TXT.d2; }
+    b.appendChild(l1); b.appendChild(l2);
+    layer.appendChild(b);
+    var M = markSize(), k = M.k, n = M.n, d = hintDisp();
+    if (d.a && !d.a.hold) { d.a.hold = true; d.a.hintHold = true; }   // сидит на месте, пока пузырь виден
+    // размер — по тексту (в точках мира), рамка — целыми точками значка (k точек экрана), как у «!»
+    var pw = Math.ceil((b.offsetWidth + 16) * n / k), phh = Math.ceil((b.offsetHeight + 12) * n / k);
+    var wW = pw * k / n, hW = (phh + 3) * k / n, tailX = Math.floor(pw / 2);
+    var x = snapW(Math.max(4, Math.min(1020 - wW, d.x - tailX * k / n - k / (2 * n))), n), y = snapW(d.y - 2 - hW, n);
+    b.style.backgroundImage = 'url(' + hintFrame(pw, phh, k, tailX) + ')';
+    b.style.left = x + 'px'; b.style.top = y + 'px'; b.style.width = wW + 'px'; b.style.height = hW + 'px';
+    b.style.paddingBottom = (3 * k / n) + 'px';
+    return b;
+  }
+  function hintRing() {
+    var sp = layer.querySelector('.spot--about'), mk = sp && sp.querySelector('.mk');
+    if (!sp || !mk) return null;
+    var M = markSize(), k = M.k, n = M.n, R = [11, 13, 15], A = [0.9, 0.6, 0.3], S = (2 * 15 + 1);
+    var cx = parseFloat(sp.style.left) + parseFloat(mk.style.left) + M.w / 2, cy = parseFloat(sp.style.top) + parseFloat(mk.style.top) + M.h / 2;
+    var cv = el('canvas', 'hint hint-ring'); cv.width = S * k; cv.height = S * k;
+    cv.style.width = (S * k / n) + 'px'; cv.style.height = (S * k / n) + 'px';
+    cv.style.left = snapW(cx - S * k / n / 2, n) + 'px'; cv.style.top = snapW(cy - S * k / n / 2, n) + 'px';
+    var g = cv.getContext('2d');
+    function circle(r, a) {   // окружность в точках значка (средняя точка), толщина 1
+      g.fillStyle = 'rgba(45, 212, 191, ' + a + ')';
+      var x = r, y = 0, e = 1 - r, c = 15;
+      while (x >= y) {
+        [[x, y], [y, x], [-y, x], [-x, y], [-x, -y], [-y, -x], [y, -x], [x, -y]].forEach(function (p) { g.fillRect((c + p[0]) * k, (c + p[1]) * k, k, k); });
+        y++; if (e < 0) e += 2 * y + 1; else { x--; e += 2 * (y - x) + 1; }
+      }
+    }
+    function frame(f) { g.clearRect(0, 0, cv.width, cv.height); for (var i = 0; i < f; i++) circle(R[i], A[i]); }
+    layer.appendChild(cv);
+    var cap = el('div', 'hint hint-cap'); cap.textContent = HINT_TXT.start;
+    if (hintPhone()) { cap.appendChild(document.createElement('br')); cap.appendChild(document.createTextNode(HINT_TXT.phone2)); }
+    layer.appendChild(cap);
+    cap.style.left = snapW(cx - cap.offsetWidth / 2, n) + 'px'; cap.style.top = snapW(cy + M.h / 2 + 4, n) + 'px';
+    if (RM) { g.globalAlpha = 1; circle(11, 0.6); }
+    else {   // по 100 мс на кадр, пауза 500 мс, 3 цикла (2,4 с), потом одно кольцо
+      var seq = [1, 2, 3, 0, 0, 0, 0, 0], step = 0;
+      HINT.ringT = setInterval(function () {
+        if (step >= seq.length * 3) { clearInterval(HINT.ringT); frame(1); return; }
+        frame(seq[step % seq.length]); step++;
+      }, 100);
+    }
+    return { el: cv, cap: cap };
+  }
+  function hintStrip() {
+    var ph = hintPhone(), s = el('div', 'hint hint-strip'), tx = ph ? HINT_TXT.stripP : HINT_TXT.strip;
+    s.setAttribute('role', 'status');
+    s.appendChild(document.createTextNode(tx[0] + ' ')); s.appendChild(hintMk(16)); if (tx[1]) s.appendChild(document.createTextNode(' ' + tx[1]));
+    document.body.appendChild(s);
+    return s;
+  }
+  function hintOn() {
+    if (!win.hidden || (window.Office3D && Office3D.on && Office3D.on())) return;
+    HINT.on = true; HINT.at = Date.now(); document.body.classList.add('hint-on');
+    var els = [];
+    if (state.fh === 'bubble') els.push(hintBubble());
+    else if (state.fh === 'ring') { var r = hintRing(); if (r) { els.push(r.el); els.push(r.cap); } }
+    else if (state.fh === 'strip') els.push(hintStrip());
+    HINT.els = els.filter(Boolean);
+    HINT.els.forEach(function (e) {
+      e.addEventListener('click', function () { hintOff(true); });
+      requestAnimationFrame(function () { e.classList.add('is-on'); });
+    });
+    hintRepaint();
+    clearTimeout(HINT.timer); clearTimeout(HINT.seenT); clearTimeout(HINT.peekT);
+    HINT.timer = setTimeout(function () { hintOff(true); }, hintPhone() ? 15000 : HINT_MS);
+    HINT.seenT = setTimeout(hintMark, 4000);   // ушёл раньше 4 с — в следующий раз покажется снова
+    if (hintPhone() && !RM) HINT.peekT = setTimeout(hintPeek, 700);
+  }
+  function hintPeek() {   // офис уезжает на 32 CSS px влево за 320 мс, пауза 160 мс, назад за 420 мс; кадрами, не scroll-behavior
+    var sc = $('#scroller'), x0 = sc.scrollLeft, t0 = performance.now();
+    if (HINT.touched || !HINT.on) return;
+    HINT.peeking = true;
+    function ease1(u) { return 1 - Math.pow(1 - u, 3); }
+    function ease2(u) { return u < .5 ? 2 * u * u : 1 - Math.pow(-2 * u + 2, 2) / 2; }
+    (function tick(now) {
+      var dt = now - t0, off;
+      if (dt < 320) off = -32 * ease1(dt / 320);
+      else if (dt < 480) off = -32;
+      else if (dt < 900) off = -32 * (1 - ease2((dt - 480) / 420));
+      else { sc.scrollLeft = x0; HINT.peeking = false; HINT.peekX = sc.scrollLeft; return; }
+      sc.scrollLeft = x0 + off;
+      requestAnimationFrame(tick);
+    })(t0);
+  }
+  function hintOff(mark) {
+    clearTimeout(HINT.timer); clearTimeout(HINT.seenT); clearTimeout(HINT.peekT); clearInterval(HINT.ringT);
+    (HINT.els || []).forEach(function (e) { e.remove(); }); HINT.els = [];
+    document.body.classList.remove('hint-on');
+    layer.querySelectorAll('.spot.is-hint').forEach(function (e) { e.classList.remove('is-hint'); });
+    var was = HINT.on; HINT.on = false;
+    var dsp = agents.filter(function (a) { return a.d.id === 'disp'; })[0];
+    if (dsp && dsp.hintHold) { dsp.hold = false; dsp.hintHold = false; }
+    if (mark) hintMark();
+    if (was) hintRepaint();
+  }
+
+
   /* ---------- Варианты и раскладка. ---------- */
   // nm — набор имён на бейджах агентов (16.10): 1 на «О» / 2 по делу / 3 по костюму
   // sz — размер агентов (16.10: «не 1,8, а 1,9, и предложи 1,9 и 2»)
   var state = { first: 'card', marks: 'always', classic: 'hover', tags: 'always', nm: '1', sz: '19', screen: 'desk', s: 1,
-    tone: 'mid', outline: 'none', zoom: 'k9', floor: 'slate', walls: 'c4', wt: '8', mk: '1', board: '2', wv: '3', 'w3-about': 'a', 'w3-skills': 'c', 'w3-font': 'press', field: 'office', 'w3-tetris': 'arcade', pk: 'win', pw: 'flip', ts: 'key', bg: 'code', md: 'l', ms: 's', lb: 'b' };   // lb — кнопка языка: ссылка в строке лицензии (выбор владельца 18.10)   // md, ms — медали в карточке агента: в строке «Стаж», меньше — выбор владельца 18.10   // ts — кнопка экрана тетриса: клавиша «ИГРАТЬ»; bg — фон за офисом (16.10: рисунки из знаков; выбраны «знаки сайта»), выбор владельца 15.10   // pw — окно на телефоне: «листание», выбор владельца 15.10   // тетрис: «Аркада», клавиши «в цветах окна» — выбор владельца 15.10   // фон «в цвет офиса» — выбор владельца 15.10   // 15.10: «Обо мне» А, «Навыки» В, Press Start 2P — выбор владельца; фон — варианты   // wv — вид окон разделов: 0 как было, 1–3 — варианты Дизайнера (14.10)   // пол П2, стены С4 (кирпич в цветах переговорной), толщина 8 — выбор владельца 14.10
+    tone: 'mid', outline: 'none', zoom: 'k9', floor: 'slate', walls: 'c4', wt: '8', mk: '1', board: '2', wv: '3', 'w3-about': 'a', 'w3-skills': 'c', 'w3-font': 'press', field: 'office', 'w3-tetris': 'arcade', pk: 'win', pw: 'flip', ts: 'key', bg: 'code', md: 'l', ms: 's', lb: 'b', sg: 'relief', ct: '0', fh: '0', st: 'logo', sp: 'mid' };   // sg/st/sp — вывеска: выбор владельца 18.10, выложено   // sp — «Надпись посередине» (владелец 18.10)   // lb — кнопка языка: ссылка в строке лицензии (выбор владельца 18.10)   // md, ms — медали в карточке агента: в строке «Стаж», меньше — выбор владельца 18.10   // ts — кнопка экрана тетриса: клавиша «ИГРАТЬ»; bg — фон за офисом (16.10: рисунки из знаков; выбраны «знаки сайта»), выбор владельца 15.10   // pw — окно на телефоне: «листание», выбор владельца 15.10   // тетрис: «Аркада», клавиши «в цветах окна» — выбор владельца 15.10   // фон «в цвет офиса» — выбор владельца 15.10   // 15.10: «Обо мне» А, «Навыки» В, Press Start 2P — выбор владельца; фон — варианты   // wv — вид окон разделов: 0 как было, 1–3 — варианты Дизайнера (14.10)   // пол П2, стены С4 (кирпич в цветах переговорной), толщина 8 — выбор владельца 14.10
+  // sg, ct, fh — вывеска, контакт на стойке, подсказка первого визита (18.10, демо по 2–3 варианта): на сайте — «нет», пока
+  // владелец не выберет; в демо (панель есть) — сразу рекомендованные
+  if (document.getElementById('bar')) { state.sg = ADDS_REC.sg; state.ct = ADDS_REC.ct; state.fh = ADDS_REC.fh; }
   (function () {   // пол и стены (pix/rooms.js): кнопки из списка вариантов, начальный — из адреса ?floor= / ?walls=
     var q = new URLSearchParams(location.search), RS = window.PIX_ROOMS;
     if (!RS) return;
     ['floor', 'walls', 'wt'].forEach(function (grp) {
       var list = grp === 'wt' ? WTS : RS[grp === 'floor' ? 'floors' : 'walls'], box = document.querySelector('.grp[data-group="' + grp + '"]');
       if (list[q.get(grp)]) state[grp] = q.get(grp);
-      ['zoom', 'mk', 'board', 'wv', 'w3-about', 'w3-skills', 'w3-font', 'field', 'w3-tetris', 'pk', 'pw', 'ts', 'nm', 'sz', 'bg', 'md', 'ms', 'lb'].forEach(function (g) { if (q.get(g)) state[g] = q.get(g); });   // ?zoom= ?mk= ?board= — для проверок и листов
+      ['zoom', 'mk', 'board', 'wv', 'w3-about', 'w3-skills', 'w3-font', 'field', 'w3-tetris', 'pk', 'pw', 'ts', 'nm', 'sz', 'bg', 'md', 'ms', 'lb', 'sg', 'ct', 'fh', 'st', 'sp'].forEach(function (g) { if (q.get(g)) state[g] = q.get(g); });   // ?zoom= ?mk= ?board= — для проверок и листов
       if (box) Object.keys(list).forEach(function (k) {   // на сайте панели демо нет — сборка её вырезает (ТЗ SEO 18.10)
         var b = document.createElement('button'); b.type = 'button'; b.dataset.v = k; b.textContent = list[k].name; box.appendChild(b);
       });
     });
   })();
   function setVariant(group, v) {
+    if (group === 'fh' && v === 'again') { hintAgain(); return; }
     var cl = document.body.classList;
     cl.forEach(function (c) { if (c.indexOf(group + '-') === 0) cl.remove(c); });
     // classList.forEach по живому списку пропускает элементы — дочищаем
@@ -2876,6 +3407,8 @@
     if (group === 'pk' && window.PixKeys) { PixKeys.palette = v; if (!win.hidden) PixKeys.mount($('#winPanel')); }   // цвета клавиш тетриса
     if (group === 'ts' && window.W3X) { W3X.startStyle = v; if (win.dataset.open === 'tetris') openSpot('tetris', lastFocus); }   // кнопка экрана тетриса
     if (group === 'pw' && !win.hidden && win.dataset.open && win.dataset.open.indexOf('agent:') !== 0) openSpot(win.dataset.open, lastFocus);   // вид окна на телефоне
+    if (group === 'sg' || group === 'ct' || group === 'st' || group === 'sp') addsApply();
+    if (group === 'fh') hintApply();
     if ((group === 'md' || group === 'ms') && !win.hidden && win.dataset.open && win.dataset.open.indexOf('agent:') === 0) {   // место и размер медалей — открытую карточку заново
       var mdId = win.dataset.open.slice(6); openAgent(AGENTS.filter(function (x) { return x.id === mdId; })[0], lastFocus);
     }
@@ -2988,6 +3521,16 @@
   }
   window.addEventListener('resize', layout);
 
+  // подсказка первого визита: гасят нажатие на предмет или агента, Escape, прокрутка пальцем на телефоне (от 24 CSS px)
+  layer.addEventListener('pointerdown', function (e) { if (HINT.on && e.target.closest && e.target.closest('.spot, .ag')) hintOff(true); }, true);
+  document.addEventListener('keydown', function (e) { if (HINT.on && e.key === 'Escape') hintOff(true); });
+  $('#scroller').addEventListener('touchstart', function () { HINT.touched = true; }, { passive: true });
+  $('#scroller').addEventListener('scroll', function () {
+    var sc = $('#scroller');
+    if (!HINT.on || HINT.peeking || !hintPhone()) { HINT.sx = sc.scrollLeft; HINT.sy = sc.scrollTop; return; }
+    if (HINT.sx == null) { HINT.sx = sc.scrollLeft; HINT.sy = sc.scrollTop; return; }
+    if (Math.abs(sc.scrollLeft - HINT.sx) + Math.abs(sc.scrollTop - HINT.sy) >= 24) hintOff(true);
+  }, { passive: true });
   /* ---------- Пуск. ---------- */
   drawBg(); buildLabels(); buildSpots(); buildAgents(); buildHud(); buildChips();
   // настоящий телефон (узкий экран, ?screen= не задан) — сразу телефонная версия, без рамки и панели демо
@@ -3007,7 +3550,8 @@
   }, skip: function (e) {   // нажатие и наведение — не для фона: окно открыто, указатель на кнопке, панели, подсказках
     return !win.hidden || !!(e.target && e.target.closest && e.target.closest('button, a, input, header, .win, .chips, .hud, .ag, .spot'));
   } });
-  ['first', 'marks', 'classic', 'tags', 'nm', 'sz', 'screen', 'tone', 'outline', 'zoom', 'floor', 'walls', 'wt', 'mk', 'board', 'wv', 'w3-about', 'w3-skills', 'w3-font', 'field', 'w3-tetris', 'pk', 'pw', 'ts', 'bg', 'md', 'ms', 'lb'].forEach(function (g) { setVariant(g, state[g]); });
+  ['first', 'marks', 'classic', 'tags', 'nm', 'sz', 'screen', 'tone', 'outline', 'zoom', 'floor', 'walls', 'wt', 'mk', 'board', 'wv', 'w3-about', 'w3-skills', 'w3-font', 'field', 'w3-tetris', 'pk', 'pw', 'ts', 'bg', 'md', 'ms', 'lb', 'st', 'sp', 'sg', 'ct'].forEach(function (g) { setVariant(g, state[g]); });
+  setTimeout(function () { setVariant('fh', state.fh); }, 1200);   // подсказка — через 1,2 с, когда офис и агенты на месте
   agents.forEach(paintAgent); agentsRender();
   requestAnimationFrame(frame);
 
@@ -3041,6 +3585,10 @@
     agentPoses: function () { if (!(PC && PC.ag)) return null; var ps = agents.map(agentPose); talkOf(ps); return ps.map(function (p) { var a = p.a; return { id: a.d.id, SX: p.SX, SY: p.SY, W: p.W, H: p.H, s: p.s, w: p.w, h: p.h, fr: p.fr.id, foot: p.foot, face: p.face, seat: p.seat ? p.seat.key : null, group: p.seat ? p.seat.group : null, work: p.work, talk: p.talk, talkIcon: p.talk ? TALK[p.talk - 1] : null, emote: p.emote, hold: !!a.hold, state: a.state, sit: !!((a.home.chair || a.home.seat) && a.state === 'sit'), tx: a.tx, ty: a.ty, px: a.px, py: a.py, hx: a.home.x, hy: a.home.y, n: PC.n, wpx: PC.wpx }; }); },
     composes: function () { return PC ? PC.composes || 0 : 0; },
     // живые экраны: прямоугольник в точках рисунка, кадр (null — выключен), какой монитор чей
+    signInfo: function () {   // вывеска (18.10): вариант, блеск, место и шаг на экранном холсте
+      var s = PC && PC.objs && PC.objs.filter(function (it) { return it.o.dyn && it.o.dyn.screen; })[0];
+      return s ? { sg: state.sg, st: state.st, sp: state.sp, anim: s.o.dyn.anim, scr: s.o.dyn.scr || null, w: s.o.w, h: s.o.h } : null;
+    },
     ovInfo: function () { if (!(PC && PC.ovs)) return []; var on = {}; agents.forEach(function (a) { var p = agentPose(a); if (p && p.work && p.face === 'back') on[p.work] = 1; }); return PC.ovs.map(function (o) { return { key: o.key, type: o.type, x: o.x, y: o.y, w: o.w, h: o.h, f: ovFrame(o, on) }; }); },
     ovHide: function (key) { if (PC) { PC.ovHide = key || null; PC.agSig = null; agentsRender(); } },
     // пылесос: состояние, клетка, место в точках мира, слой; сколько проехал, сколько ждал, сколько раз вернулся на станцию

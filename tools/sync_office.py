@@ -25,7 +25,7 @@ DEST = ROOT / "office"
 FILES = {
     "office": [
         "greybox.html",
-        "pix/build_demo.py", "pix/objects.py", "pix/agents.py", "pix/medals.py",
+        "pix/build_demo.py", "pix/objects.py", "pix/agents.py", "pix/medals.py", "pix/logo.py",
         "pix/pix.js", "pix/rooms.js", "pix/objects.js", "pix/agents.js", "pix/medals.js", "pix/i18n.js", "pix/field.js", "pix/drift.js", "pix/office3d.js",
         "pix/traced/showcase_office.json",
         "art/work/t16/art.js", "art/work/plan.json", "art/work/a/objects.json",

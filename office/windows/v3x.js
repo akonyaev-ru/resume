@@ -559,5 +559,6 @@
   }
   if (document.body) crispFilter(); else document.addEventListener('DOMContentLoaded', crispFilter);
 
+  W3X.links = links;   // кнопки контактов — и для окна «Контакты» офиса (18.10, демо)
   window.W3X = W3X;
 })();
