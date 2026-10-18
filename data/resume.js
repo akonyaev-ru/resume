@@ -93,7 +93,7 @@ window.RESUME = {
     license: { ru: '© графика — CC BY-NC 4.0, код — MIT', en: '© graphics — CC BY-NC 4.0, code — MIT' },
     updatedAt: { ru: 'Обновлено', en: 'Updated' },
     langLabel: { ru: 'Язык страницы', en: 'Page language' },
-    docTitle: { ru: 'Резюме Алексея Коняева', en: 'Alexey Konyaev — CV' },
+    docTitle: { ru: 'Алексей Коняев — резюме, классическая версия', en: 'Alexey Konyaev — CV, classic version' },
   },
 
   person: {

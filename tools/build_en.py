@@ -23,13 +23,13 @@ ROOT = Path(__file__).resolve().parent.parent
 # один раз.
 STRINGS = [
     ('<html lang="ru">', '<html lang="en">'),
-    ("<title>Резюме Алексея Коняева</title>", "<title>Alexey Konyaev — CV</title>"),
+    ("<title>Алексей Коняев — резюме, классическая версия</title>", "<title>Alexey Konyaev — CV, classic version</title>"),
     (
         'content="Специалист по LegalOPS и внедрению AI-агентов. Юрист по практике, который внедряет AI-агентов и автоматизирует юридическую функцию: Claude, Python, LLM, Битрикс24. Опыт, результаты, продукты."',
         'content="LegalOPS and AI-agent implementation specialist. A practising lawyer who rolls out AI agents and automates the legal function: Claude, Python, LLM, Bitrix24. Experience, results, products."',
     ),
     ('content="Алексей Коняев"', 'content="Alexey Konyaev"'),
-    ('content="Резюме Алексея Коняева"', 'content="Alexey Konyaev — CV"'),
+    ('content="Алексей Коняев — резюме, классическая версия"', 'content="Alexey Konyaev — CV, classic version"'),
     (
         'content="Специалист по LegalOPS и внедрению AI-агентов: юрист по практике, автоматизация юридической функции."',
         'content="LegalOPS and AI-agent implementation specialist: a practising lawyer, legal function automation."',

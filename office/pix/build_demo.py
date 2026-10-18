@@ -167,7 +167,7 @@ if PROD:
     alt = ['<link rel="alternate" hreflang="ru" href="%s">' % SITE_URL, '<link rel="alternate" hreflang="en" href="%sen/">' % SITE_URL,
            '<link rel="alternate" hreflang="x-default" href="%s">' % SITE_URL]
     head = '\n'.join([
-        '<title>Резюме Алексея Коняева</title>',
+        '<title>Алексей Коняев — резюме</title>',   # выбор владельца 18.10: имя первым; классика — «…, классическая версия»
         '<meta name="description" content="%s">' % desc,
         '<meta name="author" content="Алексей Коняев">',
         '<link rel="canonical" href="%s">' % URL,
@@ -175,8 +175,8 @@ if PROD:
         '<meta property="og:type" content="website">',
         '<meta property="og:locale" content="ru_RU">',
         '<meta property="og:locale:alternate" content="en_US">',
-        '<meta property="og:site_name" content="Резюме Алексея Коняева">',
-        '<meta property="og:title" content="Резюме Алексея Коняева">',
+        '<meta property="og:site_name" content="Алексей Коняев">',   # = WebSite на главной хоста (ТЗ SEO «корень хоста»)
+        '<meta property="og:title" content="Алексей Коняев — резюме">',
         '<meta property="og:description" content="%s">' % ogdesc,
         '<meta property="og:url" content="%s">' % URL,
         '<meta property="og:image" content="%sog.jpg">' % SITE_URL,
@@ -196,7 +196,7 @@ if PROD:
             '<meta property="og:type" content="website">',
             '<meta property="og:locale" content="en_US">',
             '<meta property="og:locale:alternate" content="ru_RU">',
-            '<meta property="og:site_name" content="Alexey Konyaev — CV">',
+            '<meta property="og:site_name" content="Alexey Konyaev">',
             '<meta property="og:title" content="Alexey Konyaev — CV">',
             '<meta property="og:description" content="LegalOPS and AI-agent implementation specialist: a practising lawyer, legal function automation.">',
             '<meta property="og:url" content="%s">' % URL,
