@@ -37,7 +37,9 @@
     'Коротко': 'In brief', 'Подробнее': 'In detail', 'Условия работы': 'Working terms', 'Места работы': 'Jobs',
     'параллельно': 'in parallel', 'Стек': 'Stack', 'Группы навыков': 'Skill groups', 'навык': 'skill',
     // 2.5D
-    'Офис': 'Office', 'Выйти в план': 'Back to plan',
+    'Офис': 'Office', 'Выйти в план': 'Back to plan', 'Выйти из объёмного вида': 'Leave the 3D view',
+    // клавиши снизу в 2.5D (18.10, ночь)
+    'Открыть то, что рядом': 'Open what is nearby', 'Идти': 'Walk',
     'Стрелки или WASD — идти · колесо — ближе / дальше · нажатие на предмет — открыть': 'Arrows or WASD — walk · wheel — closer / farther · click an item — open',
     'Стрелки или WASD — лететь · тянуть мышью — двигать · колесо — ближе / дальше · нажатие на предмет — открыть': 'Arrows or WASD — fly · drag with the mouse — move · wheel — closer / farther · click an item — open',
     // тетрис в окне

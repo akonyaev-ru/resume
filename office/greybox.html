@@ -49,6 +49,26 @@
   .o3d-hud__bar button[aria-pressed="true"] { color: #0f2a28; background: #5fd3ce; border-color: #5fd3ce; }
   .o3d-hud__tip:not(:empty) { background: rgba(16, 18, 21, .85); border-radius: 5px; padding: 6px 10px; }
   .o3d-hud__tip kbd { font: 700 12px/1 system-ui; background: #e9edf2; color: #15181d; border-radius: 3px; padding: 2px 6px; }
+  /* 18.10, ночь: вместо панели «Выйти в план» — пиксельные клавиши «Аркады» (windows/tetris/keys.js) ESC, E и стрелки
+     в ряд у нижнего края по середине (владелец: «клавиши сверху, только давай снизу сделаем»; pix/office3d.js, host.hud) */
+  .o3d-hud--keys { top: auto; bottom: 16px; align-items: center; }
+  .o3d-keys { display: flex; align-items: flex-start; gap: calc(var(--pk, 2px) * 9); }
+  .o3d-kr { display: flex; gap: calc(var(--pk, 2px) * 3); }   /* между клавишами 3 клетки, как в «Аркаде» */
+  .o3d-key { display: block; position: relative; padding: 0; border: 0; background: none; line-height: 0; cursor: pointer;
+    pointer-events: auto; touch-action: none; -webkit-tap-highlight-color: transparent; }
+  .o3d-key canvas { display: block; position: relative; image-rendering: pixelated; }
+  .o3d-key:hover canvas { filter: brightness(1.14); }
+  .o3d-key:focus-visible { outline: 2px solid #5fd3ce; outline-offset: 2px; }
+  .o3d-key.is-off { cursor: default; }
+  .o3d-key.is-off canvas { opacity: .35; filter: none; }   /* E — рядом ничего нет */
+  /* демо: в 2.5D холст во всё окно закрывает панель — копия переключателя вида 2.5D всплывает поверх, вверху (внизу —
+     клавиши). Копия, а не
+     сама группа: панель, вынутая из потока, сдвигала плоский офис под переходом (начало перехода не совпадало с планом).
+     На сайте панели нет — нет и копии. */
+  .hx-float { display: none !important; }
+  body:has(.stage.is-3d) .hx-float { display: flex !important; position: fixed; z-index: 996; left: 50%; top: 12px;
+    transform: translateX(-50%); background: #101215; border: 1px solid var(--line); border-radius: 8px; padding: 6px 10px;
+    flex-direction: column; gap: 6px; align-items: flex-start; }
   #drift[hidden] { display: none; }
   .stage.drift-over, .stage.drift-over * { cursor: pointer; }   /* над знаками фона — их можно нажать (волна) */
   /* ?plan — чистый план для Gemini: без панели, карточки, подсказок, агентов и надписей. */
@@ -390,6 +410,13 @@
     <button data-v="0">нет</button><button data-v="phone">1 телефон ★</button><button data-v="bell">2 звонок</button><button data-v="cards">3 визитница</button></div>
   <div class="grp grp--done" data-group="fh"><span class="grp__name">Подсказка:</span>
     <button data-v="0">нет</button><button data-v="bubble">1 Оливия говорит ★</button><button data-v="ring">2 кольцо «Начните отсюда»</button><button data-v="strip">3 строка внизу</button><button data-v="again" class="grp__act">↺ показать снова</button></div>
+  <!-- 18.10, ночь: «не хочу, чтобы была кнопка „Выйти в план“ и управление в режиме 2.5D — нужно сделать что-то другое
+       или убрать это вовсе». Во всех новых — выход и Esc, и шагом Отто на коврик у входа (через него и вошли) -->
+  <!-- пузырь над Отто (с буквой, потом с клавишей) показан и снят — владелец 18.10, ночь: «Мне не нравится, убери пузырь
+       этот. Сделай кнопки сверху»; из трёх видов кнопок — «клавиши сверху, только давай снизу сделаем», «как сделаешь —
+       выкладывай сразу» -->
+  <div class="grp" data-group="hx" data-float><span class="grp__name">2.5D, поверх офиса:</span>
+    <button data-v="bar">как было</button><button data-v="keys">клавиши снизу ✓</button></div>
   <div class="grp" data-group="screen"><span class="grp__name">Экран:</span>
     <button data-v="desk">компьютер</button><button data-v="phone2">телефон</button></div>
   <div class="grp grp--w3 grp--done" data-group="pw"><span class="grp__name">Окно на телефоне:</span>
@@ -2505,7 +2532,7 @@
         tall: st.tall, Th: st.Th, Tv: st.Tv, joins: st.joins, wallTop: toneHex(st.top), wallOl: toneHex(st.ol),
         items: PC.objs.map(function (it) {
           var o = it.o, spr = o.place || o.sprite || o.kind, sp = spotOfObj(o);
-          if (sp && SPOTS.some(function (s) { return s.id === sp && s.act; })) sp = null;   // коврик в 2.5D не нажимается
+          if (sp && SPOTS.some(function (s) { return s.id === sp && s.act; })) sp = '@exit';   // коврик в 2.5D — выход (кроме вида «как было»)
           return { img: toned(state.outline === 'dark' ? it.dark : it.img), hot: toned(it.hot),
             x: o.x / wpx, y: o.y / wpx, F: o.foot / wpx, spot: sp, key: o.id, spr: spr, parts: PARTS3D[spr] || null };
         }) };
@@ -2545,6 +2572,13 @@
       } else if (!on && O3D.player) { var p = O3D.player; O3D.player = null; p.state = 'idle'; p.timer = 0.6; }
     },
     input: function (dx, dy) { O3D.input = [dx, dy]; },
+    hud: function () { return state.hx; },
+    onMat: function () {   // ступни Отто на коврике у входа (середина полосы ступней — над его рисунком)
+      var a = O3D.player; if (!a || MUT === 'nomat') return false;
+      var r = objRects().filter(function (q) { return q.spot === 'enter3d'; })[0];
+      // коврик лежит вплотную к стене: ступни Отто доходят только до клетки под его нижним краем (на 1 точку ниже)
+      return !!r && a.px >= r.x1 && a.px <= r.x2 && a.py >= r.y1 && a.py <= r.y2 + T / 2;
+    },
     playerPos: function () { var a = O3D.player; return a ? { x: a.px / PC.wpx, y: a.py / PC.wpx } : null; },
     nearSpot: function () {   // ближайший предмет с окном в 28 точках от ступней Отто
       var a = O3D.player; if (!a) return null;
@@ -3384,7 +3418,7 @@
   // nm — набор имён на бейджах агентов (16.10): 1 на «О» / 2 по делу / 3 по костюму
   // sz — размер агентов (16.10: «не 1,8, а 1,9, и предложи 1,9 и 2»)
   var state = { first: 'card', marks: 'always', classic: 'hover', tags: 'always', nm: '1', sz: '19', screen: 'desk', s: 1,
-    tone: 'mid', outline: 'none', zoom: 'k9', floor: 'slate', walls: 'c4', wt: '8', mk: '1', board: '2', wv: '3', 'w3-about': 'a', 'w3-skills': 'c', 'w3-font': 'press', field: 'office', 'w3-tetris': 'arcade', pk: 'win', pw: 'flip', ts: 'key', bg: 'code', md: 'l', ms: 's', lb: 'b', sg: 'relief', ct: '0', fh: '0', st: 'logo', sp: 'mid' };   // sg/st/sp — вывеска: выбор владельца 18.10, выложено   // sp — «Надпись посередине» (владелец 18.10)   // lb — кнопка языка: ссылка в строке лицензии (выбор владельца 18.10)   // md, ms — медали в карточке агента: в строке «Стаж», меньше — выбор владельца 18.10   // ts — кнопка экрана тетриса: клавиша «ИГРАТЬ»; bg — фон за офисом (16.10: рисунки из знаков; выбраны «знаки сайта»), выбор владельца 15.10   // pw — окно на телефоне: «листание», выбор владельца 15.10   // тетрис: «Аркада», клавиши «в цветах окна» — выбор владельца 15.10   // фон «в цвет офиса» — выбор владельца 15.10   // 15.10: «Обо мне» А, «Навыки» В, Press Start 2P — выбор владельца; фон — варианты   // wv — вид окон разделов: 0 как было, 1–3 — варианты Дизайнера (14.10)   // пол П2, стены С4 (кирпич в цветах переговорной), толщина 8 — выбор владельца 14.10
+    tone: 'mid', outline: 'none', zoom: 'k9', floor: 'slate', walls: 'c4', wt: '8', mk: '1', board: '2', wv: '3', 'w3-about': 'a', 'w3-skills': 'c', 'w3-font': 'press', field: 'office', 'w3-tetris': 'arcade', pk: 'win', pw: 'flip', ts: 'key', bg: 'code', md: 'l', ms: 's', lb: 'b', sg: 'relief', ct: '0', fh: '0', st: 'logo', sp: 'mid', hx: 'keys' };   // hx — что поверх 2.5D: клавиши «Аркады» снизу (владелец 18.10, ночь: «клавиши сверху, только давай снизу сделаем»)   // sg/st/sp — вывеска: выбор владельца 18.10, выложено   // sp — «Надпись посередине» (владелец 18.10)   // lb — кнопка языка: ссылка в строке лицензии (выбор владельца 18.10)   // md, ms — медали в карточке агента: в строке «Стаж», меньше — выбор владельца 18.10   // ts — кнопка экрана тетриса: клавиша «ИГРАТЬ»; bg — фон за офисом (16.10: рисунки из знаков; выбраны «знаки сайта»), выбор владельца 15.10   // pw — окно на телефоне: «листание», выбор владельца 15.10   // тетрис: «Аркада», клавиши «в цветах окна» — выбор владельца 15.10   // фон «в цвет офиса» — выбор владельца 15.10   // 15.10: «Обо мне» А, «Навыки» В, Press Start 2P — выбор владельца; фон — варианты   // wv — вид окон разделов: 0 как было, 1–3 — варианты Дизайнера (14.10)   // пол П2, стены С4 (кирпич в цветах переговорной), толщина 8 — выбор владельца 14.10
   // sg, ct, fh — вывеска, контакт на стойке, подсказка первого визита (18.10, демо по 2–3 варианта): на сайте — «нет», пока
   // владелец не выберет; в демо (панель есть) — сразу рекомендованные
   if (document.getElementById('bar')) { state.sg = ADDS_REC.sg; state.ct = ADDS_REC.ct; state.fh = ADDS_REC.fh; }
@@ -3394,7 +3428,7 @@
     ['floor', 'walls', 'wt'].forEach(function (grp) {
       var list = grp === 'wt' ? WTS : RS[grp === 'floor' ? 'floors' : 'walls'], box = document.querySelector('.grp[data-group="' + grp + '"]');
       if (list[q.get(grp)]) state[grp] = q.get(grp);
-      ['zoom', 'mk', 'board', 'wv', 'w3-about', 'w3-skills', 'w3-font', 'field', 'w3-tetris', 'pk', 'pw', 'ts', 'nm', 'sz', 'bg', 'md', 'ms', 'lb', 'sg', 'ct', 'fh', 'st', 'sp'].forEach(function (g) { if (q.get(g)) state[g] = q.get(g); });   // ?zoom= ?mk= ?board= — для проверок и листов
+      ['zoom', 'mk', 'board', 'wv', 'w3-about', 'w3-skills', 'w3-font', 'field', 'w3-tetris', 'pk', 'pw', 'ts', 'nm', 'sz', 'bg', 'md', 'ms', 'lb', 'sg', 'ct', 'fh', 'st', 'sp', 'hx'].forEach(function (g) { if (q.get(g)) state[g] = q.get(g); });   // ?zoom= ?mk= ?board= — для проверок и листов
       if (box) Object.keys(list).forEach(function (k) {   // на сайте панели демо нет — сборка её вырезает (ТЗ SEO 18.10)
         var b = document.createElement('button'); b.type = 'button'; b.dataset.v = k; b.textContent = list[k].name; box.appendChild(b);
       });
@@ -3439,10 +3473,18 @@
     if (group === 'pw' && !win.hidden && win.dataset.open && win.dataset.open.indexOf('agent:') !== 0) openSpot(win.dataset.open, lastFocus);   // вид окна на телефоне
     if (group === 'sg' || group === 'ct' || group === 'st' || group === 'sp') addsApply();
     if (group === 'fh') hintApply();
+    if (group === 'hx' && window.Office3D && Office3D.hudRefresh) Office3D.hudRefresh();   // вид поверх 2.5D — на лету
     if ((group === 'md' || group === 'ms') && !win.hidden && win.dataset.open && win.dataset.open.indexOf('agent:') === 0) {   // место и размер медалей — открытую карточку заново
       var mdId = win.dataset.open.slice(6); openAgent(AGENTS.filter(function (x) { return x.id === mdId; })[0], lastFocus);
     }
   }
+  (function () {   // демо: копии переключателей 2.5D (data-float) — поверх холста во всё окно (стили .hx-float); на сайте панели нет
+    var gs = document.querySelectorAll('#bar .grp[data-float]');
+    if (!gs.length) return;
+    var box = document.createElement('div'); box.className = 'hx-float';
+    Array.prototype.forEach.call(gs, function (g) { box.appendChild(g.cloneNode(true)); });
+    document.body.appendChild(box);
+  })();
   document.querySelectorAll('.grp').forEach(function (g) {
     g.addEventListener('click', function (e) { var b = e.target.closest('button'); if (b) setVariant(g.dataset.group, b.dataset.v); });
   });
@@ -3580,7 +3622,7 @@
   }, skip: function (e) {   // нажатие и наведение — не для фона: окно открыто, указатель на кнопке, панели, подсказках
     return !win.hidden || !!(e.target && e.target.closest && e.target.closest('button, a, input, header, .win, .chips, .hud, .ag, .spot'));
   } });
-  ['first', 'marks', 'classic', 'tags', 'nm', 'sz', 'screen', 'tone', 'outline', 'zoom', 'floor', 'walls', 'wt', 'mk', 'board', 'wv', 'w3-about', 'w3-skills', 'w3-font', 'field', 'w3-tetris', 'pk', 'pw', 'ts', 'bg', 'md', 'ms', 'lb', 'st', 'sp', 'sg', 'ct'].forEach(function (g) { setVariant(g, state[g]); });
+  ['first', 'marks', 'classic', 'tags', 'nm', 'sz', 'screen', 'tone', 'outline', 'zoom', 'floor', 'walls', 'wt', 'mk', 'board', 'wv', 'w3-about', 'w3-skills', 'w3-font', 'field', 'w3-tetris', 'pk', 'pw', 'ts', 'bg', 'md', 'ms', 'lb', 'st', 'sp', 'sg', 'ct', 'hx'].forEach(function (g) { setVariant(g, state[g]); });
   setTimeout(function () { setVariant('fh', state.fh); }, 1200);   // подсказка — через 1,2 с, когда офис и агенты на месте
   agents.forEach(paintAgent); agentsRender();
   requestAnimationFrame(frame);

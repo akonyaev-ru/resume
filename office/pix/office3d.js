@@ -39,6 +39,15 @@
   var scene = null, sceneV = -1, texCache = new WeakMap(), white = null, blobTex = null;
   var cam = { s: 0, dir: 0, target: [512, 0, 320], H: 452.5, follow: [512, 320] }, keys = {}, last = 0;
   var drag = null, hover = null, near = null, onExit = null, lastStat = null;
+  /* Что поверх 2.5D (18.10: «не хочу, чтобы была кнопка „Выйти в план“ и управление в режиме 2.5D — нужно сделать что-то
+     другое или убрать вовсе»; пузырь над Отто показан и снят: «не нравится, убери пузырь этот. Сделай кнопки сверху»;
+     из трёх видов кнопок владелец взял первый: «клавиши сверху, только давай снизу сделаем»), host.hud():
+     'keys' — пиксельные клавиши «Аркады» ESC, E и стрелки в ряд у нижнего края по середине, без надписей. Нажимаются
+              мышью (ESC — выход, E — открыть то, что рядом, стрелка — идти, пока держишь) и «нажимаются» с клавиатуры
+              (PixKeys по data-code); E тускнеет, когда рядом ничего нет. Выход — и шагом Отто на коврик у входа (через него
+              и вошли), и нажатием на коврик;
+     'bar'  — как было: панель «Офис | Выйти в план» и строка управления (для сравнения в демо). */
+  var hudMode = 'bar', wasMat = false, padDir = null;
 
   function supported() {
     try { var c = document.createElement('canvas'); return !!c.getContext('webgl2'); } catch (e) { return false; }
@@ -421,14 +430,20 @@
     render();
   }
   function controls(dt) {
-    var dx = (keys.ArrowRight || keys.KeyD ? 1 : 0) - (keys.ArrowLeft || keys.KeyA ? 1 : 0) + (drag && drag.joy ? drag.jx : 0);
-    var dy = (keys.ArrowDown || keys.KeyS ? 1 : 0) - (keys.ArrowUp || keys.KeyW ? 1 : 0) + (drag && drag.joy ? drag.jy : 0);
+    var pd = padDir && window.__MUT !== 'nopad' ? padDir : [0, 0];   // стрелка сверху, зажатая мышью
+    var dx = (keys.ArrowRight || keys.KeyD ? 1 : 0) - (keys.ArrowLeft || keys.KeyA ? 1 : 0) + (drag && drag.joy ? drag.jx : 0) + pd[0];
+    var dy = (keys.ArrowDown || keys.KeyS ? 1 : 0) - (keys.ArrowUp || keys.KeyW ? 1 : 0) + (drag && drag.joy ? drag.jy : 0) + pd[1];
     var busy = host.busy();
     if (mode === 'otto') {
       host.input(busy || cam.s < 1 ? 0 : dx, busy || cam.s < 1 ? 0 : dy);
       var p = host.playerPos();
       if (p) { var k = 1 - Math.pow(0.0015, dt); cam.follow[0] += (p.x - cam.follow[0]) * k; cam.follow[1] += (p.y - 8 - cam.follow[1]) * k; }
       near = cam.s === 1 ? host.nearSpot() : null;
+      if (hudMode !== 'bar' && cam.s === 1 && cam.dir === 0 && host.onMat) {   // шагнул на коврик у входа — выход (стоял на нём при входе — сперва сойти)
+        var onMat = host.onMat();
+        if (onMat && !wasMat) exit();
+        wasMat = onMat;
+      }
     } else {
       if (!busy && (dx || dy)) { var v = 0.9 * (cam.H || END.free); cam.follow[0] += dx * v * dt; cam.follow[1] += dy * v * dt; }
       cam.follow[0] = Math.max(0, Math.min(scene ? scene.aw : 1024, cam.follow[0]));
@@ -626,7 +641,7 @@
       if (r && (!best || r.t < best.t)) best = { t: r.t, kind: 'agent', id: a.id };
     });
     scene.items.forEach(function (it) {
-      if (!it.spot) return;
+      if (!it.spot || (it.spot === '@exit' && hudMode === 'bar')) return;   // коврик — выход, кроме прежнего вида с кнопкой
       it.L.forEach(function (q) {
         var r;
         if (q.m === 'flat') {   // плоскость высоты h: точка рисунка — (X − x, Z − h − y)
@@ -669,7 +684,7 @@
     var r = cv.getBoundingClientRect(), quick = performance.now() - d.t0 < 400 && Math.hypot(e.clientX - d.x, e.clientY - d.y) < 8;
     if (!quick) return;
     var h = pick((e.clientX - r.left) / r.width, (e.clientY - r.top) / r.height);
-    if (h && h.kind === 'obj') host.open(h.spot);
+    if (h && h.kind === 'obj') { if (h.spot === '@exit') exit(); else host.open(h.spot); }
     else if (h && h.kind === 'agent') host.openAgent(h.id);
   }
   function onWheel(e) {
@@ -683,24 +698,61 @@
     if (host.busy()) { keys = {}; return; }
     if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'KeyW', 'KeyA', 'KeyS', 'KeyD'].indexOf(c) >= 0) { keys[c] = down; e.preventDefault(); return; }
     if (!down) return;
-    if ((c === 'KeyE' || c === 'Enter' || c === 'Space') && near && mode === 'otto') { e.preventDefault(); host.open(near.id); }
+    if ((c === 'KeyE' || c === 'Enter' || c === 'Space') && near && mode === 'otto') { e.preventDefault(); useNear(); }
     else if (c === 'Escape') { e.preventDefault(); exit(); }
+  }
+  function useNear() {   // E — с клавиатуры или клавишей сверху: открыть то, что рядом; у коврика — выход
+    if (!near || mode !== 'otto') return;
+    if (near.id === 'enter3d') { if (hudMode !== 'bar') exit(); }   // (было «E — Войти в офис» изнутри офиса)
+    else host.open(near.id);
   }
 
   // ---------- подсказки и кнопки ----------
   function hudBuild() {
-    hud = document.createElement('div'); hud.className = 'o3d-hud';
+    hudMode = (host.hud && host.hud()) || 'bar';
+    if (hudMode !== 'bar') hudMode = 'keys';
+    hud = document.createElement('div'); hud.className = 'o3d-hud o3d-hud--' + hudMode;
     var OT = window.OT || String;   // надписи — по словарю офиса (pix/i18n.js, 18.10)
-    hud.innerHTML = '<div class="o3d-hud__bar"><b>' + OT('Офис') + '</b>' +
+    if (hudMode === 'bar') hud.innerHTML = '<div class="o3d-hud__bar"><b>' + OT('Офис') + '</b>' +
       '<button type="button" data-x="1">' + OT('Выйти в план') + '</button></div><div class="o3d-hud__tip"></div>';
+    else {   // клавиши снизу — тем же рисовальщиком, что клавиши «Аркады» (windows/tetris/keys.js), в цветах окна
+      var lab = function (t, k) { var s = OT(t) + ' (' + k + ')'; return ' aria-label="' + s + '" title="' + s + '"'; };
+      var key = function (l, code, attrs, span) {
+        return '<button type="button" class="w3x-pkey o3d-key" data-label="' + l + '" data-code="' + code + '" data-pal="win"' +
+          (span ? ' data-span="' + span + '"' : '') + attrs + '></button>';
+      };
+      var group = function (inner) { return '<div class="o3d-kr">' + inner + '</div>'; };
+      var h = group(key('ESC', 'Escape', ' data-x="1"' + lab('Выйти из объёмного вида', 'Esc'), 2)) +
+        group(key('E', 'KeyE', ' data-act="e"' + lab('Открыть то, что рядом', 'E'))) +
+        group([['←', 'ArrowLeft KeyA', '-1,0'], ['↑', 'ArrowUp KeyW', '0,-1'], ['↓', 'ArrowDown KeyS', '0,1'], ['→', 'ArrowRight KeyD', '1,0']]
+          .map(function (a) { return key(a[0], a[1], ' data-dir="' + a[2] + '"' + lab('Идти', a[0])); }).join(''));
+      hud.innerHTML = '<div class="o3d-keys">' + h + '</div>';
+      if (window.PixKeys) PixKeys.mount(hud);
+      // стрелка: идти, пока держишь (мышь, палец)
+      hud.addEventListener('pointerdown', function (e) {
+        var b = e.target.closest('[data-dir]'); if (!b) return;
+        padDir = b.dataset.dir.split(',').map(Number);
+        if (b.setPointerCapture) b.setPointerCapture(e.pointerId);
+      });
+      var up = function () { padDir = null; };
+      ['pointerup', 'pointercancel', 'lostpointercapture'].forEach(function (t) { hud.addEventListener(t, up); });
+    }
     hud.addEventListener('click', function (e) {
       var b = e.target.closest('button'); if (!b) return;
-      if (b.dataset.x) exit(); else setMode(b.dataset.m);
+      if (b.dataset.x) exit();
+      else if (b.dataset.act === 'e') useNear();
+      else if (b.dataset.m) setMode(b.dataset.m);
     });
     host.stage().appendChild(hud);
+    if (window.PixKeys && hudMode !== 'bar') PixKeys.snap(hud);   // ряд по центру — холсты клавиш на целые точки экрана
   }
   function hudUpdate() {
     if (!hud) return;
+    if (hudMode !== 'bar') {   // E тускнеет, когда рядом ничего нет
+      var eb = hud.querySelector('[data-act="e"]'), off = window.__MUT === 'noedim' ? false : !near || cam.s < 1;
+      if (eb && eb.__off !== off) { eb.__off = off; eb.classList.toggle('is-off', off); eb.setAttribute('aria-disabled', off ? 'true' : 'false'); }
+      return;
+    }
     hud.querySelectorAll('[data-m]').forEach(function (b) { b.setAttribute('aria-pressed', b.dataset.m === mode ? 'true' : 'false'); });
     var tip = hud.querySelector('.o3d-hud__tip'), t;
     if (cam.s < 1) t = '';
@@ -718,6 +770,7 @@
     host.stage().appendChild(cv); hudBuild();
     on = true; cam.s = 0; cam.dir = 1; cam.H = 0; keys = {}; last = 0; hover = null; near = null;
     host.setPlayer(mode === 'otto');
+    wasMat = !!(host.onMat && host.onMat());
     var p = host.playerPos();
     cam.follow = mode === 'otto' && p ? [p.x, p.y - 8] : [512, 320];
     buildScene();
@@ -737,12 +790,13 @@
     if (host.onMode) host.onMode(mode);
     hudUpdate();
   }
-  function exit() { if (on && cam.dir >= 0) { cam.dir = -1; host.input(0, 0); keys = {}; } }
+  function exit() { if (on && cam.dir >= 0) { cam.dir = -1; host.input(0, 0); keys = {}; padDir = null; } }
   function finishExit() {
     cancelAnimationFrame(raf); on = false; cam.dir = 0;
     cv.removeEventListener('pointermove', onMove); cv.removeEventListener('pointerdown', onDown); cv.removeEventListener('pointerup', onUp);
     cv.removeEventListener('wheel', onWheel);
     window.removeEventListener('keydown', onKey, true); window.removeEventListener('keyup', onKey, true);
+    padDir = null;
     host.setPlayer(false); host.fade(1);
     if (cv.parentNode) cv.parentNode.removeChild(cv);
     if (hud && hud.parentNode) hud.parentNode.removeChild(hud); hud = null;
@@ -752,6 +806,13 @@
 
   window.Office3D = {
     supported: supported, enter: enter, exit: exit, setMode: setMode,
+    // вид поверх 2.5D сменился (переключатель демо) — пересобрать на лету
+    hudRefresh: function () {
+      if (!on) return;
+      if (hud && hud.parentNode) hud.parentNode.removeChild(hud); hud = null; padDir = null;
+      hudBuild(); hudUpdate();
+    },
+    hud: function () { return { mode: hudMode, el: !!hud, wasMat: wasMat, pad: padDir }; },
     on: function () { return on; }, mode: function () { return mode; },
     // для проверки: доля перехода, камера, подсказка, что под точкой холста
     info: function () { return { on: on, s: cam.s, mode: mode, follow: cam.follow.slice(), H: cam.H, near: near, items: scene ? scene.items.length : 0, stat: lastStat }; },
