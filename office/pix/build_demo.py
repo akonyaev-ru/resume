@@ -214,6 +214,12 @@ if PROD:
         en_legal = re.search(r"window\.OFFICE_LEGAL_EN = (.*?);\n", read(os.path.join(HERE, 'i18n.js')), re.S).group(1)
         en_legal = ''.join(re.findall(r"'((?:[^'\\]|\\.)*)'", en_legal))
         html = legal.sub(lambda m: m.group(1) + en_legal + m.group(2), html)
+    # подтверждение прав в Google Search Console (18.10): ресурс с префиксом https://akonyaev-ru.github.io/resume/,
+    # способ «HTML-тег» — код от владельца; пусто — тега нет. Стоит на обеих страницах офиса.
+    GOOGLE_VERIFY = 'FZljre0zlX96Aqqiha0Ab4njS4-X3SMGUeN10BrV2gQ'   # от владельца 18.10
+    if GOOGLE_VERIFY:
+        assert re.fullmatch(r'[A-Za-z0-9_-]{20,80}', GOOGLE_VERIFY), GOOGLE_VERIFY
+        head += '\n<meta name="google-site-verification" content="%s">' % GOOGLE_VERIFY
     rep('<title>Пиксельный офис — серый макет</title>', head)
     # язык страницы — до словаря: pix/i18n.js берёт его отсюда
     rep('<script>/* pix/i18n.js */', "<script>window.OFFICE_LANG = '%s';</script>\n<script>/* pix/i18n.js */" % LANG)

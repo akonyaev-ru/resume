@@ -38,7 +38,8 @@ OLD = "old"
 PAGES = ["index.html", "en.html", "dist/resume.html"]
 FOLDERS = ["assets", "data"]
 # Общие для сайта — в корне.
-ROOT_PAGES = ["404.html", "sitemap.xml"]
+# google7ced9a96537903d8.html — файл подтверждения прав в Google Search Console (18.10.2026, ресурс с префиксом /resume/)
+ROOT_PAGES = ["404.html", "sitemap.xml", "google7ced9a96537903d8.html"]
 # Прежние адреса -> новые: страница-переадресация, чтобы розданные ссылки не вели в 404.
 MOVED = {"en.html": "old/en.html", "dist/resume.html": "old/dist/resume.html"}
 BASE = "https://akonyaev-ru.github.io/resume/"

@@ -189,14 +189,15 @@ def stamp_twice():
 
 # С 17.10.2026: в корне — офис (index.html, og.jpg), 404, карта сайта, переадресации прежних адресов (en.html,
 # dist/resume.html); классическая версия со своими папками — в old/.
-SITE = {"index.html", "og.jpg", "404.html", "sitemap.xml", "en.html", "dist", "old", "en"}   # en/ — английский офис (18.10)
+SITE = {"index.html", "og.jpg", "404.html", "sitemap.xml", "en.html", "dist", "old", "en",   # en/ — английский офис (18.10)
+        "google7ced9a96537903d8.html"}   # подтверждение Google Search Console (18.10)
 OLD = {"index.html", "en.html", "assets", "data", "dist"}
 
 
 def project_copy() -> Path:
     """Копия проекта в том виде, в каком её видит CI перед выкладкой, с мусором вокруг."""
     work = Path(tempfile.mkdtemp())
-    for name in ("index.html", "404.html", "sitemap.xml"):
+    for name in ("index.html", "404.html", "sitemap.xml", "google7ced9a96537903d8.html"):
         shutil.copy(ROOT / name, work / name)
     shutil.copy(ROOT / "index.html", work / "en.html")
     for name in ("assets", "data"):
