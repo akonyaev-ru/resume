@@ -70,10 +70,11 @@
     dog: ['Contracts lawyer', 'Reviews contracts before signing: spots risks, drafts amendments and protocols of disagreement, compares versions.'],
     sud: ['Litigation lawyer', 'Handles disputes: assesses prospects, builds the position, prepares claims and procedural documents through to enforcement.'],
     fin: ['Financial analyst', 'Calculates budgets and project payback and turns the numbers into clear reports.'],
+    thk: ['Thinker', 'Generates unconventional ideas, runs brainstorms and finds a way out of dead-end problems.'],
   };
   var NAMES = { 'Оливия': 'Olivia', 'Отто': 'Otto', 'Феликс': 'Felix', 'Клара': 'Klara', 'Густав': 'Gustav', 'Эмиль': 'Emil',
     'Вальтер': 'Walter', 'Ингрид': 'Ingrid', 'Франц': 'Franz', 'Бруно': 'Bruno', 'Руди': 'Rudi', 'Мартин': 'Martin', 'Пауль': 'Paul',
-    'Хьюго': 'Hugo', 'Виктор': 'Viktor', 'Анри': 'Henri', 'Карл': 'Karl' };
+    'Хьюго': 'Hugo', 'Виктор': 'Viktor', 'Анри': 'Henri', 'Карл': 'Karl', 'Рене': 'René' };
   var MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
   // строка лицензии английской страницы: лицензия CC — на английском, ссылка на русскую версию офиса подписана по-русски (lang="ru")
