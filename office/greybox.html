@@ -129,6 +129,10 @@
   .agmed__tip .agmed__name { display: block; margin: 0 0 4px; color: #f2f4f6; }
   .agmed__tip.is-locked .agmed__name { color: #9aa1ab; }
   .agcard__since { opacity: .85; }
+  /* кнопки в карточке Оливии и Мыслителя (22.10): вид кнопок окон (.w3-btn), подпись — как «Стаж:» */
+  .agcard__act { margin: 14px 0 0; }
+  .agcard__act > b { display: block; margin: 0 0 8px; opacity: .85; }
+  .agcard__act button.w3-btn { border: 0; font-family: inherit; cursor: pointer; }
   /* имён на карте нет — только в карточке агента (владелец 16.10: «имена агентов давай не будем показывать») */
   body.pix.pc-ag .ag .tag { display: none !important; }
   /* «…» — на холсте пиксельным пузырём у тех, кто разговаривает (16.10: «более квадратно, пиксельно»), не надписью */
@@ -415,8 +419,27 @@
   <!-- пузырь над Отто (с буквой, потом с клавишей) показан и снят — владелец 18.10, ночь: «Мне не нравится, убери пузырь
        этот. Сделай кнопки сверху»; из трёх видов кнопок — «клавиши сверху, только давай снизу сделаем», «как сделаешь —
        выкладывай сразу» -->
-  <div class="grp" data-group="hx" data-float><span class="grp__name">2.5D, поверх офиса:</span>
+  <!-- решено владельцем 18.10, ночь: клавиши снизу; 22.10: «С клавишами мы же уже определились, они должны быть снизу (видимо
+       ты из демо не удалил)» — в решённых (видны с ?show-all), копии поверх 2.5D (data-float) больше нет -->
+  <div class="grp grp--done" data-group="hx"><span class="grp__name">2.5D, поверх офиса:</span>
     <button data-v="bar">как было</button><button data-v="keys">клавиши снизу ✓</button></div>
+  <!-- 21.10: «Сделай идеи 1 и 2 (Оливия раздаёт задачи, мозговой штурм у доски) за переключателем на демо»; решено
+       владельцем 22.10: «1+2 мне нравится» — в решённых (видны с ?show-all) -->
+  <div class="grp grp--done" data-group="lf"><span class="grp__name">Жизнь агентов:</span>
+    <button data-v="0">как сейчас</button><button data-v="1">1 Оливия раздаёт задачи</button><button data-v="2">2 штурм у доски</button><button data-v="12">1 + 2 ★</button></div>
+  <!-- 22.10: «Так ты демо покажи сначала» — идеи на пробу; решено владельцем 22.10: «Аркада зазывает — да, офис радуется
+       рекорду — да, анимацию Эмиля не внедряем» — Б и В в решённых (видны с ?show-all), Эмиль (А) убран целиком.
+       «показать ▶» — видна всегда: радость рекорда без партии -->
+  <div class="grp grp--done" data-group="ar"><span class="grp__name">Аркада зазывает:</span>
+    <button data-v="0">нет</button><button data-v="1">да ✓</button></div>
+  <div class="grp" data-group="rc"><span class="grp__name">Рекорд — офис радуется:</span>
+    <button data-v="show">показать ▶</button></div>
+  <!-- 22.10: «Собери на демо все четыре: доску на штурме, кофемашину, глобус и холодильник»; решено владельцем 22.10: «Из
+       новых добавляем кофемашину и доску со штурмом» — глобус и холодильник убраны; в панели осталось «показать ▶» -->
+  <div class="grp" data-group="sk"><span class="grp__name">Доска на штурме:</span>
+    <button data-v="show">показать ▶</button></div>
+  <div class="grp" data-group="cf"><span class="grp__name">Кофемашина:</span>
+    <button data-v="show">показать ▶</button></div>
   <div class="grp" data-group="screen"><span class="grp__name">Экран:</span>
     <button data-v="desk">компьютер</button><button data-v="phone2">телефон</button></div>
   <div class="grp grp--w3 grp--done" data-group="pw"><span class="grp__name">Окно на телефоне:</span>
@@ -1500,6 +1523,7 @@
     // график и документ — в разговоре по очереди; встретились по пути — один показывает документ
     chart: ['.....g.', '...a.g.', '...a.g.', '.r.a.g.', '.r.a.g.', 'kkkkkkk'],
     doc: ['.kkkk..', '.k..kk.', '.kss.k.', '.k...k.', '.ksssk.', '.kkkkk.'],
+    cup: ['y.yyy.y', 'yyyyyyy', '.yyyyy.', '..yyy..', '...y...', '.yyyyy.'],   // кубок — новый рекорд «Аркады» (22.10)
   };
   var TALK = ['chart', 'doc'];   // картинка в пузыре разговора — по очереди реплик (16.10: «картинкой, а не „…“»)
   function talkOf(poses) {
@@ -1508,7 +1532,7 @@
       if (!p) return;
       p.talk = 0;
       if (p.seat && p.seat.group !== 'desk') (groups[p.seat.group] = groups[p.seat.group] || []).push(p);
-      else if (p.a.state === 'idle' && !p.seat) idle.push(p);
+      else if (p.a.state === 'idle' && !p.seat && !p.a.scene) idle.push(p);   // участник сцены — со своими значками
     });
     idle.forEach(function (p, i) {
       for (var j = i + 1; j < idle.length; j++) {
@@ -1552,13 +1576,178 @@
   var CURSOR = { x: -1e9, y: -1e9, since: 0, near: null };
   function emote(a, icon, sec) { a.emote = { icon: icon, until: AG_T + (sec || 2.2) }; }
   function hopNow(a) { if (!RM) a.hopAt = AG_T; }
+  /* Сцены (21.10, владелец: «Сделай идеи 1 и 2 за переключателем на демо») — переключатель «Жизнь агентов» (state.lf, в
+     решённых; ?lf=0 — без сцен): обе — выбор владельца 22.10, «1+2 мне нравится».
+     1 — Оливия раздаёт задачи: встаёт из-за стойки, идёт к агенту, который сидит на своём месте, встаёт рядом и показывает
+         «документ», затем «документ» — у него, и он подпрыгивает; Оливия возвращается, он вскоре берётся за дело (встаёт по
+         делам). Одна передача за раз, раз в 40–60 с, первая — через 8 с;
+     2 — мозговой штурм у доски: двое ближайших свободных агентов подходят к Мыслителю у доски переговорной и встают с ним в
+         ряд лицом к доске; лампочка загорается по очереди (1,6 с, у одного за раз), шесть реплик за ~13 с — и расходятся.
+         Раз в 80–100 с, первый — через 12 с.
+     Рисунков новых нет — значки, подскок и ходьба те же; «уменьшить движение» — сцен нет (agentsLife). Случайность — своя
+     (srnd): с ?lf=0 пути и выборы остальных агентов — как до сцен. Участник сцены (a.scene) в чужих сценах и в
+     разговорах не участвует. */
+  /* 22.10 (владелец: «1-2 точно да», остальное — «демо покажи сначала»): кнопки в карточках — «Поручить задачу» у Оливии
+     (она несёт документ нужному агенту) и «Позвать на мозговой штурм» у Мыслителя. Из пробных — решено владельцем 22.10:
+     «Аркада зазывает — да (экран автомата в простое, слой 'arcade', state.ar), офис радуется рекорду — да (волна от
+     автомата, celebrate, state.rc), анимацию Эмиля не внедряем» — визит Эмиля с инструментом убран. */
+  var SCN = { seed: 23, task: { id: 'disp', next: 8, every: [40, 60], go: 'task', done: 'given' }, bs: { next: 12 }, log: [] };
+  function srnd(a, b) { SCN.seed = SCN.seed * 16807 % 2147483647; return a + (SCN.seed - 1) / 2147483646 * (b - a); }
+  function sceneLog(e) { e.t = +AG_T.toFixed(2); SCN.log.push(e); if (SCN.log.length > 40) SCN.log.shift(); }
+  function atHome(a) { return a.state === 'sit' && a.tx === a.home.x && a.ty === a.home.y && !a.path.length; }
+  function sceneFree(a) { return !a.scene && !a.hold && a !== O3D.player; }
+  function sceneCellBusy(x, y) {   // чужое место, чей-то путь или стоянка, клетка стула, точка со своим значком (принтер, кухня)
+    if (!grid[y] || grid[y][x] !== 1 || reserved[x + ',' + y] || POI_EMOTE[x + ',' + y]) return true;
+    if (ISEATS.some(function (s) { return s.cell[0] === x && s.cell[1] === y; })) return true;
+    return agents.some(function (q) {
+      var end = q.path.length ? q.path[q.path.length - 1] : null;
+      return (q.tx === x && q.ty === y) || (q.home.x === x && q.home.y === y) || (end && end[0] === x && end[1] === y);
+    });
+  }
+  function sceneHold(a, sec) { a.timer = Math.max(a.timer, sec); }
+  // Визит (Оливия с задачей; было общим и для Эмиля — его сцену владелец не взял): v.id идёт в соседнюю клетку к агенту на его месте, показывает значок icon
+  // 0,8 с, затем значок — у того (1,0 с), и тот подпрыгивает; потом уходит. Сам — раз в v.every с; по просьбе посетителя
+  // (v.req — кнопка в карточке) — сразу и к нужному агенту: тот, если не на месте, возвращается на место
+  function sceneVisit(v, on, icon) {
+    var o = agents.filter(function (q) { return q.d.id === v.id; })[0], to = v.to;
+    if (!o) return;
+    var end = function (ok) {
+      o.timer = 0.4; o.scene = null; to.scene = null;
+      if (ok) to.timer = srnd(4, 9);   // получил — вскоре встаёт по делам
+      v.to = null; v.asked = false; v.next = AG_T + (ok ? srnd(v.every[0], v.every[1]) : 10);
+    };
+    if (!to) {
+      var req = v.req;
+      if (req && AG_T - v.reqAt > 30) req = v.req = null;   // за 30 с так и не освободились — просьба снимается
+      if (req) {
+        if (o.scene || o === O3D.player || req.scene || req === O3D.player) return;   // ждём, пока освободятся
+        to = req; v.req = null; v.asked = true;
+        if (!atHome(to)) go(to, [to.home.x, to.home.y], true);
+      } else {
+        // сам: за своим местом или стоит по делам (не идёт) — в начале Оливия уходит из-за стойки, и первая передача ждала
+        // её до 34 с
+        if (!on || AG_T < v.next || !sceneFree(o) || !(atHome(o) || (o.state === 'idle' && !o.path.length && !o.seat))) return;
+        var cand = agents.filter(function (q) { return q !== o && q !== v.last && sceneFree(q) && atHome(q); });   // не тому же подряд
+        if (!cand.length) { v.next = AG_T + 5; return; }
+        to = cand[Math.floor(srnd(0, cand.length))];
+      }
+      var spot = null;
+      [[-1, 0], [1, 0], [0, 1], [0, -1], [-1, 1], [1, 1], [-1, -1], [1, -1]].some(function (d) {   // у его места, сначала сбоку
+        var x = to.home.x + d[0], y = to.home.y + d[1];
+        if (sceneCellBusy(x, y) || !bfs(o.tx, o.ty, x, y)) return false;
+        spot = [x, y]; return true;
+      });
+      if (spot) go(o, spot, false);
+      if (!spot || o.state !== 'walk') { v.asked = false; v.next = AG_T + 5; return; }
+      v.to = v.last = to; v.phase = 'go'; v.t0 = AG_T; v.e1 = v.e2 = false; o.scene = to.scene = v.go;
+      sceneLog({ k: v.go, to: to.d.id, at: spot.join(','), ask: !!v.asked });
+      return;
+    }
+    if ((!on && !v.asked) || AG_T - v.t0 > 60) { end(false); return; }
+    sceneHold(to, 4);
+    if (v.phase === 'go') {
+      if (o.state === 'walk' || o.path.length || o.hold) return;
+      if (o.state !== 'idle') { end(false); return; }
+      sceneHold(o, 2);
+      if (!atHome(to)) return;   // он ещё идёт на своё место
+      v.phase = 'give'; v.t0 = AG_T;
+      var dx = to.tx - o.tx, dy = to.ty - o.ty;
+      o.face = dy < 0 && -dy >= Math.abs(dx) ? 'back' : 'front';   // к нему: он выше — спиной к нам, иначе лицом
+    }
+    sceneHold(o, 1);
+    var dt = AG_T - v.t0;
+    if (!v.e1) { v.e1 = true; emote(o, icon, 0.8); }
+    if (dt >= 0.8 && !v.e2) { v.e2 = true; emote(to, icon, 1.0); hopNow(to); sceneLog({ k: v.done, to: to.d.id }); }
+    if (dt >= 1.9) end(true);
+  }
+  // просьба посетителя из карточки агента: поручить задачу (Оливия несёт документ агенту id) или позвать на штурм
+  function sceneAsk(kind, id) {
+    if (kind === 'task') {
+      var a = agents.filter(function (q) { return q.d.id === id; })[0];
+      if (!a) return;
+      SCN.task.req = a; SCN.task.reqAt = AG_T;
+    } else { SCN.bs.req = true; SCN.bs.reqAt = AG_T; }
+    sceneLog({ k: 'ask', what: kind, to: id || '' });
+  }
+  // новый рекорд в «Аркаде» (выбор владельца 22.10): волна от автомата — 0,025 с на клетку пути (весь офис за ~1,5 с), каждый
+  // подпрыгивает дважды и показывает кубок. Было 0,04 с, один подскок и значок «игра» только у тех, кто в 8 клетках:
+  // волна шла до дальнего угла 2,4 с, у автомата обычно никого — владелец 22.10: «кнопка показать не работает… ничего не
+  // происходит». В «уменьшить движение» — нет
+  var CHEER_CELL = 0.025, CHEER_HOP2 = 0.38;
+  function celebrate() {
+    if (RM || !(PC && PC.ag)) return;
+    var s = SPOTS.filter(function (q) { return q.id === 'tetris'; })[0], cx = s ? s.x + Math.floor(s.w / 2) : 60, cy = s ? s.y + s.h : 15;
+    agents.forEach(function (a) { var d = Math.abs(a.tx - cx) + Math.abs(a.ty - cy); a.hopQ = AG_T + d * CHEER_CELL; a.cheer = 2; });
+    sceneLog({ k: 'record' });
+  }
+  function sceneStorm(on) {
+    var s = SCN.bs, th = agents.filter(function (q) { return q.d.id === 'thk'; })[0];
+    if (!th) return;
+    var end = function (ok) {
+      s.who.forEach(function (a, i) { a.scene = null; if (a !== th) a.timer = 0.3 + i * 0.6; });   // расходятся по очереди
+      s.who = null; s.asked = false; s.next = AG_T + (ok ? srnd(80, 100) : 15);
+      if (OBJ_LIVE.board.until > AG_T + 10) OBJ_LIVE.board.until = AG_T + 10;   // стикеры висят ещё 10 с
+    };
+    if (!s.who) {
+      if (s.req && AG_T - s.reqAt > 40) s.req = false;   // позвали, а Мыслитель так и не вернулся к доске — просьба снимается
+      if (!s.req && (!on || AG_T < s.next)) return;
+      if (!sceneFree(th)) return;
+      if (!atHome(th)) { if (s.req && th.state !== 'walk') go(th, [th.home.x, th.home.y], true); return; }   // позвали — к доске
+      // места — в ряду Мыслителя, ближайшие к нему слева и справа, но не ближе двух клеток (рисунки шире клетки: в соседней
+      // хомяк и капибара сливались в одно пятно, и чья лампочка — не понять): пол, не клетка стула, никем не занятые
+      var cells = [-1, 1].map(function (dir) {
+        for (var k = 2; k <= 5; k++) { var x = th.tx + dir * k; if (!sceneCellBusy(x, th.ty)) return [x, th.ty]; }
+        return null;
+      });
+      if (!cells[0] || !cells[1]) { s.next = AG_T + 10; return; }
+      var free = agents.filter(function (q) { return q !== th && q.d.id !== 'disp' && sceneFree(q) && (atHome(q) || (q.state === 'idle' && !q.seat)); });
+      var who = [th];
+      cells.forEach(function (c) {   // к каждому месту — ближайший по пути
+        var best = null, bl = 1e9;
+        free.forEach(function (q) { if (who.indexOf(q) >= 0) return; var p = bfs(q.tx, q.ty, c[0], c[1]); if (p && p.length < bl) { bl = p.length; best = q; } });
+        if (best) { go(best, c, false); if (best.state === 'walk') who.push(best); }
+      });
+      if (who.length < 3) { who.slice(1).forEach(function (a) { a.timer = 0.3; }); s.next = AG_T + 10; return; }
+      s.who = who; s.phase = 'gather'; s.t0 = AG_T; s.turn = 0; s.asked = !!s.req; s.req = false; OBJ_LIVE.board.n = 0;
+      who.forEach(function (a) { a.scene = 'storm'; });
+      sceneLog({ k: 'storm', who: who.map(function (a) { return a.d.id; }).join(','), ask: s.asked });
+      return;
+    }
+    if (!on && !s.asked) { end(false); return; }
+    s.who.forEach(function (a) { sceneHold(a, 3); });
+    var here = s.who.filter(function (a) { return a === th || (a.state === 'idle' && !a.path.length); });
+    here.forEach(function (a) { if (a !== th && !a.hold) a.face = 'back'; });   // лицом к доске
+    if (s.phase === 'gather') {
+      if (here.length < 3 && AG_T - s.t0 < 30) return;
+      if (here.length < 2) { end(false); return; }
+      s.phase = 'storm'; s.t0 = AG_T; s.turn = 0;
+    }
+    var turn = Math.floor((AG_T - s.t0) / 2.2);
+    if (turn >= 6) { if (AG_T - s.t0 >= 6 * 2.2 + 0.4) { sceneLog({ k: 'stormEnd' }); end(true); } return; }
+    if (turn >= s.turn) {   // реплика — лампочка у одного за раз, по кругу: Мыслитель, левый, правый
+      var who2 = here[turn % here.length];
+      emote(who2, 'idea', 1.6); s.turn = turn + 1;
+      OBJ_LIVE.board.n = s.turn; OBJ_LIVE.board.until = 1e9;   // на доске — стикер на каждую лампочку
+      sceneLog({ k: 'idea', who: who2.d.id });
+    }
+  }
+  function agentScenes() {
+    var lf = state.lf || '0';
+    sceneVisit(SCN.task, lf.indexOf('1') >= 0, 'doc');
+    sceneStorm(lf.indexOf('2') >= 0);
+  }
   function agentsLife() {
     if (!PC || !PC.ag || RM) return;
     agents.forEach(function (a) {
       if (a.emote && AG_T >= a.emote.until) a.emote = null;
+      if (a.hopQ != null && AG_T >= a.hopQ) {   // волна рекорда: первый подскок — с кубком, второй — следом
+        hopNow(a);
+        if (a.cheer === 2) { emote(a, 'cup', 1.6); a.cheer = 1; a.hopQ = AG_T + CHEER_HOP2; } else { a.cheer = 0; a.hopQ = null; }
+      }
       if (a.hold) return;
       var k = a.tx + ',' + a.ty, here = a.state === 'idle' && !a.seat && POI_EMOTE[k];
-      if (here && a.lifeCell !== k) { a.lifeCell = k; a.lifeAt = AG_T; emote(a, POI_EMOTE[k], 2.4); if (k === PRN_CELL) PRN.at = AG_T; }   // подошёл — сразу значок (к принтеру — и печать)
+      if (here && a.lifeCell !== k) { a.lifeCell = k; a.lifeAt = AG_T; emote(a, POI_EMOTE[k], 2.4); if (k === PRN_CELL) PRN.at = AG_T;
+        if (POI_EMOTE[k] === 'coffee') OBJ_LIVE.coffee.at = AG_T; }   // кофемашина наливает   // подошёл — сразу значок (к принтеру — и печать)
       else if (here && !a.emote && AG_T - a.lifeAt > 5) { a.lifeAt = AG_T; if (hsh(a.phase * 100 | 0, Math.floor(AG_T)) % 3 !== 0) emote(a, POI_EMOTE[k], 2.4); }
       if (!here && a.state !== 'idle') a.lifeCell = null;
       // мысль на совещании — у одного за раз и нечасто (на снимке четыре лампочки разом — шумно)
@@ -1573,6 +1762,7 @@
       if ((p.metAt != null && AG_T - p.metAt < 20) || (q.metAt != null && AG_T - q.metAt < 20)) continue;
       p.metAt = q.metAt = AG_T; hopNow(p); hopNow(q); emote(p, 'doc', 1.6);
     }
+    agentScenes();   // сцены демо: Оливия раздаёт задачи, штурм у доски (state.lf)
     // курсор рядом: ближайший стоящий или сидящий (не идущий, не под курсором) — «?», не чаще раза в 6 с
     if (CURSOR.x < -1e8) { CURSOR.near = null; return; }   // курсора над офисом нет — и считать нечего
     var best = null, bd = T * 2.5;
@@ -1605,6 +1795,12 @@
       else if (kind === 'tv') PC.ovs.push({ par: idx, type: 'tv', key: 'tv', seed: 1, foot: o.foot + 0.5, x: X + 5, y: Y + 7, w: 179, h: 51 });
       else if (kind === 'rack') PC.ovs.push({ par: idx, type: 'rack', key: 'rack' + idx, seed: idx, foot: o.foot + 0.5, x: X + 7, y: Y + 21, w: 19, h: 27 });
       else if (kind === 'retro') PC.ovs.push({ par: idx, type: 'retro', key: 'retro', seed: 3, foot: o.foot + 0.5, x: X + 12, y: Y + 14, w: 19, h: 17 });
+      // предметы оживают (22.10, выбор владельца): доска «Опыт» — полоса стикеров справа вверху (там пусто); кофемашина — от
+      // пара над ней (строки −7…−1) до чашки под носиком (строка 20)
+      else if (o.spot === 'experience') PC.ovs.push({ par: idx, type: 'board', key: 'board', seed: 6, foot: o.foot + 0.5, x: X + 78, y: Y + 5, w: 56, h: 7 });
+      else if (kind === 'coffee') PC.ovs.push({ par: idx, type: 'coffee', key: 'coffee', seed: 7, foot: o.foot + 0.5, x: X + 9, y: Y - 7, w: 18, h: 28 });
+      // экран игрового автомата (22.10, «Аркада зазывает» — выбор владельца): зелёное поле рисунка — столбцы 10–24, строки 23–32
+      else if (kind === 'arcade') PC.ovs.push({ par: idx, type: 'arcade', key: 'arcade', seed: 4, foot: o.foot + 0.5, x: X + 10, y: Y + 23, w: 15, h: 10 });
       // новые предметы (16.10, позже): у принтера — панель и лист (аквариум убран 16.10, ночь)
       else if (kind === 'printer') PC.ovs.push({ par: idx, type: 'printer', key: 'printer', seed: 9, foot: o.foot + 0.5, x: X + 4, y: Y + 2, w: 23, h: 18 });
       else if (kind === 'vac_dock') { VAC.dock = it; }
@@ -1618,13 +1814,38 @@
   }
   // смена кадра, с (реже — меньше перерисовок офиса без движения); принтер — шагом телевизора: его кадры меняются в те
   // же моменты, и офис перерисовывается один раз на всех (аквариум и принтер с шагом 0,12 и 0,1 давали +8,6 п. п.)
-  var OV_RATE = { mon: 0.6, tv: 0.2, rack: 0.25, retro: 0.25, printer: 0.2, vac: 0.5 };
+  var OV_RATE = { mon: 0.6, tv: 0.2, rack: 0.25, retro: 0.25, printer: 0.2, vac: 0.5, arcade: 0.25 };   // автомат — шагом ретро (22.10)
   // блеск букв на стене (18.10): блик — 2 с полосой каждые 7 с, шагом 0,05 (между — слоя нет, офис не перерисовывается);
   // перелив и искры — шагом телевизора 0,2: кадры меняются в те же моменты, офис перерисовывается один раз на всех
   var SIGN_GLINT = { every: 7, run: 2, step: 0.05 }, SIGN_STEP = 0.2;
-  var OV_RM = { mon: 0, tv: 30, rack: 0, retro: 40, printer: 30, vac: 0 };                // «уменьшить движение» — один кадр: экраны включены, но стоят
+  var OV_RM = { mon: 0, tv: 30, rack: 0, retro: 40, printer: 30, vac: 0, arcade: 4 };     // «уменьшить движение» — один кадр: экраны включены, но стоят
+  /* Предметы оживают (22.10, владелец: «Собери на демо все четыре…», затем «Из новых добавляем кофемашину и доску со
+     штурмом» — глобус и холодильник убраны): доска «Опыт» — на штурме стикер на каждую лампочку, после штурма висят 10 с
+     (state.sk); кофемашина наливает 2,6 с, когда к ней подошли (state.cf). По событию, кадры — шагом ретро 0,25 с (офис
+     перерисовывается в те же моменты); «уменьшить движение» — не оживают. */
+  var OBJ_LIVE = { board: { n: 0, until: 0 }, coffee: { at: -99 } };
+  var COFFEE_RUN = 2.6;
+  function liveFrame(t) {   // кадр ожившего предмета или null (выключен, «уменьшить движение», нет события)
+    if (RM) return null;
+    var L = OBJ_LIVE, step = Math.floor(AG_T / 0.25);
+    if (t === 'board') return state.sk === '1' && L.board.n && AG_T < L.board.until ? L.board.n : null;
+    var s = AG_T - L.coffee.at;
+    return state.cf === '1' && s >= 0 && s < COFFEE_RUN ? step + ',' + Math.floor(s / 0.25) : null;
+  }
+  // демо: показать оживший предмет — штурм у доски; к кофемашине идёт ближайший свободный агент (стоит кто-то там уже —
+  // наливает сразу)
+  function objShow(g) {
+    if (g === 'sk') { sceneAsk('storm'); return; }
+    var cell = Object.keys(POI_EMOTE).filter(function (k) { return POI_EMOTE[k] === 'coffee'; })[0].split(',').map(Number);
+    if (agents.some(function (a) { return a.tx === cell[0] && a.ty === cell[1] && a.state === 'idle'; })) { OBJ_LIVE.coffee.at = AG_T; return; }
+    var best = null, bl = 1e9;
+    agents.forEach(function (a) { if (!sceneFree(a) || a.state === 'walk') return; var p = bfs(a.tx, a.ty, cell[0], cell[1]); if (p && p.length < bl) { bl = p.length; best = a; } });
+    if (best) go(best, cell, false);
+  }
   function ovFrame(ov, on) {
     if (ov.type === 'mon' && !on[ov.key]) return null;            // монитор светится, пока за ним работают
+    if (ov.type === 'board' || ov.type === 'coffee') return liveFrame(ov.type);
+    if (ov.type === 'arcade' && state.ar !== '1') return null;      // экран автомата в простое — только в варианте Б
     if (ov.type === 'printer') return RM ? OV_RM.printer : prnFrame();
     if (ov.type === 'sign') {
       if (RM) return null;
@@ -1882,6 +2103,34 @@
       if (!cur) cur = [3, 9];
       if (f % 2 === 0) px('#c8c8d4', Math.min(cur[0], 18), cur[1], 1, 1);
       px(cyc < total && f % 3 ? '#e0604f' : '#5a2a24', 0, 16, 1, 1);
+    },
+    // игровой автомат в простое (22.10, «Аркада зазывает»): по полю 7 × 5 клеток (клетка 2 × 2 точки, отступ точка слева) падает
+    // буква Т, достраивает два нижних ряда, они трижды вспыхивают и исчезают; пустое поле — мигает строка «жми»; 16 кадров
+    arcade: function (px, ov, f) {
+      var BG = '#8bda8f', DK = '#4e8e57', LT = '#b4ecb5', c = f % 16;
+      var cell = function (cx, cy, col) { px(col, 1 + cx * 2, cy * 2, 2, 2); };
+      px(BG, 0, 0, 15, 10);
+      if (c >= 8) { if (c >= 10 && c % 2 === 0) px(LT, 3, 4, 9, 2); return; }   // ряды убраны — строка «жми» мигает
+      var row = c >= 5 ? (c % 2 ? LT : DK) : DK;                                  // кадры 5–7 — полные ряды вспыхивают
+      [[0, 4], [1, 4], [2, 4], [4, 4], [5, 4], [6, 4], [0, 3], [1, 3], [5, 3], [6, 3]].forEach(function (p) { cell(p[0], p[1], row); });
+      var y = Math.min(c, 3);                                                      // буква Т падает три кадра и ложится
+      [[2, 0], [3, 0], [4, 0], [3, 1]].forEach(function (p) { cell(p[0], y + p[1], c >= 5 ? row : DK); });
+    },
+    // предметы оживают (22.10, выбор владельца). Доска «Опыт» на штурме: f стикеров в ряд, через одну на точку ниже, с тенью снизу
+    board: function (px, ov, f) {
+      var C = [['#ffd84a', '#d9b42c'], ['#ff9fb0', '#d97a8c'], ['#8fd16a', '#6aa84d'], ['#7fb2ff', '#5a8ad6'], ['#ffb066', '#d98a40'], ['#c9a6ff', '#a07fd9']];
+      for (var i = 0; i < f; i++) { var x = 2 + i * 9, y = i % 2; px(C[i % 6][0], x, y, 5, 5); px(C[i % 6][1], x, y + 5, 5, 1); }
+    },
+    // кофемашина наливает (точка слоя = точка рисунка − (9, −7)): шаги 0–2 — чашка пустая, струйка светлым кофе мерцает
+    // столбцом 17/18 от сопел (строка 15) до края чашки; 3–5 — кофе в чашке светлый, потом — как на рисунке (тёмный); с шага
+    // 2 над машиной поднимается пар — две струйки, точкой выше каждый шаг
+    coffee: function (px, ov, f) {
+      var p = String(f).split(','), k = +p[1];
+      if (k < 8) px('#8a5a3a', 8 + k % 2, 22, 1, 5);
+      if (k < 3) px('#f5f5f5', 7, 27, 4, 1); else if (k < 6) px('#6b4a35', 7, 27, 4, 1);
+      if (k >= 2) [5, 10].forEach(function (x, w) {
+        for (var j = 0; j < 4; j++) { var y = 6 - j - (k + w) % 3; if (y >= 0) px(j % 2 ? '#aeb4bd' : '#d5dae2', x + ((j + w + k) % 2), y, 1, 1); }
+      });
     },
     printer: function (px, ov, f) {   // принтер: разогрев (огонёк мигает, на экране полоска), лист выходит из щели и лежит
       var s = f === 'idle' ? PRN_LONG : f * OV_RATE.printer;
@@ -2738,6 +2987,18 @@
      замеру шапки. Замер шёл до прихода пиксельного шрифта (он грузится при первом открытии окна) — окно 560, и у
      «Специалиста по проверке контрагентов» имя уходило в многоточие; на телефоне подписи нет вовсе, а должность залезала
      под крестик. Теперь в шапке имя (короткое — помещается всегда), должность — первой строкой карточки, переносится. */
+  /* Кнопки в карточке (22.10, владелец: «1-2 точно да»): у Оливии — «Поручить задачу» (она несёт документ тому, кто её
+     делает), у Мыслителя — «Позвать на мозговой штурм». Только когда агенты живут на холсте и движение не уменьшено:
+     иначе нажатие ничего бы не показало. */
+  var ASK_TASKS = [['Проверить договор', 'dog'], ['Сделать лендинг', 'des'], ['Придумать название', 'thk'], ['Найти судебную практику', 'sud']];
+  function agentActs(d) {
+    if (RM || !(PC && PC.ag)) return '';
+    var btn = function (label, kind, to) { return '<button type="button" class="w3-btn" data-ask="' + kind + '"' + (to ? ' data-to="' + to + '"' : '') + '>' + esc(OT(label)) + '</button>'; };
+    if (d.id === 'disp') return '<div class="agcard__act"><b>' + OT('Поручить задачу:') + '</b><div class="w3-btns">' +
+      ASK_TASKS.map(function (t) { return btn(t[0], 'task', t[1]); }).join('') + '</div></div>';
+    if (d.id === 'thk') return '<div class="agcard__act"><div class="w3-btns">' + btn('Позвать на мозговой штурм', 'storm') + '</div></div>';
+    return '';
+  }
   function openAgent(d, from) {
     var text = d.secret ? '<p>' + esc(SECRET.text) + '</p>' : d.desc ? '<p>' + esc(d.desc) + '</p>' : '<p class="stub">' + OT('Описание — после согласования.') + '</p>';
     var pic = PC && PC.ag ? '<canvas class="agcard__pic" aria-hidden="true"></canvas>' : '', shelf = window.PIX_MEDALS ? medalShelfHtml() : '';
@@ -2748,11 +3009,14 @@
       (row || !shelf ? pic : '<div class="agcard__side">' + pic + shelf + '</div>') +
       '<div class="agcard__txt"><h3 class="w3-name agcard__role">' + esc(d.secret ? SECRET.title : d.role) + '</h3>' + text +
       (state.md === 'l' && shelf ? '<div class="agcard__meta">' + since + '<div class="agcard__awards"><b>' + OT('Награды:') + '</b>' + shelf + '</div></div>' : since) +
-      (state.md === 'r' && shelf ? '<div class="agcard__awards"><b>' + OT('Награды:') + '</b>' + shelf + '</div>' : '') + '</div>' +
+      (state.md === 'r' && shelf ? '<div class="agcard__awards"><b>' + OT('Награды:') + '</b>' + shelf + '</div>' : '') + agentActs(d) + '</div>' +
       '<div class="agmed__tip" role="status" hidden></div></div>';
     openWin(OT('ИИ-агент'), agentName(d), html, from);
     win.dataset.open = 'agent:' + d.id;
     var panel = $('#winPanel');
+    panel.querySelectorAll('.agcard__act [data-ask]').forEach(function (b) {   // окно закрывается — офис виден, сцена идёт
+      b.addEventListener('click', function () { var k = b.dataset.ask, to = b.dataset.to; closeWin(); sceneAsk(k, to); });
+    });
     if (!document.body.classList.contains('is-phone')) panel.style.width = 'min(' + AGCARD_W + 'px, calc(100% - 32px))';
     portrait(d.id);
     if (shelf) medalShelf(d);
@@ -2960,7 +3224,13 @@
     // идёт партия — сперва она (её close зовёт closeWin ещё раз, уже без партии; второму проходу делать нечего)
     if (window.OfficeConsole && OfficeConsole.isOpen()) { OfficeConsole.close(); if (win.hidden) return; }
     win.hidden = true; delete win.dataset.open; document.body.classList.remove('ts-open');
-    if (lastFocus && document.contains(lastFocus)) lastFocus.focus(); }
+    if (lastFocus && document.contains(lastFocus)) lastFocus.focus();
+    if (recordPending) { recordPending = false; setTimeout(celebrate, 300); } }   // рекорд поставлен в окне — радость, когда офис виден
+  var recordPending = false;
+  document.addEventListener('office:record', function () {   // новый рекорд «Аркады» (assets/js/console.js) — «офис радуется рекорду», выбор владельца 22.10
+    if (state.rc !== '1') return;
+    if (win.hidden) celebrate(); else recordPending = true;
+  });
   $('#winClose').addEventListener('click', closeWin);
   win.addEventListener('click', function (e) { if (e.target === win) closeWin(); });
   document.addEventListener('keydown', function (e) {
@@ -3431,7 +3701,7 @@
   // nm — набор имён на бейджах агентов (16.10): 1 на «О» / 2 по делу / 3 по костюму
   // sz — размер агентов (16.10: «не 1,8, а 1,9, и предложи 1,9 и 2»)
   var state = { first: 'card', marks: 'always', classic: 'hover', tags: 'always', nm: '1', sz: '19', screen: 'desk', s: 1,
-    tone: 'mid', outline: 'none', zoom: 'k9', floor: 'slate', walls: 'c4', wt: '8', mk: '1', board: '2', wv: '3', 'w3-about': 'a', 'w3-skills': 'c', 'w3-font': 'press', field: 'office', 'w3-tetris': 'arcade', pk: 'win', pw: 'flip', ts: 'key', bg: 'code', md: 'l', ms: 's', lb: 'b', sg: 'relief', ct: '0', fh: '0', st: 'logo', sp: 'mid', hx: 'keys' };   // hx — что поверх 2.5D: клавиши «Аркады» снизу (владелец 18.10, ночь: «клавиши сверху, только давай снизу сделаем»)   // sg/st/sp — вывеска: выбор владельца 18.10, выложено   // sp — «Надпись посередине» (владелец 18.10)   // lb — кнопка языка: ссылка в строке лицензии (выбор владельца 18.10)   // md, ms — медали в карточке агента: в строке «Стаж», меньше — выбор владельца 18.10   // ts — кнопка экрана тетриса: клавиша «ИГРАТЬ»; bg — фон за офисом (16.10: рисунки из знаков; выбраны «знаки сайта»), выбор владельца 15.10   // pw — окно на телефоне: «листание», выбор владельца 15.10   // тетрис: «Аркада», клавиши «в цветах окна» — выбор владельца 15.10   // фон «в цвет офиса» — выбор владельца 15.10   // 15.10: «Обо мне» А, «Навыки» В, Press Start 2P — выбор владельца; фон — варианты   // wv — вид окон разделов: 0 как было, 1–3 — варианты Дизайнера (14.10)   // пол П2, стены С4 (кирпич в цветах переговорной), толщина 8 — выбор владельца 14.10
+    tone: 'mid', outline: 'none', zoom: 'k9', floor: 'slate', walls: 'c4', wt: '8', mk: '1', board: '2', wv: '3', 'w3-about': 'a', 'w3-skills': 'c', 'w3-font': 'press', field: 'office', 'w3-tetris': 'arcade', pk: 'win', pw: 'flip', ts: 'key', bg: 'code', md: 'l', ms: 's', lb: 'b', sg: 'relief', ct: '0', fh: '0', st: 'logo', sp: 'mid', hx: 'keys', lf: '12', ar: '1', rc: '1', sk: '1', cf: '1' };   // sk — доска на штурме, cf — кофемашина: выбор владельца 22.10   // lf — сцены жизни агентов: обе, выбор владельца 22.10 («1+2 мне нравится»); ar — автомат зазывает, rc — радость рекорда: выбор владельца 22.10   // hx — что поверх 2.5D: клавиши «Аркады» снизу (владелец 18.10, ночь: «клавиши сверху, только давай снизу сделаем»)   // sg/st/sp — вывеска: выбор владельца 18.10, выложено   // sp — «Надпись посередине» (владелец 18.10)   // lb — кнопка языка: ссылка в строке лицензии (выбор владельца 18.10)   // md, ms — медали в карточке агента: в строке «Стаж», меньше — выбор владельца 18.10   // ts — кнопка экрана тетриса: клавиша «ИГРАТЬ»; bg — фон за офисом (16.10: рисунки из знаков; выбраны «знаки сайта»), выбор владельца 15.10   // pw — окно на телефоне: «листание», выбор владельца 15.10   // тетрис: «Аркада», клавиши «в цветах окна» — выбор владельца 15.10   // фон «в цвет офиса» — выбор владельца 15.10   // 15.10: «Обо мне» А, «Навыки» В, Press Start 2P — выбор владельца; фон — варианты   // wv — вид окон разделов: 0 как было, 1–3 — варианты Дизайнера (14.10)   // пол П2, стены С4 (кирпич в цветах переговорной), толщина 8 — выбор владельца 14.10
   // sg, ct, fh — вывеска, контакт на стойке, подсказка первого визита (18.10, демо по 2–3 варианта): на сайте — «нет», пока
   // владелец не выберет; в демо (панель есть) — сразу рекомендованные
   if (document.getElementById('bar')) { state.sg = ADDS_REC.sg; state.ct = ADDS_REC.ct; state.fh = ADDS_REC.fh; }
@@ -3441,7 +3711,7 @@
     ['floor', 'walls', 'wt'].forEach(function (grp) {
       var list = grp === 'wt' ? WTS : RS[grp === 'floor' ? 'floors' : 'walls'], box = document.querySelector('.grp[data-group="' + grp + '"]');
       if (list[q.get(grp)]) state[grp] = q.get(grp);
-      ['zoom', 'mk', 'board', 'wv', 'w3-about', 'w3-skills', 'w3-font', 'field', 'w3-tetris', 'pk', 'pw', 'ts', 'nm', 'sz', 'bg', 'md', 'ms', 'lb', 'sg', 'ct', 'fh', 'st', 'sp', 'hx'].forEach(function (g) { if (q.get(g)) state[g] = q.get(g); });   // ?zoom= ?mk= ?board= — для проверок и листов
+      ['zoom', 'mk', 'board', 'wv', 'w3-about', 'w3-skills', 'w3-font', 'field', 'w3-tetris', 'pk', 'pw', 'ts', 'nm', 'sz', 'bg', 'md', 'ms', 'lb', 'sg', 'ct', 'fh', 'st', 'sp', 'hx', 'lf', 'ar', 'rc', 'sk', 'cf'].forEach(function (g) { if (q.get(g)) state[g] = q.get(g); });   // ?zoom= ?mk= ?board= — для проверок и листов
       if (box) Object.keys(list).forEach(function (k) {   // на сайте панели демо нет — сборка её вырезает (ТЗ SEO 18.10)
         var b = document.createElement('button'); b.type = 'button'; b.dataset.v = k; b.textContent = list[k].name; box.appendChild(b);
       });
@@ -3449,6 +3719,8 @@
   })();
   function setVariant(group, v) {
     if (group === 'fh' && v === 'again') { hintAgain(); return; }
+    if (group === 'rc' && v === 'show') { celebrate(); return; }   // показать радость без рекорда (демо)
+    if ((group === 'sk' || group === 'cf') && v === 'show') { objShow(group); return; }   // показать оживший предмет
     var cl = document.body.classList;
     cl.forEach(function (c) { if (c.indexOf(group + '-') === 0) cl.remove(c); });
     // classList.forEach по живому списку пропускает элементы — дочищаем
@@ -3458,6 +3730,7 @@
     if (group === 'screen') { if (window.Office3D && Office3D.on()) Office3D.exit(); layout.phoneScrolled = false; layout(); }
     if (group === 'first') layout();
     if (group === 'nm' && agents.length) paintNames();
+    if (group === 'lf' && AG_T > 1) { SCN.task.next = Math.min(SCN.task.next, AG_T + 2); SCN.bs.next = Math.min(SCN.bs.next, AG_T + 4); }   // переключили — показать сразу (не при загрузке)
     if (group === 'sz' && PC && PC.ag && agents.length) { PC.agSig = null; agents.forEach(paintAgent); agentsRender(); }   // размер агентов
     if (PIXM && (group === 'tone' || group === 'outline') && pixReady) drawPix();
     if (PC && (group === 'tone' || group === 'outline' || group === 'floor' || group === 'walls' || group === 'wt')) pixCanvasRender();
@@ -3635,7 +3908,7 @@
   }, skip: function (e) {   // нажатие и наведение — не для фона: окно открыто, указатель на кнопке, панели, подсказках
     return !win.hidden || !!(e.target && e.target.closest && e.target.closest('button, a, input, header, .win, .chips, .hud, .ag, .spot'));
   } });
-  ['first', 'marks', 'classic', 'tags', 'nm', 'sz', 'screen', 'tone', 'outline', 'zoom', 'floor', 'walls', 'wt', 'mk', 'board', 'wv', 'w3-about', 'w3-skills', 'w3-font', 'field', 'w3-tetris', 'pk', 'pw', 'ts', 'bg', 'md', 'ms', 'lb', 'st', 'sp', 'sg', 'ct', 'hx'].forEach(function (g) { setVariant(g, state[g]); });
+  ['first', 'marks', 'classic', 'tags', 'nm', 'sz', 'screen', 'tone', 'outline', 'zoom', 'floor', 'walls', 'wt', 'mk', 'board', 'wv', 'w3-about', 'w3-skills', 'w3-font', 'field', 'w3-tetris', 'pk', 'pw', 'ts', 'bg', 'md', 'ms', 'lb', 'st', 'sp', 'sg', 'ct', 'hx', 'lf', 'ar', 'rc', 'sk', 'cf'].forEach(function (g) { setVariant(g, state[g]); });
   setTimeout(function () { setVariant('fh', state.fh); }, 1200);   // подсказка — через 1,2 с, когда офис и агенты на месте
   agents.forEach(paintAgent); agentsRender();
   requestAnimationFrame(frame);
@@ -3705,6 +3978,13 @@
       return out;
     },
     freeze: function (on) { frozen = !!on; },
+    // сцены демо (21.10): вариант, идущие сцены и журнал (task — пошла к агенту, given — передала; storm, idea, stormEnd)
+    sceneAsk: sceneAsk, celebrate: celebrate,   // 22.10: просьба из карточки и радость рекорда — без нажатий
+    // 22.10: предметы оживают — состояние и «показать» без нажатий
+    objLive: function () { return JSON.parse(JSON.stringify(OBJ_LIVE)); }, objShow: objShow,
+    scenes: function () { return { lf: state.lf, ar: state.ar, rc: state.rc,
+      task: SCN.task.to ? { to: SCN.task.to.d.id, phase: SCN.task.phase } : null, taskNext: SCN.task.next,
+      storm: SCN.bs.who ? { who: SCN.bs.who.map(function (a) { return a.d.id; }), phase: SCN.bs.phase } : null, stormNext: SCN.bs.next, log: SCN.log.slice() }; },
     staleFreed: function () { return PC ? (PC.staleFreed || []).slice() : []; },   // клетки, освобождённые от старой разметки Gemini
     o3d: function () { return HOST3D; }, o3dPlayer: function () { return O3D.player ? O3D.player.d.id : null; },   // 2.5D-демо   // остановить время офиса (снимки «с агентом / без» в один и тот же кадр)
     agentClock: function (t) { if (t != null) { AG_T = t; if (PC) agentsRender(); } return AG_T; },   // часы анимации — для проверки кадров
