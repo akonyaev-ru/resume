@@ -676,6 +676,10 @@
     { id: 'fin', role: 'Финансовый аналитик', n: ['Карл', 'Ивар', 'Бенни'], since: '2026-10-17', c: '#e8b47a', desc: 'Считает бюджеты и окупаемость проектов и сводит цифры в понятные отчёты.' },
     // 21.10: новый агент «Мыслитель» (передача от Инженера агентов), костюм — капибара, выбор владельца из каталога
     { id: 'thk', role: 'Мыслитель', n: ['Рене', 'Арне', 'Вилли'], since: '2026-10-21', c: '#7ed36f', desc: 'Генерирует нестандартные идеи, ведёт мозговые штурмы и находит выход из тупиковых задач.' },   // текст — владелец 21.10
+    // 23.10: новый агент «Копирайтер», костюм — летучая мышь 2-32 (владелец: сначала «давай циклопа», затем «мне не нравится
+    // циклоп, сделай летучую мышь лучше»); имена, описание, место у книжного
+    // шкафа, бейдж (просвет оттенков 273°–327°) — мои рекомендации, владелец на них не ответил
+    { id: 'cpy', role: 'Копирайтер', n: ['Агата', 'Сельма', 'Пенни'], since: '2026-10-23', c: '#e481e4', desc: 'Пишет продающие тексты сайтов и лендингов: оффер, страницы, ответы на вопросы — и сверяет каждую цифру с фактами.' },
   ];
   var SECRET = { title: OT('Секретный агент'), text: OT('Информацию об этом агенте я предпочёл скрыть.') };
   AGENTS.forEach(function (d) {   // английская страница: должность и описание по id (секретным — нет), имена латиницей
@@ -2487,7 +2491,7 @@
       });
     }
     for (var i = seats.length - 1; i > 0; i--) { var j = Math.floor(rand() * (i + 1)); var tmp = seats[i]; seats[i] = seats[j]; seats[j] = tmp; }
-    var ENG_HOME = { x: 50, y: 31 }, RC_HOME = RC_SEAT, FIN_HOME = null, THK_HOME = null;
+    var ENG_HOME = { x: 50, y: 31 }, RC_HOME = RC_SEAT, FIN_HOME = null, THK_HOME = null, CPY_HOME = null;
     if (pcAg) {
       // 16.10, позже («ходят сквозь мебель — сделай логично»): инженер стоит перед стойками — в щель между ними (16 точек)
       // агент не помещается, ступни вставали на стойки; диспетчер садится в кресло ресепшена из соседней клетки за стойкой,
@@ -2521,9 +2525,18 @@
           .filter(function (p) { return grid[p.y] && grid[p.y][p.x] === 1 && !reserved[poiKey([p.x, p.y])] && !seatCell(p); })[0] || null;
         if (THK_HOME) reserved[poiKey([THK_HOME.x, THK_HOME.y])] = 1;
       }
+      // копирайтер (23.10) — тоже без стола: стоит перед книжным шкафом на кухне (spot «Курсы»), лицом к нему
+      var bko = PC.objs.map(function (it) { return it.o; }).filter(function (o) { return (o.sprite || o.kind) === 'bookshelf'; })[0];
+      if (bko) {
+        var kcx = Math.floor((bko.x + bko.rows[0].length / 2) / T), kcy = Math.floor(bko.foot / T);
+        CPY_HOME = [[0, 0], [0, 1], [-1, 1], [1, 1], [0, 2], [-1, 2], [1, 2]].map(function (d) { return { x: kcx + d[0], y: kcy + d[1], face: 'back' }; })
+          .filter(function (p) { return grid[p.y] && grid[p.y][p.x] === 1 && !reserved[poiKey([p.x, p.y])] &&
+            !ISEATS.some(function (s) { return s.cell[0] === p.x && s.cell[1] === p.y; }); })[0] || null;
+        if (CPY_HOME) reserved[poiKey([CPY_HOME.x, CPY_HOME.y])] = 1;
+      }
     }
     AGENTS.forEach(function (d, k) {
-      var home = d.id === 'disp' ? RC_HOME : pcAg && d.id === 'eng' ? ENG_HOME : pcAg && d.id === 'fin' && FIN_HOME ? FIN_HOME : pcAg && d.id === 'thk' && THK_HOME ? THK_HOME : seats.shift() || ENG_HOME;
+      var home = d.id === 'disp' ? RC_HOME : pcAg && d.id === 'eng' ? ENG_HOME : pcAg && d.id === 'fin' && FIN_HOME ? FIN_HOME : pcAg && d.id === 'thk' && THK_HOME ? THK_HOME : pcAg && d.id === 'cpy' && CPY_HOME ? CPY_HOME : seats.shift() || ENG_HOME;
       if (pcAg && !home.seat) {   // стул места: сидящий рисуется сразу после него (спинка за спиной, стол — впереди)
         var hc = home.x * T + T / 2, hy = home.y * T + T / 2;
         var ch = objAt(hc, hy, function (o) { return /chair/.test(o.sprite || o.kind); });

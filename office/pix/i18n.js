@@ -74,10 +74,11 @@
     sud: ['Litigation lawyer', 'Handles disputes: assesses prospects, builds the position, prepares claims and procedural documents through to enforcement.'],
     fin: ['Financial analyst', 'Calculates budgets and project payback and turns the numbers into clear reports.'],
     thk: ['Thinker', 'Generates unconventional ideas, runs brainstorms and finds a way out of dead-end problems.'],
+    cpy: ['Copywriter', 'Writes sales copy for websites and landing pages: the offer, pages, answers to questions — and checks every figure against the facts.'],
   };
   var NAMES = { 'Оливия': 'Olivia', 'Отто': 'Otto', 'Феликс': 'Felix', 'Клара': 'Klara', 'Густав': 'Gustav', 'Эмиль': 'Emil',
     'Вальтер': 'Walter', 'Ингрид': 'Ingrid', 'Франц': 'Franz', 'Бруно': 'Bruno', 'Руди': 'Rudi', 'Мартин': 'Martin', 'Пауль': 'Paul',
-    'Хьюго': 'Hugo', 'Виктор': 'Viktor', 'Анри': 'Henri', 'Карл': 'Karl', 'Рене': 'René' };
+    'Хьюго': 'Hugo', 'Виктор': 'Viktor', 'Анри': 'Henri', 'Карл': 'Karl', 'Рене': 'René', 'Агата': 'Agatha' };
   var MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
   // строка лицензии английской страницы: лицензия CC — на английском, ссылка на русскую версию офиса подписана по-русски (lang="ru")
