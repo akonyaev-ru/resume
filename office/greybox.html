@@ -1698,17 +1698,22 @@
       if (!sceneFree(th)) return;
       if (!atHome(th)) { if (s.req && th.state !== 'walk') go(th, [th.home.x, th.home.y], true); return; }   // позвали — к доске
       // места — в ряду Мыслителя, ближайшие к нему слева и справа, но не ближе двух клеток (рисунки шире клетки: в соседней
-      // хомяк и капибара сливались в одно пятно, и чья лампочка — не понять): пол, не клетка стула, никем не занятые
+      // хомяк и капибара сливались в одно пятно, и чья лампочка — не понять): пол, не клетка стула, никем не занятые.
+      // 23.10 (владелец: «чтобы собирался, даже если у доски стоят агенты»): клетка, где по делам стоит свободный агент, —
+      // тоже место, и он встаёт в штурм, никуда не идя. Было: такая клетка — занята (его бронь точки и он сам), а слева от
+      // Рене между стульями всего две клетки — двое у доски, и штурм откладывался, пока через 40 с просьба не снималась
+      var free = agents.filter(function (q) { return q !== th && q.d.id !== 'disp' && sceneFree(q) && (atHome(q) || (q.state === 'idle' && !q.seat)); });
+      var standing = function (x, y) { return free.filter(function (q) { return q.tx === x && q.ty === y && q.state === 'idle' && !q.path.length; })[0] || null; };
       var cells = [-1, 1].map(function (dir) {
-        for (var k = 2; k <= 5; k++) { var x = th.tx + dir * k; if (!sceneCellBusy(x, th.ty)) return [x, th.ty]; }
+        for (var k = 2; k <= 5; k++) { var x = th.tx + dir * k, q = standing(x, th.ty); if (q || !sceneCellBusy(x, th.ty)) return { c: [x, th.ty], q: q }; }
         return null;
       });
       if (!cells[0] || !cells[1]) { s.next = AG_T + 10; return; }
-      var free = agents.filter(function (q) { return q !== th && q.d.id !== 'disp' && sceneFree(q) && (atHome(q) || (q.state === 'idle' && !q.seat)); });
-      var who = [th];
-      cells.forEach(function (c) {   // к каждому месту — ближайший по пути
-        var best = null, bl = 1e9;
-        free.forEach(function (q) { if (who.indexOf(q) >= 0) return; var p = bfs(q.tx, q.ty, c[0], c[1]); if (p && p.length < bl) { bl = p.length; best = q; } });
+      var who = [th], taken = cells.map(function (m) { return m.q; }).filter(Boolean);
+      cells.forEach(function (m) {   // стоящий на месте — сразу в штурм; к остальным местам — ближайший по пути
+        if (m.q) { who.push(m.q); return; }
+        var c = m.c, best = null, bl = 1e9;
+        free.forEach(function (q) { if (who.indexOf(q) >= 0 || taken.indexOf(q) >= 0) return; var p = bfs(q.tx, q.ty, c[0], c[1]); if (p && p.length < bl) { bl = p.length; best = q; } });
         if (best) { go(best, c, false); if (best.state === 'walk') who.push(best); }
       });
       if (who.length < 3) { who.slice(1).forEach(function (a) { a.timer = 0.3; }); s.next = AG_T + 10; return; }
