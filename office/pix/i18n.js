@@ -72,13 +72,15 @@
     kyc: ['Counterparty due diligence specialist', 'Checks companies, sole traders and individuals against open sources and issues a dossier with a verdict before a deal.'],
     dog: ['Contracts lawyer', 'Reviews contracts before signing: spots risks, drafts amendments and protocols of disagreement, compares versions.'],
     sud: ['Litigation lawyer', 'Handles disputes: assesses prospects, builds the position, prepares claims and procedural documents through to enforcement.'],
-    fin: ['Financial analyst', 'Calculates budgets and project payback and turns the numbers into clear reports.'],
+    fin: ['Financial analyst', 'Manages personal and family finances: sorts out bank statements, keeps the budget and reports, calculates loans and taxes.'],
     thk: ['Thinker', 'Generates unconventional ideas, runs brainstorms and finds a way out of dead-end problems.'],
     cpy: ['Copywriter', 'Writes sales copy for websites and landing pages: the offer, pages, answers to questions — and checks every figure against the facts.'],
+    pm: ['Product manager', 'Runs projects from idea to sign-off: goals and criteria, the work plan, briefs for the agents and checking the result.'],
+    b24: ['Bitrix24 developer', 'Sets up and automates Bitrix24 portals: robots, business processes, pipelines, fields and integrations.'],
   };
   var NAMES = { 'Оливия': 'Olivia', 'Отто': 'Otto', 'Феликс': 'Felix', 'Клара': 'Klara', 'Густав': 'Gustav', 'Эмиль': 'Emil',
     'Вальтер': 'Walter', 'Ингрид': 'Ingrid', 'Франц': 'Franz', 'Бруно': 'Bruno', 'Руди': 'Rudi', 'Мартин': 'Martin', 'Пауль': 'Paul',
-    'Хьюго': 'Hugo', 'Виктор': 'Viktor', 'Анри': 'Henri', 'Карл': 'Karl', 'Рене': 'René', 'Агата': 'Agatha' };
+    'Хьюго': 'Hugo', 'Анри': 'Henri', 'Карл': 'Karl', 'Рене': 'René', 'Агата': 'Agatha', 'Элиза': 'Eliza', 'Конрад': 'Konrad' };
   var MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
   // строка лицензии английской страницы: лицензия CC — на английском, ссылка на русскую версию офиса подписана по-русски (lang="ru")
