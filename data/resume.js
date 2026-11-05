@@ -43,8 +43,8 @@ window.RESUME = {
     monthForms: { ru: ['месяц', 'месяца', 'месяцев'], en: ['month', 'months', 'months'] },
     resultsTitle: { ru: 'Что изменилось после внедрений', en: 'What changed after the rollouts' },
     resultsNote: {
-      ru: 'За полтора года на текущем месте работы.',
-      en: 'Over a year and a half at my current job.',
+      ru: 'Почти за два года на текущем месте работы.',
+      en: 'Over nearly two years at my current job.',
     },
     approachTitle: { ru: 'Подход', en: 'Approach' },
     experienceTitle: { ru: 'Опыт работы', en: 'Experience' },
@@ -113,7 +113,7 @@ window.RESUME = {
     photo: 'assets/img/portrait.webp',
     age: 25,
     city: { ru: 'Москва', en: 'Moscow' },
-    updated: { ru: '2 октября 2026', en: '2 October 2026' },
+    updated: { ru: '5 ноября 2026', en: '5 November 2026' },
     employment: { ru: 'полная занятость', en: 'full-time' },
     schedule: { ru: 'Удаленно или гибрид', en: 'Remote or hybrid' },
     relocation: {
@@ -130,8 +130,8 @@ window.RESUME = {
       en: 'I move manual processes onto AI agents — and write what that takes myself.',
     },
     about: {
-      ru: 'Автоматизирую ручные бизнес-процессы: нахожу узкие места, собираю требования от заказчиков, формирую техническое задание и довожу решение до работающего результата — по расписанию, событию или заданному условию, — а затем обучаю команду и закрепляю процесс регламентом. Объединяю понимание бизнес-логики с техническими компетенциями: Python, API, интеграция LLM. За полтора года на текущем месте: 6 ИИ-агентов на базе Claude в ежедневной работе 8 человек (типовые задачи −70%) и еще 3 — в отделе продаж, роботизированное согласование договоров в Битрикс24 (SLA −60%), деперсонализация данных перед LLM по 152-ФЗ (ручная подготовка −95%), политика безопасного использования ИИ в контуре компании.',
-      en: 'I automate manual business processes: I find the bottlenecks, gather requirements from the business, write the specification and carry the solution through to a working result — on a schedule, on an event or on a set condition — then train the team and lock the process in with a policy. I combine an understanding of business logic with technical skills: Python, APIs, LLM integration. In a year and a half at my current job: six Claude-based AI agents in the daily work of eight people (routine tasks −70%) and three more in the sales department, robotised contract approval in Bitrix24 (SLA −60%), de-identification of data before it reaches an LLM under the personal data law (manual preparation −95%), and a policy for safe AI use inside the company.',
+      ru: 'Автоматизирую ручные бизнес-процессы: нахожу узкие места, собираю требования от заказчиков, формирую техническое задание и довожу решение до работающего результата — по расписанию, событию или заданному условию, — а затем обучаю команду и закрепляю процесс регламентом. Объединяю понимание бизнес-логики с техническими компетенциями: Python, API, интеграция LLM. Почти за два года на текущем месте: 6 ИИ-агентов на базе Claude в ежедневной работе 8 человек (типовые задачи −70%) и еще 3 — в отделе продаж, роботизированное согласование договоров в Битрикс24 (SLA −60%), деперсонализация данных перед LLM по 152-ФЗ (ручная подготовка −95%), политика безопасного использования ИИ в контуре компании.',
+      en: 'I automate manual business processes: I find the bottlenecks, gather requirements from the business, write the specification and carry the solution through to a working result — on a schedule, on an event or on a set condition — then train the team and lock the process in with a policy. I combine an understanding of business logic with technical skills: Python, APIs, LLM integration. In nearly two years at my current job: six Claude-based AI agents in the daily work of eight people (routine tasks −70%) and three more in the sales department, robotised contract approval in Bitrix24 (SLA −60%), de-identification of data before it reaches an LLM under the personal data law (manual preparation −95%), and a policy for safe AI use inside the company.',
     },
     pullquote: {
       ru: 'Результатом считаю не внедренный инструмент, а процесс, который после меня работает без меня, и измеряю его в сокращенных трудозатратах и сроках.',

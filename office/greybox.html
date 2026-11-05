@@ -129,9 +129,8 @@
   .agmed__tip .agmed__name { display: block; margin: 0 0 4px; color: #f2f4f6; }
   .agmed__tip.is-locked .agmed__name { color: #9aa1ab; }
   .agcard__since { opacity: .85; }
-  /* кнопки в карточке Оливии и Мыслителя (22.10): вид кнопок окон (.w3-btn), подпись — как «Стаж:» */
+  /* кнопка в карточке Мыслителя (22.10): вид кнопок окон (.w3-btn) */
   .agcard__act { margin: 14px 0 0; }
-  .agcard__act > b { display: block; margin: 0 0 8px; opacity: .85; }
   .agcard__act button.w3-btn { border: 0; font-family: inherit; cursor: pointer; }
   /* имён на карте нет — только в карточке агента (владелец 16.10: «имена агентов давай не будем показывать») */
   body.pix.pc-ag .ag .tag { display: none !important; }
@@ -1596,8 +1595,8 @@
      Рисунков новых нет — значки, подскок и ходьба те же; «уменьшить движение» — сцен нет (agentsLife). Случайность — своя
      (srnd): с ?lf=0 пути и выборы остальных агентов — как до сцен. Участник сцены (a.scene) в чужих сценах и в
      разговорах не участвует. */
-  /* 22.10 (владелец: «1-2 точно да», остальное — «демо покажи сначала»): кнопки в карточках — «Поручить задачу» у Оливии
-     (она несёт документ нужному агенту) и «Позвать на мозговой штурм» у Мыслителя. Из пробных — решено владельцем 22.10:
+  /* 22.10 (владелец: «1-2 точно да», остальное — «демо покажи сначала»): кнопка в карточке Мыслителя — «Позвать на мозговой
+     штурм»; «Поручить задачу» у Оливии убрана 5.11 (владелец: «этого там быть не должно»). Из пробных — решено владельцем 22.10:
      «Аркада зазывает — да (экран автомата в простое, слой 'arcade', state.ar), офис радуется рекорду — да (волна от
      автомата, celebrate, state.rc), анимацию Эмиля не внедряем» — визит Эмиля с инструментом убран. */
   var SCN = { seed: 23, task: { id: 'disp', next: 8, every: [40, 60], go: 'task', done: 'given' }, bs: { next: 12 }, log: [] };
@@ -1615,31 +1614,21 @@
   }
   function sceneHold(a, sec) { a.timer = Math.max(a.timer, sec); }
   // Визит (Оливия с задачей; было общим и для Эмиля — его сцену владелец не взял): v.id идёт в соседнюю клетку к агенту на его месте, показывает значок icon
-  // 0,8 с, затем значок — у того (1,0 с), и тот подпрыгивает; потом уходит. Сам — раз в v.every с; по просьбе посетителя
-  // (v.req — кнопка в карточке) — сразу и к нужному агенту: тот, если не на месте, возвращается на место
+  // 0,8 с, затем значок — у того (1,0 с), и тот подпрыгивает; потом уходит. Раз в v.every с
   function sceneVisit(v, on, icon) {
     var o = agents.filter(function (q) { return q.d.id === v.id; })[0], to = v.to;
     if (!o) return;
     var end = function (ok) {
       o.timer = 0.4; o.scene = null; to.scene = null;
       if (ok) to.timer = srnd(4, 9);   // получил — вскоре встаёт по делам
-      v.to = null; v.asked = false; v.next = AG_T + (ok ? srnd(v.every[0], v.every[1]) : 10);
+      v.to = null; v.next = AG_T + (ok ? srnd(v.every[0], v.every[1]) : 10);
     };
     if (!to) {
-      var req = v.req;
-      if (req && AG_T - v.reqAt > 30) req = v.req = null;   // за 30 с так и не освободились — просьба снимается
-      if (req) {
-        if (o.scene || o === O3D.player || req.scene || req === O3D.player) return;   // ждём, пока освободятся
-        to = req; v.req = null; v.asked = true;
-        if (!atHome(to)) go(to, [to.home.x, to.home.y], true);
-      } else {
-        // сам: за своим местом или стоит по делам (не идёт) — в начале Оливия уходит из-за стойки, и первая передача ждала
-        // её до 34 с
-        if (!on || AG_T < v.next || !sceneFree(o) || !(atHome(o) || (o.state === 'idle' && !o.path.length && !o.seat))) return;
-        var cand = agents.filter(function (q) { return q !== o && q !== v.last && sceneFree(q) && atHome(q); });   // не тому же подряд
-        if (!cand.length) { v.next = AG_T + 5; return; }
-        to = cand[Math.floor(srnd(0, cand.length))];
-      }
+      // за своим местом или стоит по делам (не идёт) — в начале Оливия уходит из-за стойки, и первая передача ждала её до 34 с
+      if (!on || AG_T < v.next || !sceneFree(o) || !(atHome(o) || (o.state === 'idle' && !o.path.length && !o.seat))) return;
+      var cand = agents.filter(function (q) { return q !== o && q !== v.last && sceneFree(q) && atHome(q); });   // не тому же подряд
+      if (!cand.length) { v.next = AG_T + 5; return; }
+      to = cand[Math.floor(srnd(0, cand.length))];
       var spot = null;
       [[-1, 0], [1, 0], [0, 1], [0, -1], [-1, 1], [1, 1], [-1, -1], [1, -1]].some(function (d) {   // у его места, сначала сбоку
         var x = to.home.x + d[0], y = to.home.y + d[1];
@@ -1647,18 +1636,17 @@
         spot = [x, y]; return true;
       });
       if (spot) go(o, spot, false);
-      if (!spot || o.state !== 'walk') { v.asked = false; v.next = AG_T + 5; return; }
+      if (!spot || o.state !== 'walk') { v.next = AG_T + 5; return; }
       v.to = v.last = to; v.phase = 'go'; v.t0 = AG_T; v.e1 = v.e2 = false; o.scene = to.scene = v.go;
-      sceneLog({ k: v.go, to: to.d.id, at: spot.join(','), ask: !!v.asked });
+      sceneLog({ k: v.go, to: to.d.id, at: spot.join(',') });
       return;
     }
-    if ((!on && !v.asked) || AG_T - v.t0 > 60) { end(false); return; }
+    if (!on || AG_T - v.t0 > 60) { end(false); return; }
     sceneHold(to, 4);
     if (v.phase === 'go') {
       if (o.state === 'walk' || o.path.length || o.hold) return;
       if (o.state !== 'idle') { end(false); return; }
       sceneHold(o, 2);
-      if (!atHome(to)) return;   // он ещё идёт на своё место
       v.phase = 'give'; v.t0 = AG_T;
       var dx = to.tx - o.tx, dy = to.ty - o.ty;
       o.face = dy < 0 && -dy >= Math.abs(dx) ? 'back' : 'front';   // к нему: он выше — спиной к нам, иначе лицом
@@ -1669,14 +1657,10 @@
     if (dt >= 0.8 && !v.e2) { v.e2 = true; emote(to, icon, 1.0); hopNow(to); sceneLog({ k: v.done, to: to.d.id }); }
     if (dt >= 1.9) end(true);
   }
-  // просьба посетителя из карточки агента: поручить задачу (Оливия несёт документ агенту id) или позвать на штурм
-  function sceneAsk(kind, id) {
-    if (kind === 'task') {
-      var a = agents.filter(function (q) { return q.d.id === id; })[0];
-      if (!a) return;
-      SCN.task.req = a; SCN.task.reqAt = AG_T;
-    } else { SCN.bs.req = true; SCN.bs.reqAt = AG_T; }
-    sceneLog({ k: 'ask', what: kind, to: id || '' });
+  // просьба посетителя из карточки Мыслителя: позвать на штурм
+  function sceneAsk() {
+    SCN.bs.req = true; SCN.bs.reqAt = AG_T;
+    sceneLog({ k: 'ask' });
   }
   // новый рекорд в «Аркаде» (выбор владельца 22.10): волна от автомата — 0,025 с на клетку пути (весь офис за ~1,5 с), каждый
   // подпрыгивает дважды и показывает кубок. Было 0,04 с, один подскок и значок «игра» только у тех, кто в 8 клетках:
@@ -1849,7 +1833,7 @@
   // демо: показать оживший предмет — штурм у доски; к кофемашине идёт ближайший свободный агент (стоит кто-то там уже —
   // наливает сразу)
   function objShow(g) {
-    if (g === 'sk') { sceneAsk('storm'); return; }
+    if (g === 'sk') { sceneAsk(); return; }
     var cell = Object.keys(POI_EMOTE).filter(function (k) { return POI_EMOTE[k] === 'coffee'; })[0].split(',').map(Number);
     if (agents.some(function (a) { return a.tx === cell[0] && a.ty === cell[1] && a.state === 'idle'; })) { OBJ_LIVE.coffee.at = AG_T; return; }
     var best = null, bl = 1e9;
@@ -3015,17 +2999,12 @@
      замеру шапки. Замер шёл до прихода пиксельного шрифта (он грузится при первом открытии окна) — окно 560, и у
      «Специалиста по проверке контрагентов» имя уходило в многоточие; на телефоне подписи нет вовсе, а должность залезала
      под крестик. Теперь в шапке имя (короткое — помещается всегда), должность — первой строкой карточки, переносится. */
-  /* Кнопки в карточке (22.10, владелец: «1-2 точно да»): у Оливии — «Поручить задачу» (она несёт документ тому, кто её
-     делает), у Мыслителя — «Позвать на мозговой штурм». Только когда агенты живут на холсте и движение не уменьшено:
-     иначе нажатие ничего бы не показало. */
-  var ASK_TASKS = [['Проверить договор', 'dog'], ['Сделать лендинг', 'des'], ['Придумать название', 'thk'], ['Найти судебную практику', 'sud']];
+  /* Кнопка в карточке (22.10, владелец: «1-2 точно да»): у Мыслителя — «Позвать на мозговой штурм». Только когда агенты
+     живут на холсте и движение не уменьшено: иначе нажатие ничего бы не показало. «Поручить задачу» у Оливии убрана 5.11
+     (владелец: «этого там быть не должно»), документы она разносит по-прежнему — сама (SCN.task). */
   function agentActs(d) {
-    if (RM || !(PC && PC.ag)) return '';
-    var btn = function (label, kind, to) { return '<button type="button" class="w3-btn" data-ask="' + kind + '"' + (to ? ' data-to="' + to + '"' : '') + '>' + esc(OT(label)) + '</button>'; };
-    if (d.id === 'disp') return '<div class="agcard__act"><b>' + OT('Поручить задачу:') + '</b><div class="w3-btns">' +
-      ASK_TASKS.map(function (t) { return btn(t[0], 'task', t[1]); }).join('') + '</div></div>';
-    if (d.id === 'thk') return '<div class="agcard__act"><div class="w3-btns">' + btn('Позвать на мозговой штурм', 'storm') + '</div></div>';
-    return '';
+    if (d.id !== 'thk' || RM || !(PC && PC.ag)) return '';
+    return '<div class="agcard__act"><div class="w3-btns"><button type="button" class="w3-btn" data-ask="storm">' + esc(OT('Позвать на мозговой штурм')) + '</button></div></div>';
   }
   function openAgent(d, from) {
     var text = d.secret ? '<p>' + esc(SECRET.text) + '</p>' : d.desc ? '<p>' + esc(d.desc) + '</p>' : '<p class="stub">' + OT('Описание — после согласования.') + '</p>';
@@ -3043,7 +3022,7 @@
     win.dataset.open = 'agent:' + d.id;
     var panel = $('#winPanel');
     panel.querySelectorAll('.agcard__act [data-ask]').forEach(function (b) {   // окно закрывается — офис виден, сцена идёт
-      b.addEventListener('click', function () { var k = b.dataset.ask, to = b.dataset.to; closeWin(); sceneAsk(k, to); });
+      b.addEventListener('click', function () { closeWin(); sceneAsk(); });
     });
     if (!document.body.classList.contains('is-phone')) panel.style.width = 'min(' + AGCARD_W + 'px, calc(100% - 32px))';
     portrait(d.id);
@@ -3067,7 +3046,7 @@
   var VALUABLE = ['disp', 'dev'];
   // «Золотой диск» — папка агента от 1 ГБ, по списку владельца 18.10. Точных размеров в странице нет (владелец 18.10:
   // «чтобы лишний раз не обновлять данные — убери точные данные размера диска»); перерастёт кто-то ещё — дописать сюда.
-  var DISK = ['dev', 'sud'];
+  var DISK = ['dev', 'sud', 'ldz'];   // ldz — дописан 5.11: папка Легал-дизайнера переросла порог
   var MED_W = 23, MED_H = 32, MED_TOP = 1;                       // медаль и её место — один силуэт 23 × 32; сверху точка на подъём
   var MED_SCALE = { s: 0.8, m: 1.6, l: 2.4 };                    // CSS-пикселей на точку рисунка (до округления до целых точек экрана)
   var GLINT_EVERY = 6, GLINT_S = 0.7, SPARK_EVERY = 2.4;          // блик раз в 6 с по каждой медали (свои фазы), искорка мерцает
