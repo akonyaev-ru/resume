@@ -684,6 +684,9 @@
     // и 68°–111°) и место Горгульи у серверных стоек — мои рекомендации. Продакт-менеджер садится за свободный стол
     { id: 'pm', role: 'Продакт-менеджер', n: ['Элиза', 'Фрида', 'Холли'], since: '2026-10-26', c: '#a8d468', desc: 'Ведёт проекты от идеи до приёмки: цели и критерии, план работ, задания агентам и проверка результата.' },
     { id: 'b24', role: 'Разработчик Битрикс24', n: ['Конрад', 'Харальд', 'Ленни'], since: '2026-10-27', c: '#6a7fe0', desc: 'Настраивает и автоматизирует порталы Битрикс24: роботы, бизнес-процессы, воронки, поля и интеграции.' },
+    // 7.11: новый агент «Юрист по персональным данным» (с 6.11); костюм — выбор владельца из каталога («если у нас нет мумии —
+    // давай её»); имена (мужские — владелец 7.11: «дай другое имя, мужское»), описание, бейдж (просвет оттенков 111°–150° с учётом секретных) и место у диплома — мои рекомендации
+    { id: 'pdn', role: 'Юрист по персональным данным', n: ['Оскар', 'Ингвар', 'Чарли'], since: '2026-11-06', c: '#6cd07d', desc: 'Проверяет сайты на соблюдение закона о персональных данных и готовит документы оператора: политику, согласия, уведомления.' },
   ];
   var SECRET = { title: OT('Секретный агент'), text: OT('Информацию об этом агенте я предпочёл скрыть.') };
   AGENTS.forEach(function (d) {   // английская страница: должность и описание по id (секретным — нет), имена латиницей
@@ -2485,7 +2488,7 @@
       });
     }
     for (var i = seats.length - 1; i > 0; i--) { var j = Math.floor(rand() * (i + 1)); var tmp = seats[i]; seats[i] = seats[j]; seats[j] = tmp; }
-    var ENG_HOME = { x: 50, y: 31 }, RC_HOME = RC_SEAT, FIN_HOME = null, THK_HOME = null, CPY_HOME = null, B24_HOME = null;
+    var ENG_HOME = { x: 50, y: 31 }, RC_HOME = RC_SEAT, FIN_HOME = null, THK_HOME = null, CPY_HOME = null, B24_HOME = null, PDN_HOME = null;
     if (pcAg) {
       // 16.10, позже («ходят сквозь мебель — сделай логично»): инженер стоит перед стойками — в щель между ними (16 точек)
       // агент не помещается, ступни вставали на стойки; диспетчер садится в кресло ресепшена из соседней клетки за стойкой,
@@ -2533,9 +2536,14 @@
       B24_HOME = [[53, 36], [47, 36], [56, 36]].map(function (p) { return { x: p[0], y: p[1], face: 'back' }; })
         .filter(function (p) { return grid[p.y] && grid[p.y][p.x] === 1 && !reserved[poiKey([p.x, p.y])]; })[0] || null;
       if (B24_HOME) reserved[poiKey([B24_HOME.x, B24_HOME.y])] = 1;
+      // юрист по персональным данным (7.11) — столов нет: стоит в приёмной перед дипломом на стене (spot «Образование»,
+      // клетки 41–43), лицом к нему — в первом ряду пола под стеной, сначала посередине
+      PDN_HOME = [[42, 29], [43, 29], [41, 29]].map(function (p) { return { x: p[0], y: p[1], face: 'back' }; })
+        .filter(function (p) { return grid[p.y] && grid[p.y][p.x] === 1 && !reserved[poiKey([p.x, p.y])]; })[0] || null;
+      if (PDN_HOME) reserved[poiKey([PDN_HOME.x, PDN_HOME.y])] = 1;
     }
     AGENTS.forEach(function (d, k) {
-      var home = d.id === 'disp' ? RC_HOME : pcAg && d.id === 'eng' ? ENG_HOME : pcAg && d.id === 'fin' && FIN_HOME ? FIN_HOME : pcAg && d.id === 'thk' && THK_HOME ? THK_HOME : pcAg && d.id === 'cpy' && CPY_HOME ? CPY_HOME : pcAg && d.id === 'b24' && B24_HOME ? B24_HOME : seats.shift() || ENG_HOME;
+      var home = d.id === 'disp' ? RC_HOME : pcAg && d.id === 'eng' ? ENG_HOME : pcAg && d.id === 'fin' && FIN_HOME ? FIN_HOME : pcAg && d.id === 'thk' && THK_HOME ? THK_HOME : pcAg && d.id === 'cpy' && CPY_HOME ? CPY_HOME : pcAg && d.id === 'b24' && B24_HOME ? B24_HOME : pcAg && d.id === 'pdn' && PDN_HOME ? PDN_HOME : seats.shift() || ENG_HOME;
       if (pcAg && !home.seat) {   // стул места: сидящий рисуется сразу после него (спинка за спиной, стол — впереди)
         var hc = home.x * T + T / 2, hy = home.y * T + T / 2;
         var ch = objAt(hc, hy, function (o) { return /chair/.test(o.sprite || o.kind); });
