@@ -113,7 +113,7 @@ window.RESUME = {
     photo: 'assets/img/portrait.webp',
     age: 25,
     city: { ru: 'Москва', en: 'Moscow' },
-    updated: { ru: '5 ноября 2026', en: '5 November 2026' },
+    updated: { ru: '12 ноября 2026', en: '12 November 2026' },
     employment: { ru: 'полная занятость', en: 'full-time' },
     schedule: { ru: 'Удаленно или гибрид', en: 'Remote or hybrid' },
     relocation: {

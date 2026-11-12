@@ -77,10 +77,12 @@
     pm: ['Product manager', 'Runs projects from idea to sign-off: goals and criteria, the work plan, briefs for the agents and checking the result.'],
     b24: ['Bitrix24 developer', 'Sets up and automates Bitrix24 portals: robots, business processes, pipelines, fields and integrations.'],
     pdn: ['Data protection lawyer', 'Audits websites for compliance with personal data law and drafts operator documents: privacy policy, consents, notices.'],
+    sys: ['System administrator', 'Answers operating system questions, diagnoses issues, and configures the device and its software on request.'],
   };
   var NAMES = { 'Оливия': 'Olivia', 'Отто': 'Otto', 'Феликс': 'Felix', 'Клара': 'Klara', 'Густав': 'Gustav', 'Эмиль': 'Emil',
     'Вальтер': 'Walter', 'Ингрид': 'Ingrid', 'Франц': 'Franz', 'Бруно': 'Bruno', 'Руди': 'Rudi', 'Мартин': 'Martin', 'Пауль': 'Paul',
-    'Хьюго': 'Hugo', 'Анри': 'Henri', 'Карл': 'Karl', 'Рене': 'René', 'Агата': 'Agatha', 'Элиза': 'Eliza', 'Конрад': 'Konrad', 'Оскар': 'Oscar' };
+    'Хьюго': 'Hugo', 'Анри': 'Henri', 'Карл': 'Karl', 'Рене': 'René', 'Агата': 'Agatha', 'Элиза': 'Eliza', 'Конрад': 'Konrad', 'Оскар': 'Oscar',
+    'Виктор': 'Victor', 'Итан': 'Ethan', 'Макс': 'Max' };
   var MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
   // строка лицензии английской страницы: лицензия CC — на английском, ссылка на русскую версию офиса подписана по-русски (lang="ru")
